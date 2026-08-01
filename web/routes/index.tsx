@@ -86,7 +86,7 @@ export default define.page<typeof handler>(function Home({ data }) {
       </main>
       <footer class="site-footer">
         <p class="container site-footer__text">
-          NotreRue.fr — « Nous rapprocher les uns des autres »
+          NotreRue.fr — « Nous rapprocher les uns des autres » | Souveraineté — Hebergement et Code Open Source 100% Français 🇫🇷 
         </p>
       </footer>
     </>
