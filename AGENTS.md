@@ -28,7 +28,7 @@ Le monde de demain c'est un monde low tech ou règne :
 But :
 « Nous rapprocher les uns des autres » ou « Recréer du lien entre voisins »
 
-Pour te donner une vision d'ensemble, la maquette de l'application se trouve dans _prototype/web.html
+Pour te donner une vision d'ensemble, la maquette de l'application se trouve dans _doc/prototype_web.html
 
 ## Commandes
 
