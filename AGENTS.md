@@ -115,6 +115,9 @@ l'application de trouve dans le dossier app
   RWEB0010).
 - Limiter le nombre d'appels aux API HTTP/externes ; regrouper les appels
   plutôt que les multiplier (RWEB0021, RWEB0025).
+- Application installable (PWA) avec Service Worker (`static/sw.js`) pour
+  économiser la bande passante et rester utilisable hors-ligne (RWEB0019,
+  RWEB0060).
 
 **CSS**
 - Ne garder qu'un seul fichier CSS buildé (déjà le cas via `assets/styles.css`
