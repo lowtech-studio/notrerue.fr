@@ -1,0 +1,37 @@
+services:
+  app:
+    image: denoland/deno:latest
+    container_name: notre_rue_web
+    working_dir: /web
+    volumes:
+      - ./web:/web
+    ports:
+      - "5173:5173"
+      #- "8000:8000"
+    #command: sh -c "deno task build && deno serve -A _fresh/server.js"
+    command: sh -c "deno task dev --host"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://postgres:example@db:5432/notre_rue
+      # Dev only — jamais ces valeurs en production (voir app/.env.example).
+      - SESSION_SECRET=dev-only-insecure-secret-change-me
+      - SEED_ADMIN_EMAIL=admin@rte.local
+      - SEED_ADMIN_PASSWORD=changeme-dev-only
+    restart: unless-stopped
+
+
+  db:
+    image: postgres:latest
+    container_name: notre_rue_db
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: postgres
+      POSTGRES_DB: notre_rue
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    shm_size: 128mb
+    restart: always
+
+volumes:
+  postgres_data:
