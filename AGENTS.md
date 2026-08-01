@@ -10,7 +10,9 @@ Application web full-stack basée sur **Fresh 2** (framework officiel de Deno) :
 - **Framework** : Fresh 2 (`jsr:@fresh/core`) — rendu serveur par défaut, architecture *islands*
 - **UI** : Preact 10 + `@preact/signals`
 - **Build / HMR** : Vite via `@fresh/plugin-vite`
-- **Styles** : Tailwind CSS 4 via `@tailwindcss/vite`
+- **Styles** : CSS vanilla — un seul fichier `assets/styles.css`, variables CSS
+  (`:root { --token: ... }`) pour les tokens de design (couleurs, typographies,
+  espacements). Pas de framework CSS.
 - **Langage** : TypeScript strict
 
 Le projet doit etre maintenable et documeté au fil de l'eau dans le fichier markdown README.md
@@ -66,7 +68,7 @@ l'application de trouve dans le dossier app
 ├── utils.ts # createDefine() → helpers typés define.*
 ├── client.ts # Entrée client (imports CSS uniquement)
 ├── main.ts # Entrée serveur (instance App + fsRoutes)
-├── vite.config.ts # Plugins Vite : fresh(), tailwindcss()
+├── vite.config.ts # Plugins Vite : fresh()
 └── deno.json # Tasks, imports JSR/npm, compilerOptions JSX
 
 
@@ -88,9 +90,11 @@ l'application de trouve dans le dossier app
 7. **Routes typées** : utiliser `define.handlers()` et `define.page()` (helpers
    de `utils.ts` via `createDefine<State>()`), pas de signatures à la main.
 8. **Nommage des islands** : PascalCase (`Counter.tsx`).
-9. **CSS** : importé dans `client.ts` (`import "./assets/styles.css"`). Le
-   fichier démarre par `@import "tailwindcss";`. Ne jamais remettre le CSS à
-   bundler dans `static/` ni ajouter de `<link>` manuel dans `_app.tsx`.
+9. **CSS** : importé dans `client.ts` (`import "./assets/styles.css"`). CSS
+   vanilla uniquement — **jamais de framework CSS** (Tailwind, Bootstrap…) ni
+   de préprocesseur. Tokens de design en variables CSS (`:root`). Ne jamais
+   remettre le CSS à bundler dans `static/` ni ajouter de `<link>` manuel dans
+   `_app.tsx`.
 10. **Dossiers privés** : préfixer `_` (ex. `routes/(_components)/`) pour tout
     dossier sous `routes/` qui ne doit pas être routé.
 11. JAMAIS de secrets dans le code! Les identifiants, mots de passes, clés apis ... doivent etre stockés en tant que variables d'environnement et ne doivent pas etre commités dans git !
@@ -118,7 +122,7 @@ l'application de trouve dans le dossier app
 - Ne garder qu'un seul fichier CSS buildé (déjà le cas via `assets/styles.css`
   → Vite) ; ne pas ajouter de feuilles de style supplémentaires (RWEB0035,
   RWEB0078).
-- Préférer les classes utilitaires et les dégradés/formes CSS aux
+- Préférer les classes CSS réutilisables et les dégradés/formes en CSS pur aux
   images décoratives (RWEB0037, RWEB0050).
 - Ne pas réinventer un design system : garder un design simple, sobre, adapté
   au web (RWEB0012).
