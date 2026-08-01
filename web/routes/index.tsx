@@ -34,8 +34,8 @@ export default define.page<typeof handler>(function Home({ data }) {
             </h1>
             <p class="hero__subtitle">
               NotreRue.fr aide les habitants d'une même rue à se rapprocher :
-              partage, entraide, troc et sécurité collective.
-              Une page privée, réservée aux gens qui vivent dans notre rue.
+              partage, entraide, troc et sécurité collective. Une page privée,
+              réservée aux gens qui vivent dans notre rue.
             </p>
 
             {rue !== "" && (
@@ -79,14 +79,18 @@ export default define.page<typeof handler>(function Home({ data }) {
             <ul class="trust-card__list">
               <li>Votre nom de famille, votre adresse exacte, votre âge</li>
               <li>Le contenu d'une rue, si vous n'y habitez pas</li>
-              <li>Vos données revendues à des tiers ou stockées en dehors de France</li>
+              <li>
+                Vos données revendues à des tiers ou stockées en dehors de
+                France
+              </li>
             </ul>
           </aside>
         </section>
       </main>
       <footer class="site-footer">
         <p class="container site-footer__text">
-          NotreRue.fr — « Nous rapprocher les uns des autres » | Souveraineté — Hebergement et Code Open Source 100% Français 🇫🇷 
+          NotreRue.fr — « Nous rapprocher les uns des autres » | Souveraineté —
+          Hebergement et Code Open Source 100% Français 🇫🇷
         </p>
       </footer>
     </>

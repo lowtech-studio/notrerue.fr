@@ -11,4 +11,3 @@ Deno.test("GET / sans paramètre rue renvoie une chaîne vide", async () => {
   const result = await handler.GET!(makeContext("http://localhost/"));
   assertEquals(result, { data: { rue: "" } });
 });
-

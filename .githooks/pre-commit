@@ -1,0 +1,4 @@
+#!/bin/sh
+# Bloque le commit si `make check` échoue (fmt, lint, types, tests).
+set -e
+make check

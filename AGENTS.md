@@ -43,8 +43,6 @@ Pour te donner une vision d'ensemble, la maquette de l'application se trouve dan
 | `deno test -A` | Lancer tous les tests |
 | `deno test -A <fichier_test.ts>` | Lancer un seul test |
 
-Une tâche n'est terminée que si `deno fmt`, `deno lint`, `deno task check` et `deno test -A` passent.
-
 ## Dépendances
 
 - Ajouter : `deno add jsr:@scope/pkg` ou `deno add npm:pkg`
@@ -236,6 +234,8 @@ applicables à notre stack (Fresh 2 SSR / Deno / Preact / cookie de session / Po
 - Branches depuis `main` : `feat/…`, `fix/…`, `chore/…`.
 - Commits au format Conventional Commits (`feat: ajoute la route /api/users`).
 - PR : CI verte obligatoire (fmt, lint, check, tests).
+- Hook pre-commit versionné dans `.githooks/` (lance `make check`). À activer une
+  fois par clone : `git config core.hooksPath .githooks`.
 
 ## Ne pas modifier
 
