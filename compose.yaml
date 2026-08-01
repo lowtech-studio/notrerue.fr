@@ -9,7 +9,7 @@ services:
       - "5173:5173"
       #- "8000:8000"
     #command: sh -c "deno task build && deno serve -A _fresh/server.js"
-    command: sh -c "deno task dev --host"
+    command: sh -c "deno install && deno task dev --host"
     depends_on:
       - db
     environment:
