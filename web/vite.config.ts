@@ -3,4 +3,7 @@ import { fresh } from "@fresh/plugin-vite";
 
 export default defineConfig({
   plugins: [fresh()],
+  server: {
+    allowedHosts: ["notrerue.fr"],
+  },
 });
