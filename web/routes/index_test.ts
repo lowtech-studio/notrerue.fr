@@ -7,7 +7,7 @@ function makeContext(url: string): Context<State> {
   return { url: new URL(url) } as unknown as Context<State>;
 }
 
-Deno.test("GET / sans paramètre rue renvoie une chaîne vide", async () => {
+Deno.test("Page d'accueil", async () => {
   const result = await handler.GET!(makeContext("http://localhost/"));
   assertEquals(result, { data: { rue: "" } });
 });

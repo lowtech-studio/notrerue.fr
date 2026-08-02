@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NotreRue.fr — Hors ligne</title>
+    <!--
+      Page de secours servie par le service worker (static/sw.js) quand le
+      réseau est indisponible et qu'aucune page n'est déjà en cache. Elle doit
+      pouvoir s'afficher sans dépendre d'aucune autre ressource réseau : le
+      CSS est donc exceptionnellement en ligne ici (cf. règle 9 d'AGENTS.md).
+    -->
+    <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #fffdf8;
+      color: #1b1a17;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+        Roboto, "Helvetica Neue", Arial, sans-serif;
+      text-align: center;
+    }
+    .card {
+      max-width: 420px;
+    }
+    .mark {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: #9a3f12;
+      color: #fff6ea;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+    p {
+      margin: 0;
+      color: #4a453c;
+      line-height: 1.5;
+    }
+    button {
+      margin-top: 24px;
+      min-height: 48px;
+      padding: 12px 24px;
+      background: #9a3f12;
+      color: #fff6ea;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="mark" aria-hidden="true">◍</div>
+      <h1>Pas de connexion</h1>
+      <p>
+        NotreRue.fr a besoin du réseau pour afficher cette page. Vérifiez
+        votre connexion puis réessayez.
+      </p>
+      <button type="button" id="retry">Réessayer</button>
+    </div>
+    <script src="/offline.js"></script>
+  </body>
+</html>
