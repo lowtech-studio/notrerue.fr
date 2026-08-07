@@ -3,7 +3,7 @@
 ## MVP
 
 - [ ] En tant qu'habitant non connecté d'une rue endormie, je veux savoir combien de foyers il manque pour qu'elle s'allume, afin d'avoir un objectif atteignable.
-- [ ] En tant que premier habitant d'une rue endormie, je m'inscrit et deviens ambassadeur avec mon prénom, mon mail et ma rue. Je reçois un mail avec un code à 6 chiffres pour me connecter.
+- [*] En tant que premier habitant d'une rue endormie, je m'inscrit et deviens ambassadeur avec mon prénom, mon mail et ma rue. Je reçois un mail avec un code à 6 chiffres pour me connecter.
 - [ ] En tant qu'habitant non connecté je m'inscris avec mon prénom, mon mail et ma rue et pouvoir ajouter volontairement mon numéro de bâtiment aux seuls foyers certifiés, préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier). Je reçois un mail avec un code à 6 chiffres pour me connecter.
 - [ ] En tant qu'habitant connecté d'une rue non allumée, je veux n'avoir qu'une seule action possible : inviter, afin de ne pas être découragé par des espaces vides.
 - [ ] En tant que premier habitant inscrit, je veux être prévenu sobrement quand le seuil est atteint, afin de publier ma première demande au bon moment.

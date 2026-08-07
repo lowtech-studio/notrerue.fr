@@ -2,3 +2,9 @@
 # Bloque le commit si `make check` échoue (fmt, lint, types, tests).
 set -e
 make check
+
+# Revue de code automatique du diff staged via un LLM (OpenRouter).
+# Non bloquant si la clé API est absente ou en cas d'erreur réseau ;
+# bloquant seulement si le modèle rend un verdict explicite BLOQUANT.
+# Voir scripts/ai-review.ts. Pour sauter : SKIP_AI_REVIEW=1 git commit ...
+deno run -A scripts/ai-review.ts

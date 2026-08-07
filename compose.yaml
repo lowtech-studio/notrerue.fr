@@ -14,10 +14,14 @@ services:
       - db
     environment:
       - DATABASE_URL=postgres://postgres:example@db:5432/notre_rue
-      # Dev only — jamais ces valeurs en production (voir app/.env.example).
+      # Dev only — jamais ces valeurs en production (voir web/.env.example).
       - SESSION_SECRET=dev-only-insecure-secret-change-me
       - SEED_ADMIN_EMAIL=admin@rte.local
       - SEED_ADMIN_PASSWORD=changeme-dev-only
+      # Provider d'e-mail (code de connexion) : jamais de valeur en dur ici,
+      # à définir dans un `.env` non commité à la racine (voir web/.env.example).
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
     restart: unless-stopped
 
 
@@ -30,6 +34,8 @@ services:
       POSTGRES_DB: notre_rue
     volumes:
       - postgres_data:/var/lib/postgresql
+    ports:
+      - "5432:5432"
     shm_size: 128mb
     restart: always
 
