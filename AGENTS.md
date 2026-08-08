@@ -239,6 +239,13 @@ applicables à notre stack (Fresh 2 SSR / Deno / Preact / cookie de session / Po
 - PR : CI verte obligatoire (fmt, lint, check, tests).
 - Hook pre-commit versionné dans `.githooks/` (lance `make check`). À activer une
   fois par clone : `git config core.hooksPath .githooks`.
+- Le hook pre-commit lance aussi une revue automatique via LLM (OpenRouter,
+  voir `scripts/ai-review.ts`) sur le diff staged : bugs, sécurité, nommage,
+  architecture. Chaque revue est enregistrée en Markdown dans `_doc/reviews/`
+  (un fichier par commit, horodaté, avec le hash du commit parent) et
+  embarquée dans le commit correspondant. **Avant de travailler sur une zone
+  du code, vaut le coup de regarder les revues récentes dans `_doc/reviews/`**
+  pour le contexte (remarques déjà faites, points de vigilance connus).
 
 ## Ne pas modifier
 
