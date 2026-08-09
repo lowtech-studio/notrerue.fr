@@ -7,7 +7,8 @@
     "start": "deno serve -A _fresh/server.js",
     "update": "deno run -A -r jsr:@fresh/update .",
     "db:generate": "deno run -A npm:drizzle-kit generate",
-    "db:migrate": "deno run -A db/migrate.ts"
+    "db:migrate": "deno run -A db/migrate.ts",
+    "db:seed-cities": "deno run -A db/seed-cities.ts"
   },
   "lint": {
     "rules": {
@@ -23,6 +24,7 @@
   "imports": {
     "@/": "./",
     "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/csv": "jsr:@std/csv@^1.0.6",
     "drizzle-kit": "npm:drizzle-kit@^0.31.10",
     "drizzle-orm": "npm:drizzle-orm@^0.45.2",
     "fresh": "jsr:@fresh/core@^2.3.3",

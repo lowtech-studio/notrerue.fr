@@ -1,4 +1,10 @@
-export function Header() {
+import type { SessionUser } from "../utils.ts";
+
+interface HeaderProps {
+  user?: SessionUser | null;
+}
+
+export function Header({ user }: HeaderProps = {}) {
   return (
     <header class="site-header">
       <div class="container site-header__bar">
@@ -11,6 +17,32 @@ export function Header() {
             </span>
           </span>
         </a>
+
+        {user
+          ? (
+            <nav class="site-header__nav">
+              <form
+                method="POST"
+                action="/deconnexion"
+                class="site-header__form"
+              >
+                <button type="submit" class="site-header__link">
+                  Déconnexion
+                </button>
+              </form>
+            </nav>
+          )
+          : (
+            <nav class="site-header__nav">
+              <a href="/connexion" class="site-header__link">Connexion</a>
+              <a
+                href="/rejoindre"
+                class="site-header__link site-header__link--primary"
+              >
+                Inscription
+              </a>
+            </nav>
+          )}
       </div>
     </header>
   );

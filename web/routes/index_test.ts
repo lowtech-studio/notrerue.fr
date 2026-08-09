@@ -9,5 +9,5 @@ function makeContext(url: string): Context<State> {
 
 Deno.test("Page d'accueil", async () => {
   const result = await handler.GET!(makeContext("http://localhost/"));
-  assertEquals(result, { data: { rue: "" } });
+  assertEquals(result, { data: { street: "" } });
 });

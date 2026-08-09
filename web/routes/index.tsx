@@ -2,29 +2,31 @@ import { Head } from "fresh/runtime";
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 
-const MAX_RUE_LENGTH = 80;
+const MAX_STREET_LENGTH = 80;
 
 interface HomeData {
-  rue: string;
+  street: string;
 }
 
 export const handler = define.handlers({
   GET(ctx) {
+    // Le paramètre reste "rue" dans l'URL (lien partageable /?rue=...).
     const raw = ctx.url.searchParams.get("rue") ?? "";
-    const rue = raw.trim().slice(0, MAX_RUE_LENGTH);
-    return { data: { rue } };
+    const street = raw.trim().slice(0, MAX_STREET_LENGTH);
+    return { data: { street } };
   },
 });
 
-export default define.page<typeof handler>(function Home({ data }) {
-  const { rue } = data as HomeData;
+export default define.page<typeof handler>(function Home({ data, state }) {
+  const { street } = data as HomeData;
+  const { user } = state;
 
   return (
     <>
       <Head>
         <title>NotreRue.fr — Créer du lien entre voisins</title>
       </Head>
-      <Header />
+      <Header user={user} />
       <main>
         <section class="container hero" id="trouver-ma-rue">
           <div>
@@ -38,38 +40,53 @@ export default define.page<typeof handler>(function Home({ data }) {
               réservée aux gens qui vivent dans notre rue.
             </p>
 
-            {rue !== "" && (
-              <p class="hero__confirmation">
-                Merci ! Nous avons bien noté la rue{" "}
-                <strong>{rue}</strong>. Dès que d'autres habitants la
-                rejoignent, sa page s'active.
-              </p>
-            )}
+            {user
+              ? (
+                <p class="hero__confirmation">
+                  Bienvenue <strong>{user.login}</strong> ! {user.isAmbassador
+                    ? "Vous êtes ambassadeur de "
+                    : "Vous habitez "}
+                  <strong>
+                    {user.street.name}, {user.street.city.name}
+                  </strong>.
+                </p>
+              )
+              : (
+                <>
+                  {street !== "" && (
+                    <p class="hero__confirmation">
+                      Merci ! Nous avons bien noté la rue{" "}
+                      <strong>{street}</strong>. Dès que d'autres habitants la
+                      rejoignent, sa page s'active.
+                    </p>
+                  )}
 
-            <div class="lookup-card">
-              <form class="lookup-form" method="GET">
-                <label class="lookup-card__label" for="rue">
-                  Nom de votre rue
-                </label>
-                <input
-                  id="rue"
-                  name="rue"
-                  type="text"
-                  class="lookup-form__input"
-                  placeholder="Rue des Lilas, Nantes"
-                  maxlength={MAX_RUE_LENGTH}
-                  value={rue}
-                  autocomplete="off"
-                  required
-                />
-                <button type="submit" class="button">
-                  Trouver ma rue
-                </button>
-              </form>
-            </div>
-            <p class="hero__note">
-              Gratuit · sans publicité · réservé aux habitants de la rue
-            </p>
+                  <div class="lookup-card">
+                    <form class="lookup-form" method="GET">
+                      <label class="lookup-card__label" for="rue">
+                        Nom de votre rue
+                      </label>
+                      <input
+                        id="rue"
+                        name="rue"
+                        type="text"
+                        class="lookup-form__input"
+                        placeholder="Rue des Lilas, Nantes"
+                        maxlength={MAX_STREET_LENGTH}
+                        value={street}
+                        autocomplete="off"
+                        required
+                      />
+                      <button type="submit" class="button">
+                        Trouver ma rue
+                      </button>
+                    </form>
+                  </div>
+                  <p class="hero__note">
+                    Gratuit · sans publicité · réservé aux habitants de la rue
+                  </p>
+                </>
+              )}
           </div>
 
           <aside class="trust-card" id="confidentialite">

@@ -1,6 +1,8 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -8,6 +10,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const postType = pgEnum("post_type", ["cherche", "propose", "informe"]);
@@ -15,9 +18,16 @@ export const postType = pgEnum("post_type", ["cherche", "propose", "informe"]);
 export const city = pgTable("city", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  // Code officiel géographique (INSEE) : identifiant stable de la commune,
+  // utilisé pour rejouer le seed opendata sans dupliquer (cf. db/seed-cities.ts).
+  inseeCode: text("insee_code").notNull().unique(),
+  postalCodes: jsonb("postal_codes").notNull(),
+  department: text("department").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("city_name_idx").on(table.name),
+]);
 
 export const street = pgTable("street", {
   id: serial("id").primaryKey(),
@@ -25,11 +35,21 @@ export const street = pgTable("street", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
   cityId: integer("city_id").notNull().references(() => city.id),
-});
+}, (table) => [
+  // Fonctionnelle plutôt que sur `(name, cityId)` brut : la recherche est en
+  // `ilike` (insensible à la casse), la contrainte doit l'être aussi, sinon
+  // "Rue X" et "rue x" passent toutes les deux et créent un doublon.
+  uniqueIndex("street_name_city_unique").on(
+    sql`lower(${table.name})`,
+    table.cityId,
+  ),
+]);
 
 export const house = pgTable("house", {
   id: serial("id").primaryKey(),
-  number: text("number").notNull(),
+  // Numéro de bâtiment : facultatif à l'inscription, visible aux seuls
+  // foyers certifiés une fois cette fonctionnalité construite.
+  number: text("number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
   streetId: integer("street_id").notNull().references(() => street.id),
@@ -40,6 +60,19 @@ export const user = pgTable("user", {
   login: text("login").notNull().unique(),
   email: text("email").notNull().unique(),
   token: text("token"),
+  // Code de connexion à 6 chiffres envoyé par e-mail : hashé, à usage unique,
+  // expire après LOGIN_CODE_TTL_MINUTES (voir utils/otp.ts).
+  loginCode: text("login_code"),
+  loginCodeExpiresAt: timestamp("login_code_expires_at", {
+    withTimezone: true,
+  }),
+  // Anti brute-force : tentatives échouées depuis la génération du code
+  // courant (le code est invalidé au-delà de MAX_LOGIN_CODE_ATTEMPTS) et
+  // horodatage d'envoi (anti-spam : throttle sur la régénération/renvoi).
+  loginCodeAttempts: integer("login_code_attempts").notNull().default(0),
+  loginCodeSentAt: timestamp("login_code_sent_at", { withTimezone: true }),
+  // Premier habitant inscrit sur une rue encore vide au moment de son inscription.
+  isAmbassador: boolean("is_ambassador").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),

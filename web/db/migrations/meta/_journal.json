@@ -8,6 +8,20 @@
       "when": 1785599242461,
       "tag": "0000_worthless_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785704495559,
+      "tag": "0001_striped_wong",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786204433178,
+      "tag": "0002_funny_prism",
+      "breakpoints": true
     }
   ]
 }
