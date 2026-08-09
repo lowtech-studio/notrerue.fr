@@ -1,18 +1,17 @@
 # Backlog
 
 ## MVP
-
-- [ ] En tant qu'habitant non connecté d'une rue endormie, je veux savoir combien de foyers il manque pour qu'elle s'allume, afin d'avoir un objectif atteignable.
 - [*] En tant que premier habitant d'une rue endormie, je m'inscrit et deviens ambassadeur avec mon prénom, mon mail et ma rue. Je reçois un mail avec un code à 6 chiffres pour me connecter.
-- [ ] En tant qu'habitant non connecté je m'inscris avec mon prénom, mon mail et ma rue et pouvoir ajouter volontairement mon numéro de bâtiment aux seuls foyers certifiés, préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier). Je reçois un mail avec un code à 6 chiffres pour me connecter.
-- [ ] En tant qu'habitant connecté d'une rue non allumée, je veux n'avoir qu'une seule action possible : inviter, afin de ne pas être découragé par des espaces vides.
-- [ ] En tant que premier habitant inscrit, je veux être prévenu sobrement quand le seuil est atteint, afin de publier ma première demande au bon moment.
+- [*] En tant qu'habitant non connecté je m'inscris avec mon prénom, mon mail et ma rue et pouvoir ajouter volontairement mon numéro de bâtiment aux seuls foyers certifiés
+- [*] En tant qu'habitant non inscrit quand je renseigne une rue endormie, je veux savoir combien de foyers il manque pour qu'elle s'allume et ensuite qu'on me propose de m'inscrire si je suis le premier à m'inscrire je suis ambassadeur sinon je suis habitant, afin d'avoir un objectif atteignable.
+- [ ] En tant qu'habitant connecté d'une rue non allumée, je veux n'avoir qu'une seule action possible : inviter des voisins via Email, Whatsapps ou kit papier avec QRcode et un petit texte à imprimer afin de ne pas être découragé par des espaces vides.
+- [ ] En tant que premier habitant inscrit, je veux être prévenu par e-mail quand le seuil est atteint, afin de publier ma première demande au bon moment.
 - [ ] En tant qu'habitant connecté d'une rue qui va s'allumer, un ou deux des foyers entrants confirment d'un tap que l'ambassadeur habite bien la rue.
 - [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.
-- [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu.
-- [ ] En tant qu'habitant connecté, je veux que mon adresse précise, mon nom de famille, mon âge et ma composition de foyer ne soient jamais publics, afin de participer sans m'exposer.
-- [ ] En tant qu'habitant non connecté, je veux entrer par une adresse courte à taper autant que par un QR code (monquartier.fr/lilas), afin de ne pas dépendre d'un geste que je ne maîtrise pas. (Jeanine)
+- [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu..
+- [ ] En tant qu'habitant non connecté, je veux entrer par une adresse courte à taper autant que par un QR code (monquartier.fr/<ville>/<rue>), afin de ne pas dépendre d'un geste que je ne maîtrise pas. 
 - [ ] En tant qu'habitant non connecté, je veux rejoindre ma rue par parrainage de deux foyers déjà présents, ou par le code du kit papier distribué en main propre, afin que l'appartenance ait un coût minimal mais réel.
+- [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier).
 
 - [ ] En tant qu'habitant connecté, je veux un fil unique et chronologique pour ma rue seule, avec trois types de publication (Je cherche / Je propose / J'informe), afin de ne rien manquer et de ne rien subir.
 - [ ] En tant qu'habitant connecté, je veux publier une demande en moins de 30 secondes, en une phrase, afin que ce soit plus simple qu'un message WhatsApp (les messages agressifs ou discriminatoires soient bloqués avant publication).
@@ -36,10 +35,10 @@
 
 ## V0.1
 
-- [ ] En tant qu'habitant surchargé, je veux mettre ma rue en pause pour 15 ou 30 jours, sans que cela se voie, afin de ne pas subir la pression sociale de mes voisins. (Emma)
+- [ ] En tant qu'habitant surchargé, je veux mettre ma rue en pause pour 15 ou 30 jours, sans que cela se voie, afin de ne pas subir la pression sociale de mes voisins.
 - [ ] En tant que voisin sollicité, je veux ne pas répondre sans que mon silence soit visible (pas de « vu », pas de liste de non-répondants).
 - [ ] En tant qu'habitant en conflit, je veux quitter ma rue et effacer ma trace, afin que le service ne devienne pas un piège.
-- [ ] En tant qu'administrateur d'un groupe WhatsApp d'immeuble, je veux importer mon groupe en une rue, afin de ne pas repartir de zéro. Challenge : dépendance à l'API Business.
+- [ ] En tant qu'administrateur d'un groupe WhatsApp d'immeuble, je veux importer mon groupe en une rue cela va créer les différentes demandes à partir des messages du groupe, afin de ne pas repartir de zéro.
 
 ## V0.2
 

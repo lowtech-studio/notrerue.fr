@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { findCityById } from "../db/cities.ts";
-import { findOrCreateStreet } from "../db/streets.ts";
+import { findOrCreateStreet, getStreetAwakeningStatus } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
 import { sendLoginCodeEmail } from "../email/brevo.ts";
 import { MAX_EMAIL_LENGTH } from "../utils/validation.ts";
@@ -12,6 +12,7 @@ import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx"
 const MAX_LOGIN_LENGTH = 40;
 const MAX_STREET_LENGTH = 80;
 const MAX_HOUSE_NUMBER_LENGTH = 10;
+const MAX_CITY_LABEL_LENGTH = 120;
 
 interface RejoindreData {
   error: string | null;
@@ -22,6 +23,12 @@ interface RejoindreData {
   cityId: number | null;
   /** Libellé affiché dans le champ ville, ex. "Nantes (Loire-Atlantique)". */
   cityLabel: string;
+  /**
+   * Premier foyer de la rue au moment de l'affichage ⇒ deviendra ambassadeur.
+   * Vrai par défaut (ville/rue pas encore choisies) : c'est le cas le plus
+   * fréquent et l'ancien comportement de cette page.
+   */
+  willBeAmbassador: boolean;
 }
 
 const EMPTY_FORM: Omit<RejoindreData, "error"> = {
@@ -31,12 +38,51 @@ const EMPTY_FORM: Omit<RejoindreData, "error"> = {
   streetName: "",
   cityId: null,
   cityLabel: "",
+  willBeAmbassador: true,
 };
 
+/**
+ * Vrai si le prochain inscrit sur cette rue en deviendrait l'ambassadeur
+ * (aucun foyer encore inscrit). Ville/rue inconnues ⇒ `true` par défaut :
+ * on ne peut pas encore savoir, et c'est le cas le plus fréquent (arrivée
+ * directe sur /rejoindre, sans être passé par la page d'accueil).
+ */
+async function resolveWillBeAmbassador(
+  cityId: number | null,
+  streetName: string,
+): Promise<boolean> {
+  if (!cityId || !streetName) return true;
+  const status = await getStreetAwakeningStatus(cityId, streetName);
+  return status.isAmbassadorSlot;
+}
+
 export const handler = define.handlers({
-  GET(ctx) {
+  async GET(ctx) {
     if (ctx.state.user) return ctx.redirect("/");
-    return { data: { error: null, ...EMPTY_FORM } };
+
+    // Pré-remplissage depuis la page d'accueil (« Rejoindre ma rue » sur une
+    // rue déjà repérée) : cityId/city/street portés dans l'URL.
+    const cityIdRaw = Number(ctx.url.searchParams.get("cityId"));
+    const cityId = Number.isInteger(cityIdRaw) && cityIdRaw > 0
+      ? cityIdRaw
+      : null;
+    const cityLabel = (ctx.url.searchParams.get("city") ?? "").trim().slice(
+      0,
+      MAX_CITY_LABEL_LENGTH,
+    );
+    const streetName = (ctx.url.searchParams.get("street") ?? "").trim()
+      .slice(0, MAX_STREET_LENGTH);
+
+    return {
+      data: {
+        ...EMPTY_FORM,
+        error: null,
+        cityId,
+        cityLabel,
+        streetName,
+        willBeAmbassador: await resolveWillBeAmbassador(cityId, streetName),
+      },
+    };
   },
   async POST(ctx) {
     if (ctx.state.user) return ctx.redirect("/");
@@ -59,6 +105,9 @@ export const handler = define.handlers({
       MAX_STREET_LENGTH,
     );
     const cityIdRaw = Number(form.get("cityId"));
+    const submittedCityId = Number.isInteger(cityIdRaw) && cityIdRaw > 0
+      ? cityIdRaw
+      : null;
 
     // Valeurs re-soumises telles quelles en cas d'erreur : évite de faire
     // ressaisir le formulaire en entier (login/e-mail perdus au moindre
@@ -69,8 +118,12 @@ export const handler = define.handlers({
       email,
       houseNumber,
       streetName,
-      cityId: Number.isInteger(cityIdRaw) && cityIdRaw > 0 ? cityIdRaw : null,
+      cityId: submittedCityId,
       cityLabel: "",
+      willBeAmbassador: await resolveWillBeAmbassador(
+        submittedCityId,
+        streetName,
+      ),
     };
 
     if (!login || !email.includes("@") || !streetName || !cityIdRaw) {
@@ -133,8 +186,16 @@ export const handler = define.handlers({
 });
 
 export default define.page<typeof handler>(function Rejoindre({ data }) {
-  const { error, login, email, houseNumber, streetName, cityId, cityLabel } =
-    data as RejoindreData;
+  const {
+    error,
+    login,
+    email,
+    houseNumber,
+    streetName,
+    cityId,
+    cityLabel,
+    willBeAmbassador,
+  } = data as RejoindreData;
 
   return (
     <>
@@ -145,10 +206,13 @@ export default define.page<typeof handler>(function Rejoindre({ data }) {
       <main>
         <section class="container hero hero--single">
           <div class="lookup-card">
-            <h1 class="hero__title">Rejoindre ma rue</h1>
+            <h1 class="hero__title">
+              {willBeAmbassador ? "Rejoindre ma rue" : "Rejoindre les voisins"}
+            </h1>
             <p class="hero__subtitle">
-              Devenez le premier ambassadeur de votre rue. Vous recevrez un code
-              à 6 chiffres par e-mail pour vous connecter.
+              {willBeAmbassador
+                ? "Devenez le premier ambassadeur de votre rue. Vous recevrez un code à 6 chiffres par e-mail pour vous connecter."
+                : "Un ou plusieurs voisins ont déjà rejoint cette rue. Vous recevrez un code à 6 chiffres par e-mail pour vous connecter."}
             </p>
 
             {error && <p class="form-error" role="alert">{error}</p>}
@@ -210,7 +274,9 @@ export default define.page<typeof handler>(function Rejoindre({ data }) {
               </div>
 
               <button type="submit" class="button">
-                Devenir ambassadeur de ma rue
+                {willBeAmbassador
+                  ? "Devenir ambassadeur de ma rue"
+                  : "Rejoindre ma rue"}
               </button>
             </form>
           </div>

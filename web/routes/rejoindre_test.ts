@@ -1,6 +1,11 @@
 import { assertEquals } from "@std/assert";
+import { eq } from "drizzle-orm";
 import type { Context } from "fresh";
 import type { SessionUser, State } from "../utils.ts";
+import { db } from "../db/client.ts";
+import { house, user } from "../db/schema.ts";
+import { registerInhabitant } from "../db/users.ts";
+import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
 import { handler } from "./rejoindre.tsx";
 
 const SESSION_USER: SessionUser = {
@@ -12,10 +17,10 @@ const SESSION_USER: SessionUser = {
 };
 
 function makeContext(
-  options: { user?: SessionUser | null; form?: FormData } = {},
+  options: { user?: SessionUser | null; form?: FormData; url?: string } = {},
 ): Context<State> {
   return {
-    url: new URL("http://localhost/rejoindre"),
+    url: new URL(options.url ?? "http://localhost/rejoindre"),
     state: { user: options.user ?? null },
     redirect: (location: string) =>
       new Response(null, { status: 302, headers: { location } }),
@@ -30,6 +35,7 @@ const EMPTY_FORM_DATA = {
   streetName: "",
   cityId: null,
   cityLabel: "",
+  willBeAmbassador: true,
 };
 
 Deno.test("GET /rejoindre : non connecté → affiche le formulaire", async () => {
@@ -83,6 +89,7 @@ Deno.test("POST /rejoindre : e-mail sans @ → erreur de validation, le reste du
         streetName: "Rue des Lilas",
         cityId: 1,
         cityLabel: "",
+        willBeAmbassador: true,
         error:
           "Merci de renseigner un login, un e-mail valide, et de choisir votre ville et votre rue dans les suggestions.",
       },
@@ -108,8 +115,35 @@ Deno.test("POST /rejoindre : ville inconnue → erreur dédiée, cityId réiniti
         streetName: "Rue des Lilas",
         cityId: null,
         cityLabel: "",
+        willBeAmbassador: true,
         error: "Merci de choisir votre ville dans la liste proposée.",
       },
     },
   );
+});
+
+Deno.test("GET /rejoindre : rue déjà occupée (via cityId/street en query) → pré-rempli, pas ambassadeur", async () => {
+  const testStreet = await createTestStreet("rejoindre-1");
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `rejoindre-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    const url = `http://localhost/rejoindre?cityId=${testStreet.testCity.id}` +
+      `&city=${encodeURIComponent(testStreet.testCity.name)}` +
+      `&street=${encodeURIComponent(testStreet.testStreet.name)}`;
+    const result = await handler.GET!(makeContext({ url })) as {
+      data: { cityId: number; streetName: string; willBeAmbassador: boolean };
+    };
+    assertEquals(result.data.cityId, testStreet.testCity.id);
+    assertEquals(result.data.streetName, testStreet.testStreet.name);
+    assertEquals(result.data.willBeAmbassador, false);
+  } finally {
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
+  }
 });
