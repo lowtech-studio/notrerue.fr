@@ -29,6 +29,10 @@ const EXCLUDE_PATHSPECS = [
   ":!**/_fresh/**",
   ":!**/*.lock",
   ":!**/_doc/reviews/**", // ":!_doc/..." échoue : git lit le "_" comme un caractère magique
+  // Défense en profondeur : .env est gitignoré donc jamais staged en usage
+  // normal, mais s'il l'était un jour (ex. `git add -f`), son contenu ne
+  // doit pas partir vers OpenRouter.
+  ":!**/.env",
 ];
 
 const REVIEWS_DIR = "_doc/reviews";
@@ -49,10 +53,10 @@ async function run(cmd: string[], cwd: string): Promise<string> {
   return new TextDecoder().decode(stdout);
 }
 
-function loadDotEnv(root: string) {
+function loadDotEnv(path: string) {
   let text: string;
   try {
-    text = Deno.readTextFileSync(`${root}/.env`);
+    text = Deno.readTextFileSync(path);
   } catch {
     return;
   }
@@ -147,7 +151,13 @@ async function main() {
   }
 
   const root = (await run(["git", "rev-parse", "--show-toplevel"], ".")).trim();
-  loadDotEnv(root);
+  // OPENROUTER_API_KEY vit dans web/.env (voir son commentaire d'en-tête) ;
+  // .env à la racine sert aux variables de compose.yaml (Brevo...). On
+  // charge les deux ; leurs clés sont disjointes aujourd'hui, mais en cas de
+  // doublon c'est le premier fichier chargé qui gagnerait (`loadDotEnv`
+  // n'écrase jamais une variable déjà posée).
+  loadDotEnv(`${root}/.env`);
+  loadDotEnv(`${root}/web/.env`);
 
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) {

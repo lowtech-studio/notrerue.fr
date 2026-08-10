@@ -6,22 +6,18 @@
 - [*] En tant qu'habitant non inscrit quand je renseigne une rue endormie, je veux savoir combien de foyers il manque pour qu'elle s'allume et ensuite qu'on me propose de m'inscrire si je suis le premier à m'inscrire je suis ambassadeur sinon je suis habitant, afin d'avoir un objectif atteignable.
 - [*] En tant qu'habitant connecté d'une rue non allumée, je veux n'avoir qu'une seule action possible : inviter des voisins via Email, Whatsapps ou kit papier avec QRcode et un petit texte à imprimer afin de ne pas être découragé par des espaces vides.
 - [*] En tant que premier habitant inscrit, je veux être prévenu par e-mail quand le seuil est atteint, afin de publier ma première demande au bon moment.
-- [ ] En tant qu'habitant connecté d'une rue qui va s'allumer, un ou deux des foyers entrants confirment d'un tap que l'ambassadeur habite bien la rue.
-- [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.
-- [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu..
-- [ ] En tant qu'habitant non connecté, je veux entrer par une adresse courte à taper autant que par un QR code (monquartier.fr/<ville>/<rue>), afin de ne pas dépendre d'un geste que je ne maîtrise pas. 
-- [ ] En tant qu'habitant non connecté, je veux rejoindre ma rue par parrainage de deux foyers déjà présents, ou par le code du kit papier distribué en main propre, afin que l'appartenance ait un coût minimal mais réel.
-- [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier).
-
+- [*] En tant qu'habitant connecté, je veux publier une demande (table post, avec trois types de publication (Je cherche / Je propose / J'informe) ) en moins de 30 secondes, en une phrase, afin que ce soit plus simple qu'un message WhatsApp (les messages agressifs ou discriminatoires doivent être bloqués avant publication).
 - [ ] En tant qu'habitant connecté, je veux un fil unique et chronologique pour ma rue seule, avec trois types de publication (Je cherche / Je propose / J'informe), afin de ne rien manquer et de ne rien subir.
-- [ ] En tant qu'habitant connecté, je veux publier une demande en moins de 30 secondes, en une phrase, afin que ce soit plus simple qu'un message WhatsApp (les messages agressifs ou discriminatoires soient bloqués avant publication).
-
+- [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier).
 - [ ] En tant qu'habitant connecté, je veux choisir la durée de validité de ma demande (aujourd'hui / cette semaine / x mois), afin que le fil ne se remplisse pas de demandes mortes.
+- [ ] En tant que voisin disponible, je veux répondre en un clic/tap (si type "Je cherche" => bouton "J'ai"/ "Je propose" => bouton "Intéressé"/ J'informe => bouton "emoji pouce") avant même d'écrire pour rendre un service, afin que rendre service soit plus facile que scroller.
 - [ ] En tant qu'habitant, je veux publier un petit job rémunéré de gré à gré (baby-sitting, promenade de chien, arrosage, aide au numérique), sans paiement ni agenda dans le service.
 - [ ] En tant que parent d'un adolescent, je veux que mon enfant puisse proposer un petit job via le compte du foyer, le contact passant obligatoirement par moi.
+- [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu..
+- [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.
 
-- [ ] En tant que voisin disponible, je veux répondre en un tap (« je peux ») avant même d'écrire pour rendre un service, afin que rendre service soit plus facile que scroller.
-- [ ] En tant qu'habitant motivé, je veux générer en un clic un kit imprimable pour ma rue (affiche A4, flyers à languettes, carte sous la porte) portant le code court, le QR et l'adresse à taper.
+
+
 - [ ] En tant qu'habitant, je veux partager le lien de ma rue par WhatsApp, SMS ou e-mail en deux taps.
 - [ ] En tant qu'habitant, je veux un autocollant QR pour ma boîte aux lettres.
 - [ ] En tant qu'habitant connecté, je veux demander une recommandation locale (artisan, dentiste qui prend des patients, garde), afin d'obtenir une réponse de confiance plutôt qu'un avis Google.

@@ -363,6 +363,55 @@ button.site-header__link {
   color: var(--color-ink-muted);
 }
 
+/* Publication d'une demande (rue allumée) — cf. backlog « publier en moins
+   de 30 secondes ». Même gabarit de carte que .street-status : une seule
+   action mise en avant, avant/après l'éveil de la rue. */
+.compose-post {
+  margin: 0 0 20px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper-warm);
+}
+
+.compose-post__title {
+  margin: 0 0 16px;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.compose-post__form {
+  display: grid;
+  gap: 16px;
+}
+
+.compose-post__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compose-post__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  background: var(--color-paper);
+}
+
+.compose-post__type:has(input:checked) {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
 .trust-card {
   background: var(--color-ink-dark);
   color: var(--color-paper-dark);

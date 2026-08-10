@@ -93,7 +93,8 @@ export const tap = pgTable("tap", {
 
 export const post = pgTable("post", {
   id: serial("id").primaryKey(),
-  title: text("title").notNull(),
+  // Pas de titre séparé : une demande tient en une phrase (cf. backlog
+  // « publier en moins de 30 secondes »), `content` porte tout le message.
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),

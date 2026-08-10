@@ -28,6 +28,7 @@
     "@std/html": "jsr:@std/html@^1.0.7",
     "drizzle-kit": "npm:drizzle-kit@^0.31.10",
     "drizzle-orm": "npm:drizzle-orm@^0.45.2",
+    "french-badwords-list": "npm:french-badwords-list@^1.0.7",
     "fresh": "jsr:@fresh/core@^2.3.3",
     "postgres": "npm:postgres@^3.4.9",
     "preact": "npm:preact@^10.29.1",

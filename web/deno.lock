@@ -46,6 +46,7 @@
     "npm:esbuild-wasm@~0.25.11": "0.25.12",
     "npm:esbuild@0.25.7": "0.25.7",
     "npm:esbuild@~0.25.5": "0.25.12",
+    "npm:french-badwords-list@^1.0.7": "1.0.7",
     "npm:postgres@^3.4.9": "3.4.9",
     "npm:preact-render-to-string@^6.6.3": "6.7.0_preact@10.29.4",
     "npm:preact-render-to-string@^6.7.0": "6.7.0_preact@10.29.4",
@@ -1336,6 +1337,9 @@
         "picomatch@4.0.5"
       ]
     },
+    "french-badwords-list@1.0.7": {
+      "integrity": "sha512-H1ziKs2PJh2+UXZ9oCGJ/rRQpsI9NBykGf2Sc7WaKaj1OnWFuBXfsvANTdRcfVmOghGQaUmRyZ1hJOPbDpy04Q=="
+    },
     "fsevents@2.3.3": {
       "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
       "os": ["darwin"],
@@ -1520,6 +1524,7 @@
       "npm:@types/babel__core@^7.20.5",
       "npm:drizzle-kit@~0.31.10",
       "npm:drizzle-orm@~0.45.2",
+      "npm:french-badwords-list@^1.0.7",
       "npm:postgres@^3.4.9",
       "npm:preact-render-to-string@^6.7.0",
       "npm:preact@^10.29.1",

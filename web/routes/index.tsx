@@ -8,10 +8,23 @@ import {
   STREET_AWAKENING_THRESHOLD,
   type StreetAwakeningStatus,
 } from "../db/streets.ts";
+import {
+  createPost,
+  isPostType,
+  MAX_POST_CONTENT_LENGTH,
+  type PostType,
+} from "../db/posts.ts";
+import { containsBlockedContent } from "../moderation/blocklist.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 
 const MAX_STREET_LENGTH = 80;
 const MAX_CITY_LABEL_LENGTH = 120;
+
+const POST_TYPE_LABELS: Record<PostType, string> = {
+  cherche: "Je cherche",
+  propose: "Je propose",
+  informe: "J'informe",
+};
 
 interface HomeData {
   street: string;
@@ -20,6 +33,11 @@ interface HomeData {
   status: StreetAwakeningStatus | null;
   /** Statut de la rue de l'habitant connecté, `null` si non connecté. */
   ownStreetStatus: { housesCount: number; isAwake: boolean } | null;
+  postError: string | null;
+  postPublished: boolean;
+  /** Valeurs re-soumises telles quelles si la publication échoue. */
+  postType: PostType;
+  postContent: string;
 }
 
 export const handler = define.handlers({
@@ -47,13 +65,91 @@ export const handler = define.handlers({
       ? await getStreetHousesStatus(ctx.state.user.street.id)
       : null;
 
-    return { data: { street, cityId, cityLabel, status, ownStreetStatus } };
+    return {
+      data: {
+        street,
+        cityId,
+        cityLabel,
+        status,
+        ownStreetStatus,
+        postError: null,
+        postPublished: ctx.url.searchParams.get("published") === "1",
+        postType: "cherche",
+        postContent: "",
+      },
+    };
+  },
+
+  async POST(ctx) {
+    const user = ctx.state.user;
+    if (!user) return ctx.redirect("/connexion");
+
+    const ownStreetStatus = await getStreetHousesStatus(user.street.id);
+    const emptyResult = {
+      street: "",
+      cityId: null,
+      cityLabel: "",
+      status: null,
+      ownStreetStatus,
+      postPublished: false,
+    };
+
+    const form = await ctx.req.formData();
+    const rawType = String(form.get("type") ?? "");
+    const postType: PostType = isPostType(rawType) ? rawType : "cherche";
+    const content = String(form.get("content") ?? "").trim().slice(
+      0,
+      MAX_POST_CONTENT_LENGTH,
+    );
+
+    // Ne devrait pas arriver via l'UI (le formulaire n'est affiché que rue
+    // allumée), mais vérifié aussi côté serveur : tant que la rue dort, la
+    // seule action offerte est d'inviter (cf. backlog).
+    if (!ownStreetStatus.isAwake) {
+      return ctx.redirect("/");
+    }
+
+    if (!isPostType(rawType) || !content) {
+      return {
+        data: {
+          ...emptyResult,
+          postError: "Merci de choisir un type et d'écrire votre demande.",
+          postType,
+          postContent: content,
+        },
+      };
+    }
+
+    if (containsBlockedContent(content)) {
+      return {
+        data: {
+          ...emptyResult,
+          postError:
+            "Merci de reformuler : ce message contient des termes non autorisés.",
+          postType,
+          postContent: content,
+        },
+      };
+    }
+
+    await createPost({ userId: user.id, type: postType, content });
+
+    return ctx.redirect("/?published=1");
   },
 });
 
 export default define.page<typeof handler>(function Home({ data, state }) {
-  const { street, cityId, cityLabel, status, ownStreetStatus } =
-    data as HomeData;
+  const {
+    street,
+    cityId,
+    cityLabel,
+    status,
+    ownStreetStatus,
+    postError,
+    postPublished,
+    postType,
+    postContent,
+  } = data as HomeData;
   const { user } = state;
 
   const joinHref = cityId
@@ -114,6 +210,15 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                         Inviter mes voisins
                       </a>
                     </div>
+                  )}
+
+                  {ownStreetStatus && ownStreetStatus.isAwake && (
+                    <PublishPostForm
+                      error={postError}
+                      published={postPublished}
+                      type={postType}
+                      content={postContent}
+                    />
                   )}
                 </>
               )
@@ -292,6 +397,67 @@ function StreetStatusCard(
       <p class="street-status__count">{countLabel}</p>
 
       <a href={joinHref} class="button">{joinLabel}</a>
+    </div>
+  );
+}
+
+interface PublishPostFormProps {
+  error: string | null;
+  published: boolean;
+  type: PostType;
+  content: string;
+}
+
+/**
+ * Formulaire de publication : un type (Je cherche / Je propose / J'informe)
+ * et une phrase, pensé pour être rempli en moins de 30 secondes (cf.
+ * backlog). Seule action mise en avant une fois la rue allumée, comme
+ * inviter était la seule avant.
+ */
+function PublishPostForm(
+  { error, published, type, content }: PublishPostFormProps,
+) {
+  return (
+    <div class="compose-post">
+      <h2 class="compose-post__title">Quoi de neuf sur votre rue ?</h2>
+
+      {published && (
+        <p class="hero__confirmation">Votre demande a été publiée !</p>
+      )}
+      {error && <p class="form-error" role="alert">{error}</p>}
+
+      <form method="POST" class="compose-post__form">
+        <div
+          class="compose-post__types"
+          role="radiogroup"
+          aria-label="Type de publication"
+        >
+          {(Object.keys(POST_TYPE_LABELS) as PostType[]).map((value) => (
+            <label key={value} class="compose-post__type">
+              <input
+                type="radio"
+                name="type"
+                value={value}
+                checked={type === value}
+              />
+              {POST_TYPE_LABELS[value]}
+            </label>
+          ))}
+        </div>
+
+        <input
+          type="text"
+          name="content"
+          class="lookup-form__input"
+          placeholder="Une phrase, c'est tout : « Je cherche une perceuse ce week-end »"
+          maxlength={MAX_POST_CONTENT_LENGTH}
+          value={content}
+          autocomplete="off"
+          required
+        />
+
+        <button type="submit" class="button">Publier</button>
+      </form>
     </div>
   );
 }
