@@ -412,6 +412,101 @@ button.site-header__link {
   background: var(--color-paper-warm);
 }
 
+/* /fil — filtres par type, liste chronologique, pagination. */
+.fil-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.fil-filters__tab {
+  padding: 8px 14px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  text-decoration: none;
+}
+
+.fil-filters__tab--active {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
+.fil-list {
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+
+.fil-list__empty {
+  padding: 24px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+
+.fil-post {
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+}
+
+.fil-post__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.fil-post__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-paper-warm);
+  color: var(--color-brand);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fil-post__date {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.fil-post__content {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+
+.fil-post__author {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+.fil-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fil-pagination__status {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
 .trust-card {
   background: var(--color-ink-dark);
   color: var(--color-paper-dark);

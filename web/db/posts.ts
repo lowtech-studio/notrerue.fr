@@ -1,5 +1,6 @@
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { db } from "./client.ts";
-import { post, postType } from "./schema.ts";
+import { house, post, postType, user } from "./schema.ts";
 
 export type Post = typeof post.$inferSelect;
 export type PostType = (typeof postType.enumValues)[number];
@@ -33,4 +34,72 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
     content: input.content,
   }).returning();
   return created;
+}
+
+/** Nombre de demandes affichées par page du fil (cf. backlog éco-conception : pagination plutôt que défilement infini). */
+export const POSTS_PER_PAGE = 20;
+
+export interface StreetPost {
+  id: number;
+  type: PostType;
+  content: string;
+  createdAt: Date;
+  authorLogin: string;
+}
+
+export interface ListStreetPostsInput {
+  streetId: number;
+  /** Filtre optionnel par type ; toutes les demandes si absent. */
+  type?: PostType;
+  /** Page 1-indexée. */
+  page: number;
+}
+
+export interface ListStreetPostsResult {
+  posts: StreetPost[];
+  totalCount: number;
+  totalPages: number;
+  /** Page réellement servie (`input.page` ramenée dans `[1, totalPages]`). */
+  page: number;
+}
+
+/**
+ * Fil chronologique (plus récent d'abord) d'une seule rue, celle de
+ * l'auteur — jamais toutes les rues confondues (cf. backlog « ma rue
+ * seule »). Filtrable par type, paginé.
+ */
+export async function listStreetPosts(
+  input: ListStreetPostsInput,
+): Promise<ListStreetPostsResult> {
+  const where = and(
+    eq(house.streetId, input.streetId),
+    isNull(post.deletedAt),
+    input.type ? eq(post.type, input.type) : undefined,
+  );
+
+  const [{ value: totalCount }] = await db.select({ value: count() })
+    .from(post)
+    .innerJoin(user, eq(post.userId, user.id))
+    .innerJoin(house, eq(user.houseId, house.id))
+    .where(where);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / POSTS_PER_PAGE));
+  const page = Math.min(Math.max(1, input.page), totalPages);
+
+  const rows = await db.select({
+    id: post.id,
+    type: post.type,
+    content: post.content,
+    createdAt: post.createdAt,
+    authorLogin: user.login,
+  })
+    .from(post)
+    .innerJoin(user, eq(post.userId, user.id))
+    .innerJoin(house, eq(user.houseId, house.id))
+    .where(where)
+    .orderBy(desc(post.createdAt))
+    .limit(POSTS_PER_PAGE)
+    .offset((page - 1) * POSTS_PER_PAGE);
+
+  return { posts: rows, totalCount, totalPages, page };
 }
