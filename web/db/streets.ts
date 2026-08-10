@@ -26,6 +26,22 @@ async function findStreet(
   return found ?? null;
 }
 
+async function countHouses(streetId: number): Promise<number> {
+  const [{ value }] = await db.select({ value: count() }).from(house).where(
+    eq(house.streetId, streetId),
+  );
+  return value;
+}
+
+/** Dérive remaining/isAmbassadorSlot/isAwake à partir du seul nombre de foyers. */
+function computeAwakening(housesCount: number) {
+  return {
+    remaining: Math.max(0, STREET_AWAKENING_THRESHOLD - housesCount),
+    isAmbassadorSlot: housesCount === 0,
+    isAwake: housesCount >= STREET_AWAKENING_THRESHOLD,
+  };
+}
+
 /**
  * Récupère la rue existante (recherche insensible à la casse) ou la crée.
  * Sur course concurrente entre deux inscriptions pour la même rue (y compris
@@ -76,20 +92,23 @@ export async function getStreetAwakeningStatus(
   rawName: string,
 ): Promise<StreetAwakeningStatus> {
   const found = await findStreet(normalizeStreetName(rawName), cityId);
+  const housesCount = found ? await countHouses(found.id) : 0;
 
-  let housesCount = 0;
-  if (found) {
-    const [{ value }] = await db.select({ value: count() }).from(house).where(
-      eq(house.streetId, found.id),
-    );
-    housesCount = value;
-  }
+  return { street: found, housesCount, ...computeAwakening(housesCount) };
+}
 
-  return {
-    street: found,
-    housesCount,
-    remaining: Math.max(0, STREET_AWAKENING_THRESHOLD - housesCount),
-    isAmbassadorSlot: housesCount === 0,
-    isAwake: housesCount >= STREET_AWAKENING_THRESHOLD,
-  };
+export type StreetHousesStatus = Omit<StreetAwakeningStatus, "street">;
+
+/**
+ * Statut d'éveil d'une rue déjà connue par son identifiant — cas d'un
+ * habitant connecté, dont la rue existe forcément déjà (inutile de la
+ * re-rechercher par nom comme le fait `getStreetAwakeningStatus`, pensée
+ * pour le formulaire de recherche anonyme). Utilisé pour n'offrir qu'une
+ * seule action (inviter) tant que la rue n'est pas allumée (cf. backlog).
+ */
+export async function getStreetHousesStatus(
+  streetId: number,
+): Promise<StreetHousesStatus> {
+  const housesCount = await countHouses(streetId);
+  return { housesCount, ...computeAwakening(housesCount) };
 }

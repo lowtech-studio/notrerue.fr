@@ -1,5 +1,4 @@
-import { useRef, useState } from "preact/hooks";
-import { IS_BROWSER } from "fresh/runtime";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 interface CodeInputProps {
   name: string;
@@ -12,14 +11,24 @@ interface CodeInputProps {
  * recomposant le code complet pour la soumission du formulaire.
  *
  * Sans JS, cette version à cases séparées ne peut pas recomposer le champ
- * caché : on rend alors un simple `<input name={name}>` à la place (rendu
- * serveur avant hydratation, remplacé par les cases une fois le JS chargé).
+ * caché : on rend alors un simple `<input name={name}>` à la place.
+ *
+ * Le rendu initial (serveur *et* tout premier rendu client, avant montage)
+ * reste ce simple fallback : basculer sur `IS_BROWSER` ferait différer la
+ * structure DOM entre le HTML serveur et le premier rendu client, que
+ * l'hydratation Preact ne sait pas réconcilier proprement (les deux
+ * versions restent affichées l'une sous l'autre). On ne bascule vers les
+ * cases qu'après montage (`useEffect`), un rendu client normal que Preact
+ * sait remplacer sans ambiguïté.
  */
 export default function CodeInput({ name, length = 6 }: CodeInputProps) {
   const [digits, setDigits] = useState<string[]>(Array(length).fill(""));
+  const [mounted, setMounted] = useState(false);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
-  if (!IS_BROWSER) {
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
     return (
       <input
         type="text"

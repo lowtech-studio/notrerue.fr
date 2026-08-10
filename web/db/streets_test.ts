@@ -5,6 +5,7 @@ import { city, house, street } from "./schema.ts";
 import {
   findOrCreateStreet,
   getStreetAwakeningStatus,
+  getStreetHousesStatus,
   STREET_AWAKENING_THRESHOLD,
 } from "./streets.ts";
 import { createTestCity, createTestStreet } from "./test_helpers.ts";
@@ -107,6 +108,27 @@ Deno.test("getStreetAwakeningStatus : seuil atteint → rue allumée, plus rien 
     assertEquals(status.remaining, 0);
     assertEquals(status.isAmbassadorSlot, false);
     assertEquals(status.isAwake, true);
+  } finally {
+    await db.delete(house).where(eq(house.streetId, testStreet.id));
+    await db.delete(street).where(eq(street.id, testStreet.id));
+    await db.delete(city).where(eq(city.id, testCity.id));
+  }
+});
+
+Deno.test("getStreetHousesStatus : par identifiant, sans re-recherche par nom", async () => {
+  const { testCity, testStreet } = await createTestStreet("streets-6");
+  const housesCount = STREET_AWAKENING_THRESHOLD - 1;
+
+  try {
+    await addHouses(testStreet.id, housesCount);
+
+    const status = await getStreetHousesStatus(testStreet.id);
+    assertEquals(status, {
+      housesCount,
+      remaining: 1,
+      isAmbassadorSlot: false,
+      isAwake: false,
+    });
   } finally {
     await db.delete(house).where(eq(house.streetId, testStreet.id));
     await db.delete(street).where(eq(street.id, testStreet.id));

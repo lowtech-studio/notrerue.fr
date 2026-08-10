@@ -1,10 +1,11 @@
 import { assertEquals } from "@std/assert";
 import { eq } from "drizzle-orm";
 import type { Context } from "fresh";
-import type { State } from "../utils.ts";
+import type { SessionUser, State } from "../utils.ts";
 import { db } from "../db/client.ts";
-import { city, house } from "../db/schema.ts";
+import { city, house, user } from "../db/schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
+import { registerInhabitant } from "../db/users.ts";
 import {
   cleanupTestStreet,
   createTestCity,
@@ -12,14 +13,23 @@ import {
 } from "../db/test_helpers.ts";
 import { handler } from "./index.tsx";
 
-function makeContext(url: string): Context<State> {
-  return { url: new URL(url) } as unknown as Context<State>;
+function makeContext(
+  url: string,
+  user: SessionUser | null = null,
+): Context<State> {
+  return { url: new URL(url), state: { user } } as unknown as Context<State>;
 }
 
 Deno.test("Page d'accueil : sans paramètre → aucun statut", async () => {
   const result = await handler.GET!(makeContext("http://localhost/"));
   assertEquals(result, {
-    data: { street: "", cityId: null, cityLabel: "", status: null },
+    data: {
+      street: "",
+      cityId: null,
+      cityLabel: "",
+      status: null,
+      ownStreetStatus: null,
+    },
   });
 });
 
@@ -33,6 +43,7 @@ Deno.test("Page d'accueil : lien hérité /?rue=... (sans ville) → rue affich�
       cityId: null,
       cityLabel: "",
       status: null,
+      ownStreetStatus: null,
     },
   });
 });
@@ -92,4 +103,48 @@ Deno.test("Page d'accueil : rue endormie avec des foyers → statut « il en man
     await db.delete(house).where(eq(house.streetId, testStreet.id));
     await cleanupTestStreet({ testCity, testStreet });
   }
+});
+
+Deno.test("Page d'accueil : habitant connecté d'une rue non allumée → ownStreetStatus renseigné", async () => {
+  const testStreet = await createTestStreet("index-3");
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `index-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const sessionUser: SessionUser = {
+    id: created.id,
+    login: created.login,
+    email: created.email,
+    isAmbassador: created.isAmbassador,
+    street: {
+      id: testStreet.testStreet.id,
+      name: testStreet.testStreet.name,
+      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
+    },
+  };
+
+  try {
+    const result = await handler.GET!(
+      makeContext("http://localhost/", sessionUser),
+    ) as { data: { ownStreetStatus: unknown } };
+    assertEquals(result.data.ownStreetStatus, {
+      housesCount: 1,
+      remaining: STREET_AWAKENING_THRESHOLD - 1,
+      isAmbassadorSlot: false,
+      isAwake: false,
+    });
+  } finally {
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("Page d'accueil : non connecté → ownStreetStatus toujours null", async () => {
+  const result = await handler.GET!(
+    makeContext("http://localhost/", null),
+  ) as { data: { ownStreetStatus: unknown } };
+  assertEquals(result.data.ownStreetStatus, null);
 });

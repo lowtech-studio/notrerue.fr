@@ -1,8 +1,10 @@
 import { Head } from "fresh/runtime";
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
+import { StreetProgress } from "../components/StreetProgress.tsx";
 import {
   getStreetAwakeningStatus,
+  getStreetHousesStatus,
   STREET_AWAKENING_THRESHOLD,
   type StreetAwakeningStatus,
 } from "../db/streets.ts";
@@ -16,6 +18,8 @@ interface HomeData {
   cityId: number | null;
   cityLabel: string;
   status: StreetAwakeningStatus | null;
+  /** Statut de la rue de l'habitant connecté, `null` si non connecté. */
+  ownStreetStatus: { housesCount: number; isAwake: boolean } | null;
 }
 
 export const handler = define.handlers({
@@ -39,12 +43,17 @@ export const handler = define.handlers({
       ? await getStreetAwakeningStatus(cityId, street)
       : null;
 
-    return { data: { street, cityId, cityLabel, status } };
+    const ownStreetStatus = ctx.state.user
+      ? await getStreetHousesStatus(ctx.state.user.street.id)
+      : null;
+
+    return { data: { street, cityId, cityLabel, status, ownStreetStatus } };
   },
 });
 
 export default define.page<typeof handler>(function Home({ data, state }) {
-  const { street, cityId, cityLabel, status } = data as HomeData;
+  const { street, cityId, cityLabel, status, ownStreetStatus } =
+    data as HomeData;
   const { user } = state;
 
   const joinHref = cityId
@@ -63,24 +72,50 @@ export default define.page<typeof handler>(function Home({ data, state }) {
           <div>
             <p class="hero__eyebrow">Créer du lien entre voisins</p>
             <h1 class="hero__title">
-              Retrouvez vos voisins.
+              Partagez, échangez et connectez-vous avec vos voisins!
             </h1>
             <p class="hero__subtitle">
-              NotreRue.fr aide les habitants d'une même rue à se rapprocher :
-              partage, entraide, troc et sécurité collective. Une page privée,
-              réservée aux gens qui vivent dans notre rue.
+              100% Local, 100% Réel :<br />
+              Un dentiste à conseiller? Un outil à prêter? Un événement de
+              quartier à partager? ...
             </p>
 
             {user
               ? (
-                <p class="hero__confirmation">
-                  Bienvenue <strong>{user.login}</strong> ! {user.isAmbassador
-                    ? "Vous êtes ambassadeur de "
-                    : "Vous habitez "}
-                  <strong>
-                    {user.street.name}, {user.street.city.name}
-                  </strong>.
-                </p>
+                <>
+                  <p class="hero__confirmation">
+                    Bienvenue <strong>{user.login}</strong> ! {user.isAmbassador
+                      ? "Vous êtes ambassadeur de "
+                      : "Vous habitez "}
+                    <strong>
+                      {user.street.name}, {user.street.city.name}
+                    </strong>.
+                  </p>
+
+                  {ownStreetStatus && !ownStreetStatus.isAwake && (
+                    <div class="street-status">
+                      <h2 class="street-status__title">
+                        Votre rue dort encore.
+                      </h2>
+                      <p class="street-status__subtitle">
+                        Tant qu'elle n'est pas allumée, rien à lire ni à publier
+                        : la seule action utile est d'inviter vos voisins à vous
+                        rejoindre.
+                      </p>
+                      <StreetProgress
+                        housesCount={ownStreetStatus.housesCount}
+                        threshold={STREET_AWAKENING_THRESHOLD}
+                      />
+                      <p class="street-status__count">
+                        {ownStreetStatus.housesCount} foyers inscrits sur{" "}
+                        {STREET_AWAKENING_THRESHOLD}
+                      </p>
+                      <a href="/inviter" class="button">
+                        Inviter mes voisins
+                      </a>
+                    </div>
+                  )}
+                </>
               )
               : (
                 <>
@@ -132,6 +167,59 @@ export default define.page<typeof handler>(function Home({ data, state }) {
               </li>
             </ul>
           </aside>
+        </section>
+
+        <section class="container preview-wall" aria-labelledby="apercu-titre">
+          <h2 id="apercu-titre" class="preview-wall__title">
+            À quoi ressemble une rue allumée ?
+          </h2>
+          <p class="preview-wall__subtitle">
+            Un aperçu du fil de votre rue une fois quelques voisins inscrits :
+            demandes, coups de main, infos pratiques, recommandations et petits
+            rendez-vous entre voisins.
+          </p>
+          <div class="preview-wall__grid">
+            <img
+              src="/screenshots/fil.jpg"
+              alt="Fil de la rue : une demande « Je cherche » (perceuse à emprunter) avec les réponses des voisins"
+              width={465}
+              height={363}
+              loading="lazy"
+              class="preview-wall__img"
+            />
+            <img
+              src="/screenshots/petit-job.jpg"
+              alt="Petit job proposé par un voisin : babysitting le samedi soir"
+              width={461}
+              height={300}
+              loading="lazy"
+              class="preview-wall__img"
+            />
+            <img
+              src="/screenshots/information.jpg"
+              alt="Information pratique publiée par un voisin : une coupure d'eau annoncée à l'avance"
+              width={458}
+              height={228}
+              loading="lazy"
+              class="preview-wall__img"
+            />
+            <img
+              src="/screenshots/recommandations.jpg"
+              alt="Recommandations d'artisans partagées entre voisins : plombier, dentiste, garde d'enfants"
+              width={622}
+              height={475}
+              loading="lazy"
+              class="preview-wall__img"
+            />
+            <img
+              src="/screenshots/evenements.jpg"
+              alt="Rendez-vous entre voisins : café des voisins et accueil d'une nouvelle famille"
+              width={672}
+              height={344}
+              loading="lazy"
+              class="preview-wall__img"
+            />
+          </div>
         </section>
       </main>
       <footer class="site-footer">
@@ -197,16 +285,10 @@ function StreetStatusCard(
       <h2 class="street-status__title">{title}</h2>
       <p class="street-status__subtitle">{subtitle}</p>
 
-      <div class="street-status__progress" aria-hidden="true">
-        {Array.from({ length: STREET_AWAKENING_THRESHOLD }, (_, i) => (
-          <span
-            key={i}
-            class={`street-status__slot ${
-              i < housesCount ? "street-status__slot--filled" : ""
-            }`}
-          />
-        ))}
-      </div>
+      <StreetProgress
+        housesCount={housesCount}
+        threshold={STREET_AWAKENING_THRESHOLD}
+      />
       <p class="street-status__count">{countLabel}</p>
 
       <a href={joinHref} class="button">{joinLabel}</a>
