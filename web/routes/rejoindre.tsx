@@ -4,8 +4,11 @@ import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { findCityById } from "../db/cities.ts";
 import { findOrCreateStreet, getStreetAwakeningStatus } from "../db/streets.ts";
-import { registerInhabitant } from "../db/users.ts";
-import { sendLoginCodeEmail } from "../email/brevo.ts";
+import { findStreetUsers, registerInhabitant } from "../db/users.ts";
+import {
+  sendLoginCodeEmail,
+  sendStreetAwakeningEmail,
+} from "../email/brevo.ts";
 import { MAX_EMAIL_LENGTH } from "../utils/validation.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 
@@ -150,7 +153,7 @@ export const handler = define.handlers({
 
     try {
       const street = await findOrCreateStreet(streetName, selectedCity.id);
-      const { code } = await registerInhabitant({
+      const { code, streetJustAwakened } = await registerInhabitant({
         login,
         email,
         houseNumber: houseNumber || null,
@@ -161,6 +164,35 @@ export const handler = define.handlers({
         code,
         `${ctx.url.origin}/connexion?email=${encodeURIComponent(email)}`,
       );
+
+      // Notifications à part, tolérantes à l'échec : l'inscription et le
+      // code de connexion viennent de réussir, un souci Brevo ici ne doit
+      // pas faire échouer la requête (contrairement à sendLoginCodeEmail
+      // ci-dessus, pas de retry côté utilisateur possible pour ces
+      // messages). Tous les inscrits de la rue sont prévenus, pas seulement
+      // l'ambassadeur.
+      if (streetJustAwakened) {
+        const streetUsers = await findStreetUsers(street.id);
+        const results = await Promise.allSettled(
+          streetUsers.map((inhabitant) =>
+            sendStreetAwakeningEmail({
+              to: inhabitant.email,
+              recipientLogin: inhabitant.login,
+              streetName: street.name,
+              cityName: selectedCity.name,
+              homeUrl: ctx.url.origin,
+            })
+          ),
+        );
+        for (const result of results) {
+          if (result.status === "rejected") {
+            console.error(
+              "Échec de la notification d'éveil de rue :",
+              result.reason,
+            );
+          }
+        }
+      }
     } catch (error) {
       if (error instanceof postgres.PostgresError && error.code === "23505") {
         if (error.constraint_name === "user_login_unique") {

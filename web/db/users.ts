@@ -1,6 +1,7 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { db } from "./client.ts";
 import { house, street, user } from "./schema.ts";
+import { STREET_AWAKENING_THRESHOLD } from "./streets.ts";
 import {
   generateLoginCode,
   hashLoginCode,
@@ -26,6 +27,12 @@ export interface RegisterInhabitantInput {
 export interface RegisterInhabitantResult {
   user: User;
   code: string;
+  /**
+   * Vrai si cette inscription vient de faire passer la rue au seuil
+   * d'éveil (elle en était en-dessous juste avant). Sert à notifier
+   * l'ambassadeur qu'il peut publier sa première demande (cf. backlog).
+   */
+  streetJustAwakened: boolean;
 }
 
 /**
@@ -74,8 +81,26 @@ export async function registerInhabitant(
       loginCodeSentAt: new Date(),
     }).returning();
 
-    return { user: createdUser, code };
+    return {
+      user: createdUser,
+      code,
+      streetJustAwakened: existingHouses + 1 === STREET_AWAKENING_THRESHOLD,
+    };
   });
+}
+
+/**
+ * Habitants actifs (comptes non supprimés) d'une rue. Utilisé pour prévenir
+ * tous les inscrits par e-mail quand leur rue atteint le seuil d'éveil.
+ */
+export async function findStreetUsers(streetId: number): Promise<User[]> {
+  const rows = await db.select({ user }).from(user)
+    .innerJoin(house, eq(user.houseId, house.id))
+    .where(and(
+      eq(house.streetId, streetId),
+      isNull(user.deletedAt),
+    ));
+  return rows.map((row) => row.user);
 }
 
 /** Compte actif (non soft-supprimé) associé à cet e-mail, s'il existe. */

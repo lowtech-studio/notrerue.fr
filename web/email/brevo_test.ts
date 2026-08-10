@@ -1,5 +1,9 @@
 import { assertEquals } from "@std/assert";
-import { buildInviteEmail, buildLoginCodeEmail } from "./brevo.ts";
+import {
+  buildInviteEmail,
+  buildLoginCodeEmail,
+  buildStreetAwakeningEmail,
+} from "./brevo.ts";
 
 Deno.test("buildLoginCodeEmail : forme du payload", () => {
   const payload = buildLoginCodeEmail(
@@ -69,6 +73,49 @@ Deno.test("buildInviteEmail : échappe le HTML dans le login/rue/ville avant int
       streetName: `Rue "des" Lilas`,
       cityName: "Nantes",
       joinUrl: "https://notrerue.fr/rejoindre",
+    },
+    "no-reply@notrerue.fr",
+  );
+
+  assertEquals(payload.htmlContent.includes("<img"), false);
+  assertEquals(
+    payload.htmlContent.includes("&lt;img src=x onerror=alert(1)&gt;"),
+    true,
+  );
+  assertEquals(payload.htmlContent.includes("Rue &quot;des&quot; Lilas"), true);
+});
+
+Deno.test("buildStreetAwakeningEmail : forme du payload", () => {
+  const payload = buildStreetAwakeningEmail(
+    {
+      to: "camille@exemple.fr",
+      recipientLogin: "camille",
+      streetName: "Rue des Lilas",
+      cityName: "Nantes",
+      homeUrl: "https://notrerue.fr/",
+    },
+    "no-reply@notrerue.fr",
+  );
+
+  assertEquals(payload.sender, {
+    email: "no-reply@notrerue.fr",
+    name: "NotreRue.fr",
+  });
+  assertEquals(payload.to, [{ email: "camille@exemple.fr" }]);
+  assertEquals(payload.subject, "Votre rue Rue des Lilas est allumée !");
+  assertEquals(payload.htmlContent.includes("Rue des Lilas"), true);
+  assertEquals(payload.htmlContent.includes("Nantes"), true);
+  assertEquals(payload.htmlContent.includes("https://notrerue.fr/"), true);
+});
+
+Deno.test("buildStreetAwakeningEmail : échappe le HTML dans le login/rue/ville avant interpolation", () => {
+  const payload = buildStreetAwakeningEmail(
+    {
+      to: "camille@exemple.fr",
+      recipientLogin: `<img src=x onerror=alert(1)>`,
+      streetName: `Rue "des" Lilas`,
+      cityName: "Nantes",
+      homeUrl: "https://notrerue.fr/",
     },
     "no-reply@notrerue.fr",
   );

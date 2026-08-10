@@ -5,7 +5,7 @@
 - [*] En tant qu'habitant non connecté je m'inscris avec mon prénom, mon mail et ma rue et pouvoir ajouter volontairement mon numéro de bâtiment aux seuls foyers certifiés
 - [*] En tant qu'habitant non inscrit quand je renseigne une rue endormie, je veux savoir combien de foyers il manque pour qu'elle s'allume et ensuite qu'on me propose de m'inscrire si je suis le premier à m'inscrire je suis ambassadeur sinon je suis habitant, afin d'avoir un objectif atteignable.
 - [*] En tant qu'habitant connecté d'une rue non allumée, je veux n'avoir qu'une seule action possible : inviter des voisins via Email, Whatsapps ou kit papier avec QRcode et un petit texte à imprimer afin de ne pas être découragé par des espaces vides.
-- [ ] En tant que premier habitant inscrit, je veux être prévenu par e-mail quand le seuil est atteint, afin de publier ma première demande au bon moment.
+- [*] En tant que premier habitant inscrit, je veux être prévenu par e-mail quand le seuil est atteint, afin de publier ma première demande au bon moment.
 - [ ] En tant qu'habitant connecté d'une rue qui va s'allumer, un ou deux des foyers entrants confirment d'un tap que l'ambassadeur habite bien la rue.
 - [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.
 - [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu..

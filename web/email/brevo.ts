@@ -74,6 +74,43 @@ export function buildInviteEmail(
   };
 }
 
+export interface StreetAwakeningEmailInput {
+  to: string;
+  recipientLogin: string;
+  streetName: string;
+  cityName: string;
+  /** Lien vers la page d'accueil (pas de fil de rue à ce jour — cf. backlog). */
+  homeUrl: string;
+}
+
+/**
+ * Construction pure du payload — testable sans réseau. Prévient un habitant
+ * déjà inscrit que sa rue vient d'atteindre le seuil d'éveil, afin qu'il
+ * publie au bon moment plutôt que dans le vide (cf. backlog). Envoyée à tous
+ * les inscrits de la rue, pas seulement à l'ambassadeur.
+ */
+export function buildStreetAwakeningEmail(
+  input: StreetAwakeningEmailInput,
+  from: string,
+): BrevoEmailPayload {
+  const { to, recipientLogin, streetName, cityName, homeUrl } = input;
+  const login = escapeHtml(recipientLogin);
+  const street = escapeHtml(streetName);
+  const city = escapeHtml(cityName);
+
+  return {
+    sender: { email: from, name: "NotreRue.fr" },
+    to: [{ email: to }],
+    subject: `Votre rue ${streetName} est allumée !`,
+    htmlContent: `<p>Bonne nouvelle, ${login} !</p>` +
+      `<p>Assez de foyers sont maintenant inscrits sur <strong>${street}</strong> ` +
+      `(${city}) : votre rue est allumée.</p>` +
+      `<p>C'est le bon moment pour publier une demande, ou simplement ` +
+      `passer le mot à vos voisins.</p>` +
+      `<p><a href="${homeUrl}">Aller sur NotreRue.fr</a></p>`,
+  };
+}
+
 function getApiKey(): string {
   const key = Deno.env.get("BREVO_API_KEY");
   if (!key) {
@@ -126,4 +163,11 @@ export async function sendInviteEmail(
   input: InviteEmailInput,
 ): Promise<void> {
   await sendEmail(buildInviteEmail(input, getSenderEmail()));
+}
+
+/** Notification à l'ambassadeur : sa rue vient d'atteindre le seuil d'éveil. */
+export async function sendStreetAwakeningEmail(
+  input: StreetAwakeningEmailInput,
+): Promise<void> {
+  await sendEmail(buildStreetAwakeningEmail(input, getSenderEmail()));
 }
