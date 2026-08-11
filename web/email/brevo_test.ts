@@ -1,9 +1,50 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertStringIncludes } from "@std/assert";
 import {
   buildInviteEmail,
   buildLoginCodeEmail,
   buildStreetAwakeningEmail,
 } from "./brevo.ts";
+
+Deno.test("les trois e-mails portent l'en-tête commun (logo + nom du site)", () => {
+  const emails = [
+    buildLoginCodeEmail(
+      "camille@exemple.fr",
+      "042817",
+      "no-reply@notrerue.fr",
+      "https://notrerue.fr/connexion",
+    ),
+    buildInviteEmail(
+      {
+        to: "voisin@exemple.fr",
+        inviterLogin: "camille",
+        inviterEmail: "camille@exemple.fr",
+        streetName: "Rue des Lilas",
+        cityName: "Nantes",
+        joinUrl: "https://notrerue.fr/rejoindre",
+      },
+      "no-reply@notrerue.fr",
+    ),
+    buildStreetAwakeningEmail(
+      {
+        to: "camille@exemple.fr",
+        recipientLogin: "camille",
+        streetName: "Rue des Lilas",
+        cityName: "Nantes",
+        homeUrl: "https://notrerue.fr/",
+      },
+      "no-reply@notrerue.fr",
+    ),
+  ];
+
+  for (const email of emails) {
+    assertStringIncludes(email.htmlContent, "◍");
+    assertStringIncludes(email.htmlContent, "NotreRue.fr");
+    assertStringIncludes(
+      email.htmlContent,
+      "l'entraide entre voisins, sans réseau social ni publicité.",
+    );
+  }
+});
 
 Deno.test("buildLoginCodeEmail : forme du payload", () => {
   const payload = buildLoginCodeEmail(

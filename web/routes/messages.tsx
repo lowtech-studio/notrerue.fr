@@ -1,4 +1,5 @@
 import { Head } from "fresh/runtime";
+import "../assets/pages/messages.css" with { type: "css" };
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
@@ -202,17 +203,28 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
                             href={conversationHref(conversation.otherUserId)}
                             class="messages-list__item"
                           >
-                            <span class="messages-list__login">
-                              {conversation.otherUserLogin}
+                            <span
+                              class="messages-list__avatar"
+                              aria-hidden="true"
+                            >
+                              {conversation.otherUserLogin.charAt(0)
+                                .toUpperCase()}
                             </span>
-                            <span class="messages-list__preview">
-                              {conversation.lastMessageFromViewer
-                                ? "Vous : "
-                                : ""}
-                              {conversation.lastMessage}
-                            </span>
-                            <span class="messages-list__date">
-                              {formatRelativeDate(conversation.lastMessageAt)}
+                            <span class="messages-list__body">
+                              <span class="messages-list__login">
+                                {conversation.otherUserLogin}
+                              </span>
+                              <span class="messages-list__date">
+                                {formatRelativeDate(
+                                  conversation.lastMessageAt,
+                                )}
+                              </span>
+                              <span class="messages-list__preview">
+                                {conversation.lastMessageFromViewer
+                                  ? "Vous : "
+                                  : ""}
+                                {conversation.lastMessage}
+                              </span>
                             </span>
                           </a>
                         </li>
@@ -243,23 +255,30 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
                   )
                   : (
                     <ul class="message-thread">
-                      {messagesData.messages.map((item) => (
-                        <li
-                          key={item.id}
-                          class={`message-thread__bubble ${
-                            item.fromViewer
-                              ? "message-thread__bubble--mine"
-                              : "message-thread__bubble--theirs"
-                          }`}
-                        >
-                          <p class="message-thread__content">
-                            {item.content}
-                          </p>
-                          <p class="message-thread__date">
-                            {formatRelativeDate(item.createdAt)}
-                          </p>
-                        </li>
-                      ))}
+                      {messagesData.messages.map((item, index) => {
+                        const previous = messagesData.messages[index - 1];
+                        const grouped = previous !== undefined &&
+                          previous.fromViewer === item.fromViewer;
+                        return (
+                          <li
+                            key={item.id}
+                            class={`message-thread__bubble ${
+                              item.fromViewer
+                                ? "message-thread__bubble--mine"
+                                : "message-thread__bubble--theirs"
+                            } ${
+                              grouped ? "message-thread__bubble--grouped" : ""
+                            }`}
+                          >
+                            <p class="message-thread__content">
+                              {item.content}
+                            </p>
+                            <p class="message-thread__date">
+                              {formatRelativeDate(item.createdAt)}
+                            </p>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
@@ -269,30 +288,37 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
                   </p>
                 )}
 
-                <form method="POST" class="message-compose__form">
-                  <input
-                    type="hidden"
-                    name="to"
-                    value={messagesData.otherUserId}
-                  />
-                  {messagesData.postContext && (
+                <div class="message-compose">
+                  <form method="POST" class="message-compose__form">
                     <input
                       type="hidden"
-                      name="postId"
-                      value={messagesData.postContext.id}
+                      name="to"
+                      value={messagesData.otherUserId}
                     />
-                  )}
-                  <textarea
-                    name="content"
-                    class="message-compose__input"
-                    placeholder="Votre message..."
-                    maxlength={MAX_MESSAGE_CONTENT_LENGTH}
-                    required
-                  >
-                    {messagesData.composeContent}
-                  </textarea>
-                  <button type="submit" class="button">Envoyer</button>
-                </form>
+                    {messagesData.postContext && (
+                      <input
+                        type="hidden"
+                        name="postId"
+                        value={messagesData.postContext.id}
+                      />
+                    )}
+                    <textarea
+                      name="content"
+                      class="message-compose__input"
+                      placeholder="Votre message..."
+                      maxlength={MAX_MESSAGE_CONTENT_LENGTH}
+                      required
+                    >
+                      {messagesData.composeContent}
+                    </textarea>
+                    <button
+                      type="submit"
+                      class="button message-compose__submit"
+                    >
+                      Envoyer
+                    </button>
+                  </form>
+                </div>
               </>
             )}
         </section>

@@ -10,9 +10,12 @@ Application web full-stack basée sur **Fresh 2** (framework officiel de Deno) :
 - **Framework** : Fresh 2 (`jsr:@fresh/core`) — rendu serveur par défaut, architecture *islands*
 - **UI** : Preact 10 + `@preact/signals`
 - **Build / HMR** : Vite via `@fresh/plugin-vite`
-- **Styles** : CSS vanilla — un seul fichier `assets/styles.css`, variables CSS
-  (`:root { --token: ... }`) pour les tokens de design (couleurs, typographies,
-  espacements). Pas de framework CSS.
+- **Styles** : CSS vanilla — `assets/common.css` (reset, tokens, en-tête, pied
+  de page, boutons/formulaires partagés — chargé sur toutes les pages) +
+  `assets/pages/<route>.css` par page ayant des styles qui lui sont propres
+  (chargé uniquement sur cette route, cf. règle CSS ci-dessous). Variables CSS
+  (`:root { --token: ... }`) pour les tokens de design (couleurs,
+  typographies, espacements). Pas de framework CSS.
 - **Langage** : TypeScript strict
 
 Le projet doit etre maintenable et documeté au fil de l'eau dans le fichier markdown README.md
@@ -88,11 +91,24 @@ l'application de trouve dans le dossier app
 7. **Routes typées** : utiliser `define.handlers()` et `define.page()` (helpers
    de `utils.ts` via `createDefine<State>()`), pas de signatures à la main.
 8. **Nommage des islands** : PascalCase (`Counter.tsx`).
-9. **CSS** : importé dans `client.ts` (`import "./assets/styles.css"`). CSS
-   vanilla uniquement — **jamais de framework CSS** (Tailwind, Bootstrap…) ni
-   de préprocesseur. Tokens de design en variables CSS (`:root`). Ne jamais
-   remettre le CSS à bundler dans `static/` ni ajouter de `<link>` manuel dans
-   `_app.tsx`.
+9. **CSS** : `assets/common.css` importé une seule fois dans `client.ts`
+   (`import "./assets/common.css" with { type: "css" };`) — toujours
+   nécessaire, chargé sur toutes les pages. Une page avec des styles qui lui
+   sont propres importe son propre fichier en tête de sa route
+   (`import "../assets/pages/fil.css" with { type: "css" };` dans
+   `routes/fil.tsx`, etc.) : `@fresh/plugin-vite` détecte cet import et
+   n'ajoute le `<link>` correspondant que sur les réponses de cette route
+   (mécanisme `css` des routes Fresh — voir `FreshFsMod.css` dans
+   `@fresh/core`), pas sur les autres. L'attribut `with { type: "css" }` est
+   **obligatoire** sur tout import de `.css` : sans lui, `deno test`/
+   `deno check` échouent (Deno ne sait pas charger un module CSS nu) — il
+   active la forme du module CSS que Deno *sait* charger, débloquée par
+   `"unstable": ["raw-imports"]` dans `deno.json` (déjà en place, ne pas
+   retirer). CSS vanilla uniquement — **jamais de framework CSS** (Tailwind,
+   Bootstrap…) ni de préprocesseur. Tokens de design en variables CSS
+   (`:root`, dans `common.css`). Ne jamais remettre le CSS à bundler dans
+   `static/` ni ajouter de `<link>` manuel dans `_app.tsx` — laisser Vite
+   gérer le hash/l'injection.
 10. **Dossiers privés** : préfixer `_` (ex. `routes/(_components)/`) pour tout
     dossier sous `routes/` qui ne doit pas être routé.
 11. JAMAIS de secrets dans le code! Les identifiants, mots de passes, clés apis ... doivent etre stockés en tant que variables d'environnement et ne doivent pas etre commités dans git !
@@ -120,9 +136,13 @@ l'application de trouve dans le dossier app
   RWEB0060).
 
 **CSS**
-- Ne garder qu'un seul fichier CSS buildé (déjà le cas via `assets/styles.css`
-  → Vite) ; ne pas ajouter de feuilles de style supplémentaires (RWEB0035,
-  RWEB0078).
+- Un fichier commun (`assets/common.css`, chargé partout) + un fichier par
+  page pour les styles qui ne concernent qu'elle (`assets/pages/<route>.css`,
+  chargé uniquement sur cette route) — plutôt qu'un unique fichier global qui
+  grossit avec chaque page et finit par tout charger partout (RWEB0035,
+  RWEB0078). Ne pas fragmenter davantage qu'une page = un fichier ; ne pas
+  dupliquer une règle utilisée par plusieurs pages, la remonter dans
+  `common.css`.
 - Préférer les classes CSS réutilisables et les dégradés/formes en CSS pur aux
   images décoratives (RWEB0037, RWEB0050).
 - Ne pas réinventer un design system : garder un design simple, sobre, adapté

@@ -1,0 +1,522 @@
+/* Styles communs à toutes les pages : reset, tokens, en-tête/pied de page,
+   coquille du hero, boutons, formulaires de base — cf. backlog « découper un
+   fichier de style par page + un fichier commun pour limiter la bande
+   passante ». Chargé une seule fois via client.ts. Les styles propres à une
+   seule page vivent dans assets/pages/*.css, importés uniquement par cette
+   page (voir fs_routes / @fresh/plugin-vite : un `import "*.css"` dans une
+   route n'ajoute son lien `<link>` que sur cette route). */
+
+/* Reset minimal */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+* {
+  margin: 0;
+}
+img,
+svg {
+  display: block;
+}
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: inherit;
+}
+
+/* Design tokens — palette et typographies reprises de _prototype/web.html.
+   Pas de webfont distante (RWEB0032) : on retombe sur des piles système
+   proches (serif/sans) plutôt que de charger Newsreader/Public Sans via un
+   CDN externe. */
+:root {
+  --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino,
+    serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --color-paper: #fffdf8;
+  --color-paper-warm: #fff6ea;
+  --color-ink: #1b1a17;
+  --color-ink-soft: #4a453c;
+  --color-ink-muted: #6b6558;
+  --color-border: #e3dbcc;
+  --color-border-strong: #d8cfbe;
+  --color-brand: #9a3f12;
+  --color-brand-hover: #7b300b;
+  --color-accent: #e8a33d;
+  --color-ink-dark: #2b2722;
+  --color-paper-dark: #efe7d8;
+  --color-success: #2f6b3a;
+  --color-success-bg: #eef6ee;
+
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --container-width: 1040px;
+}
+
+html {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  /* max() garde une marge lisible sur mobile tout en respectant l'encoche
+     des téléphones en mode PWA plein écran (viewport-fit=cover). */
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(24px, env(safe-area-inset-right));
+}
+
+/* En-tête / menu du haut */
+.site-header {
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-border);
+  padding-top: env(safe-area-inset-top);
+}
+
+.site-header__bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: auto;
+  text-decoration: none;
+}
+
+.brand__mark {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: var(--color-paper-warm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.brand__name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--color-ink);
+}
+
+.brand__tagline {
+  display: block;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.site-header__link {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.site-header__link:hover {
+  color: var(--color-brand);
+}
+
+.site-header__link--primary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 18px;
+  background: var(--color-brand);
+  color: var(--color-paper-warm);
+  border-radius: var(--radius-md);
+}
+
+.site-header__link--primary:hover {
+  background: var(--color-brand-hover);
+  color: var(--color-paper-warm);
+}
+
+/* Bouton de déconnexion : même look que les liens de nav, sans le chrome
+   natif d'un <button> (posé dans un <form method="POST">, cf. Header.tsx). */
+button.site-header__link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.site-header__form {
+  margin: 0;
+}
+
+/* Coquille du hero, commune à toutes les pages (accueil en deux colonnes,
+   /fil /messages /connexion /rejoindre /inviter en une seule via
+   .hero--single). Le contenu propre à chaque page (cartes, listes...) est
+   dans son propre fichier assets/pages/*.css. */
+.hero {
+  padding-top: 48px;
+  padding-bottom: 64px;
+  display: grid;
+  gap: 40px;
+}
+
+.hero__eyebrow {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.hero__title {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  /* Taille fluide : ~30px sur mobile jusqu'à 56px sur desktop, sans
+     multiplier les points de rupture. */
+  font-size: clamp(1.9rem, 1.4rem + 3.2vw, 3.5rem);
+  line-height: 1.1;
+  font-weight: 600;
+}
+
+.hero__subtitle {
+  margin: 0 0 32px;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+  max-width: 34em;
+}
+
+.hero__note {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-ink-muted);
+}
+
+.hero__confirmation {
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-warm);
+  font-size: 16px;
+  color: var(--color-ink-soft);
+}
+
+.hero__confirmation strong {
+  color: var(--color-ink);
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding-top: 32px;
+    padding-bottom: 40px;
+    gap: 28px;
+  }
+}
+
+@media (min-width: 760px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+    align-items: start;
+  }
+}
+
+/* Pages /fil /messages /connexion /rejoindre /inviter : une seule colonne. */
+.hero--single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 560px;
+}
+
+/* Page /fil et /messages : largeur plus généreuse que les autres pages
+   `.hero--single` sur grand écran — mais toujours pleine largeur sur mobile
+   (cf. .hero--single ci-dessus, appliqué en dessous de 760px). */
+@media (min-width: 760px) {
+  .fil-page {
+    max-width: min(70%, var(--container-width));
+  }
+}
+
+/* Carte de recherche/formulaire courts (accueil, connexion, rejoindre,
+   inviter). */
+.lookup-card {
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.lookup-card__label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.lookup-form__input {
+  flex: 1 1 220px;
+  min-height: 56px;
+  padding: 12px 16px;
+  font-size: 18px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.lookup-form__input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+}
+
+@media (max-width: 480px) {
+  .lookup-card {
+    padding: 20px;
+  }
+
+  .lookup-form__input {
+    width: 100%;
+  }
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 14px 28px;
+  background: var(--color-brand);
+  color: var(--color-paper-warm);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button svg {
+  flex: none;
+}
+
+.button:hover {
+  background: var(--color-brand-hover);
+}
+
+.button--secondary {
+  background: transparent;
+  color: var(--color-brand);
+  border: 2px solid var(--color-border-strong);
+}
+
+.button--secondary:hover {
+  border-color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-brand);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--color-brand-hover);
+}
+
+.registration-form {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.form-field {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.form-error {
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-warm);
+  color: var(--color-brand-hover);
+  font-size: 16px;
+}
+
+/* Suggestions d'adresse (accueil + rejoindre, RegistrationAddressFields). */
+.autocomplete-field {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.autocomplete-field__hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 4px 0 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--color-paper);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(27, 26, 23, 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.autocomplete-suggestions li + li {
+  margin-top: 2px;
+}
+
+.autocomplete-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 16px;
+}
+
+.autocomplete-suggestions button:hover {
+  background: var(--color-paper-warm);
+}
+
+.autocomplete-suggestions__hint {
+  color: var(--color-ink-muted);
+  font-size: 14px;
+}
+
+/* Liste vide (fil et messages : « aucune demande »/« aucune conversation »). */
+.fil-list__empty {
+  padding: 24px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+
+/* Statut d'éveil d'une rue : carte complète recherchée depuis l'accueil, et
+   simple barre de progression réutilisée sur /inviter (StreetProgress.tsx)
+   — cf. backlog « objectif atteignable ». */
+.street-status {
+  margin: 0 0 20px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper-warm);
+}
+
+.street-status__headline {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-brand);
+}
+
+.street-status__title {
+  margin: 0 0 8px;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--color-ink);
+}
+
+.street-status__subtitle {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+}
+
+.street-status__progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.street-status__slot {
+  flex: 1 1 0;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--color-border-strong);
+}
+
+.street-status__slot--filled {
+  background: var(--color-brand);
+}
+
+.street-status__count {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  padding-top: 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.site-footer__text {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}

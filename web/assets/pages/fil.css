@@ -1,0 +1,270 @@
+/* Styles propres à la page /fil (routes/fil.tsx) — cf. assets/common.css
+   pour le reste (en-tête, hero, boutons, .fil-page, .fil-list__empty...). */
+
+/* Publication d'une demande (rue allumée) — cf. backlog « publier en moins
+   de 30 secondes ». Même gabarit de carte que .street-status : une seule
+   action mise en avant, avant/après l'éveil de la rue. */
+.compose-post {
+  margin: 0 0 20px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper-warm);
+}
+
+.compose-post__title {
+  margin: 0 0 16px;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.compose-post__form {
+  display: grid;
+  gap: 16px;
+}
+
+.compose-post__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compose-post__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  background: var(--color-paper);
+}
+
+.compose-post__type:has(input:checked) {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
+/* Filtres par type, liste chronologique, pagination. */
+.fil-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.fil-filters__tab {
+  padding: 8px 14px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  text-decoration: none;
+}
+
+.fil-filters__tab--active {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
+.fil-list {
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+
+.fil-post {
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+}
+
+.fil-post__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.fil-post__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-paper-warm);
+  color: var(--color-brand);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fil-post__date {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+}
+
+.fil-post__content {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+
+.fil-post__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fil-post__author {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+/* Réponse en un clic (« J'ai » / « Intéressé » / 👍 selon le type) — cf.
+   backlog « rendre service plus facile que scroller ». */
+.fil-post__tap {
+  padding: 8px 16px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fil-post__tap:hover {
+  border-color: var(--color-brand);
+}
+
+.fil-post__tap--active {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.fil-post__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Message privé démarré depuis une demande — cf. backlog messagerie
+   privée. Même gabarit de bouton que .fil-post__tap (pilule, même
+   padding/bordure) pour rester dans la même rangée d'actions ; jamais
+   « actif » comme un tap, donc pas de variante remplie. */
+.fil-post__message-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fil-post__message-link:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+/* Sur ses propres demandes : qui a tapé, avec un lien par voisin vers un
+   message privé pour s'organiser (cf. backlog). Liste toujours visible
+   plutôt qu'un tooltip au survol : les liens qu'elle contient doivent
+   rester atteignables au clavier et au tactile (pas de vrai survol sur
+   mobile). */
+.fil-post__tappers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fil-post__tappers-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+.fil-post__tappers-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--color-paper-warm);
+  color: var(--color-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fil-post__tappers-link:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+/* Picto enveloppe accolé aux noms/actions de message privé (cf. backlog) —
+   taille réduite pour rester discret dans une pilule compacte. */
+.fil-post__mail-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* Au-delà de TAPPERS_VISIBLE_LIMIT tapeurs, le reste se replie derrière un
+   <summary> plutôt que de déborder de la vignette (cf. retour utilisateur :
+   « si j'ai 50 voisins qui répondent »). Natif HTML, pas de JS. */
+.fil-post__tappers-more {
+  display: inline-flex;
+}
+
+.fil-post__tappers-more summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.fil-post__tappers-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.fil-post__tappers-more[open] {
+  display: block;
+  width: 100%;
+}
+
+.fil-post__tappers-more-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.fil-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fil-pagination__status {
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}

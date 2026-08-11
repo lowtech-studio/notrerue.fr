@@ -1,0 +1,97 @@
+/* Styles propres à la page d'accueil (routes/index.tsx) — cf.
+   assets/common.css pour le reste (en-tête, hero, boutons...). */
+
+.trust-card {
+  background: var(--color-ink-dark);
+  color: var(--color-paper-dark);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+}
+
+.trust-card__title {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.trust-card__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.trust-card__list li {
+  display: flex;
+  gap: 12px;
+}
+
+.trust-card__list li::before {
+  content: "—";
+  color: var(--color-accent);
+  font-weight: 700;
+  flex: none;
+}
+
+@media (max-width: 480px) {
+  .trust-card {
+    padding: 20px;
+  }
+}
+
+/* Mur d'aperçus : capture d'écran du fil de rue, en dessous du hero pour ne
+   pas concurrencer le titre et le formulaire « trouver ma rue ». Disposition
+   en colonnes CSS façon mur de photos — pas de carrousel ni de JS
+   (RWEB0009/RWEB0010). */
+.preview-wall {
+  padding: 56px 0 64px;
+  border-top: 1px solid var(--color-border);
+}
+
+.preview-wall__title {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.3rem + 1vw, 2.1rem);
+  font-weight: 600;
+  text-align: center;
+}
+
+.preview-wall__subtitle {
+  margin: 0 auto 32px;
+  max-width: 40em;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+  text-align: center;
+}
+
+.preview-wall__grid {
+  column-count: 1;
+  column-gap: 20px;
+}
+
+@media (min-width: 640px) {
+  .preview-wall__grid {
+    column-count: 2;
+  }
+}
+
+@media (min-width: 960px) {
+  .preview-wall__grid {
+    column-count: 3;
+  }
+}
+
+.preview-wall__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  break-inside: avoid;
+}

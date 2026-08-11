@@ -1,4 +1,5 @@
 import { escape as escapeHtml } from "@std/html/entities";
+import { emailButton, emailParagraph, renderEmailLayout } from "./layout.ts";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
@@ -18,12 +19,22 @@ export function buildLoginCodeEmail(
   from: string,
   loginUrl: string,
 ): BrevoEmailPayload {
+  const body = emailParagraph("Voici votre code de connexion NotreRue.fr :") +
+    `<p style="margin:0 0 16px;font-size:32px;font-weight:700;letter-spacing:.08em;color:#9a3f12;">${code}</p>` +
+    emailParagraph(
+      "Il est valable 15 minutes et à usage unique. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.",
+      true,
+    ) +
+    emailButton(loginUrl, "Saisir mon code de connexion");
+
   return {
     sender: { email: from, name: "NotreRue.fr" },
     to: [{ email: to }],
     subject: "Votre code de connexion NotreRue.fr",
-    htmlContent:
-      `<p>Voici votre code de connexion NotreRue.fr :</p><p style="font-size:28px;font-weight:700;letter-spacing:.1em">${code}</p><p>Il est valable 15 minutes et à usage unique.</p><p><a href="${loginUrl}">Saisir mon code de connexion</a></p>`,
+    htmlContent: renderEmailLayout(
+      body,
+      `Votre code de connexion : ${code}`,
+    ),
   };
 }
 
@@ -58,19 +69,27 @@ export function buildInviteEmail(
   const street = escapeHtml(streetName);
   const city = escapeHtml(cityName);
 
+  const body = emailParagraph(
+    `<strong>${login}</strong> vous invite à rejoindre NotreRue.fr, ` +
+      `l'entraide entre voisins de la ${street} (${city}).`,
+  ) +
+    emailParagraph(
+      "Partage, coup de main, bons plans entre voisins — sans réseau social ni publicité.",
+      true,
+    ) +
+    emailButton(joinUrl, `Rejoindre la ${street}`) +
+    `<p style="margin:24px 0 0;font-size:14px;color:#6b6558;">Vous pouvez répondre directement à cet e-mail pour joindre ${login}.</p>`;
+
   return {
     sender: { email: from, name: "NotreRue.fr" },
     to: [{ email: to }],
     replyTo: { email: inviterEmail, name: inviterLogin },
     subject:
       `${inviterLogin} vous invite à rejoindre votre rue sur NotreRue.fr`,
-    htmlContent: `<p><strong>${login}</strong> vous invite à rejoindre ` +
-      `NotreRue.fr, l'entraide entre voisins de la ${street} (${city}).</p>` +
-      `<p>Partage, coup de main, bons plans entre voisins — sans réseau ` +
-      `social ni publicité.</p>` +
-      `<p><a href="${joinUrl}">Rejoindre la ${street}</a></p>` +
-      `<p>Vous pouvez répondre directement à cet e-mail pour joindre ` +
-      `${login}.</p>`,
+    htmlContent: renderEmailLayout(
+      body,
+      `${login} vous invite à rejoindre la ${street} sur NotreRue.fr`,
+    ),
   };
 }
 
@@ -98,16 +117,25 @@ export function buildStreetAwakeningEmail(
   const street = escapeHtml(streetName);
   const city = escapeHtml(cityName);
 
+  const body = emailParagraph(`Bonne nouvelle, ${login} !`) +
+    emailParagraph(
+      `Assez de foyers sont maintenant inscrits sur <strong>${street}</strong> ` +
+        `(${city}) : votre rue est allumée.`,
+    ) +
+    emailParagraph(
+      "C'est le bon moment pour publier une demande, ou simplement passer le mot à vos voisins.",
+      true,
+    ) +
+    emailButton(homeUrl, "Aller sur NotreRue.fr");
+
   return {
     sender: { email: from, name: "NotreRue.fr" },
     to: [{ email: to }],
     subject: `Votre rue ${streetName} est allumée !`,
-    htmlContent: `<p>Bonne nouvelle, ${login} !</p>` +
-      `<p>Assez de foyers sont maintenant inscrits sur <strong>${street}</strong> ` +
-      `(${city}) : votre rue est allumée.</p>` +
-      `<p>C'est le bon moment pour publier une demande, ou simplement ` +
-      `passer le mot à vos voisins.</p>` +
-      `<p><a href="${homeUrl}">Aller sur NotreRue.fr</a></p>`,
+    htmlContent: renderEmailLayout(
+      body,
+      `Votre rue ${street} vient d'atteindre le seuil d'éveil.`,
+    ),
   };
 }
 

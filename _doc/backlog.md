@@ -9,8 +9,14 @@
 - [*] En tant qu'habitant connecté, je veux publier une demande (table post, avec trois types de publication (Je cherche / Je propose / J'informe) ) en moins de 30 secondes, en une phrase, afin que ce soit plus simple qu'un message WhatsApp (les messages agressifs ou discriminatoires doivent être bloqués avant publication).
 - [*] En tant qu'habitant connecté, je veux un fil unique et chronologique pour ma rue seule, et filtrer avec trois types de publication (Je cherche / Je propose / J'informe), afin de ne rien manquer et de ne rien subir.
 - [*] En tant qu'habitant connecté d'une rue allumée, je veux envoyer des messages privés au voisin auteur de la demande avec un bouton via une demande et retrouver l'ensemble de mes messages avec un lien dans le menu du haut, afin de contacter un voisin en particulier sans que personne d'autre ne le voit.
+- [*] Revoir le style de l'ensemble des mails avec un en tete avec le logo et le nom du site, dnas le but de faire plus sérieux et de confiance
+- [*] Ajouter un picto enveloppe/mail à coté des noms des voisins pour envoyer un message à partir d'une demande
+- [*] Revoir le style de la liste des messages et en profiter pour découper un fichier de style par page + un fichier commun pour limiter la bande passante utilisée
+- [ ] En tant qu'habitant connecté d'une rue  allumée, je veux inviter des voisins via Email, Whatsapps ou kit papier avec QRcode et un petit texte à imprimer
 - [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier).
 - [ ] En tant qu'habitant connecté d'une rue allumée, je veux choisir la durée de validité de ma demande (aujourd'hui / cette semaine / x mois) à chaque publication, afin que le fil ne se remplisse pas de demandes mortes.
+- [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco conception et la cybersécurité
+
 - [*] En tant que voisin disponible, je veux répondre en un clic/tap (si type "Je cherche" => bouton "J'ai"/ "Je propose" => bouton "Intéressé"/ J'informe => bouton "emoji pouce") avant même d'écrire pour rendre un service, afin que rendre service soit plus facile que scroller.
 - [ ] En tant que parent d'un adolescent, je veux que mon enfant puisse proposer un petit job via le compte du foyer, le contact passant obligatoirement par moi.
 - [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu

@@ -1,0 +1,106 @@
+/* Styles propres à la page /inviter (routes/inviter.tsx) — cf.
+   assets/common.css pour le reste (en-tête, hero, boutons...). */
+
+/* Seule action offerte à un habitant connecté tant que sa rue n'est pas
+   allumée (cf. backlog). */
+.invite-actions {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0 40px;
+}
+
+.invite-email-form {
+  display: grid;
+  gap: 8px;
+}
+
+/* Séparateur entre les trois canaux d'invitation (e-mail / WhatsApp / kit
+   papier) : un simple trait barré par le mot « ou », pour que les boutons ne
+   se lisent plus comme une seule liste indifférenciée. */
+.invite-actions__divider {
+  position: relative;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink-muted);
+}
+
+.invite-actions__divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.invite-actions__divider span {
+  position: relative;
+  padding: 0 12px;
+  background: var(--color-paper);
+}
+
+/* Kit papier : QR code + texte court, pensé pour être découpé/affiché.
+   `.no-print` masque tout ce qui n'est pas le kit lui-même quand on imprime
+   (cf. règle @media print plus bas). */
+.kit-flyer {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 32px 24px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+  text-align: center;
+}
+
+.kit-flyer__eyebrow {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.kit-flyer__qr {
+  border: 8px solid #fff;
+  outline: 1px solid var(--color-border);
+}
+
+.kit-flyer__text {
+  margin: 0;
+  max-width: 32em;
+  font-size: 16px;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: var(--color-ink-soft);
+}
+
+.kit-flyer__url {
+  margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 14px;
+  color: var(--color-ink);
+  word-break: break-all;
+}
+
+.kit-flyer__signature {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
+@media print {
+  /* Seul le kit papier a vocation à sortir de l'imprimante : en-tête,
+     boutons et texte d'intro n'y ont pas leur place. */
+  .no-print {
+    display: none !important;
+  }
+
+  .kit-flyer {
+    border: none;
+    padding: 0;
+  }
+}

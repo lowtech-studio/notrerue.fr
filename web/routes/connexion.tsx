@@ -1,4 +1,5 @@
 import { Head } from "fresh/runtime";
+import "../assets/pages/connexion.css" with { type: "css" };
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { startLogin, verifyLoginCode } from "../db/users.ts";

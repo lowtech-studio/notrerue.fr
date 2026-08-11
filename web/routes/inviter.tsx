@@ -1,4 +1,5 @@
 import { Head } from "fresh/runtime";
+import "../assets/pages/inviter.css" with { type: "css" };
 import { define } from "../utils.ts";
 import type { SessionUser } from "../utils.ts";
 import { Header } from "../components/Header.tsx";

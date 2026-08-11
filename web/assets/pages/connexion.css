@@ -1,0 +1,53 @@
+/* Styles propres à la page /connexion (routes/connexion.tsx, islands/CodeInput.tsx)
+   — cf. assets/common.css pour le reste (en-tête, hero, boutons...). */
+
+.code-step__email {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.code-input {
+  display: flex;
+  gap: 10px;
+}
+
+.code-input__box {
+  width: 48px;
+  height: 56px;
+  padding: 0;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.code-input__box:focus {
+  outline: none;
+  border-color: var(--color-brand);
+}
+
+@media (max-width: 480px) {
+  .code-input {
+    gap: 6px;
+  }
+
+  .code-input__box {
+    width: 100%;
+    flex: 1 1 0;
+  }
+}
+
+/* Repli sans JS de CodeInput : un unique champ texte au lieu des cases. */
+.code-input__fallback {
+  width: 100%;
+  letter-spacing: 4px;
+}
+
+.code-step__resend {
+  margin: 4px 0 0;
+}

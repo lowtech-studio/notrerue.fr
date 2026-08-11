@@ -1,6 +1,8 @@
 import { Head } from "fresh/runtime";
+import "../assets/pages/fil.css" with { type: "css" };
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
+import { MailIcon } from "../components/icons.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
 import {
   createPost,
@@ -328,6 +330,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                         href={`/messages?with=${item.authorId}&postId=${item.id}`}
                         class="fil-post__message-link"
                       >
+                        <MailIcon class="fil-post__mail-icon" />
                         Message privé
                       </a>
                     </div>
@@ -347,6 +350,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                           href={`/messages?with=${tapper.id}&postId=${item.id}`}
                           class="fil-post__tappers-link"
                         >
+                          <MailIcon class="fil-post__mail-icon" />
                           {tapper.login}
                         </a>
                       ))}
@@ -365,6 +369,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                                 href={`/messages?with=${tapper.id}&postId=${item.id}`}
                                 class="fil-post__tappers-link"
                               >
+                                <MailIcon class="fil-post__mail-icon" />
                                 {tapper.login}
                               </a>
                             ))}
