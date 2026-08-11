@@ -43,66 +43,218 @@
   background: var(--color-paper);
 }
 
-/* Kit papier : QR code + texte court, pensé pour être découpé/affiché.
-   `.no-print` masque tout ce qui n'est pas le kit lui-même quand on imprime
-   (cf. règle @media print plus bas). */
-.kit-flyer {
+/* Kit papier (3 invitations) et autocollant : aperçus à l'écran, pensés pour
+   être imprimés et découpés. `.no-print` masque tout ce qui n'est pas la
+   feuille imprimée elle-même (cf. règle @media print plus bas), et
+   `body[data-print-target]` (posé par PrintButton) choisit laquelle des deux
+   feuilles sort de l'imprimante. */
+.kit-sheet,
+.sticker-sheet {
   display: grid;
   justify-items: center;
   gap: 16px;
-  padding: 32px 24px;
+  padding: 24px;
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-lg);
   background: var(--color-paper);
-  text-align: center;
 }
 
-.kit-flyer__eyebrow {
+.kit-sheet__eyebrow,
+.sticker-sheet__eyebrow {
   margin: 0;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
+  text-align: center;
 }
 
-.kit-flyer__qr {
-  border: 8px solid #fff;
+.kit-sheet__grid {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Une des trois invitations du kit papier — identiques (même rue, même QR
+   code), séparées par un trait pointillé qui sert de guide de découpe (avec
+   un petit repère ciseaux, comme un vrai coupon à détacher). */
+.invite-flyer {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px dashed var(--color-border-strong);
+  text-align: left;
+  break-inside: avoid;
+}
+
+.invite-flyer:first-child {
+  padding-top: 0;
+}
+
+.invite-flyer:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.invite-flyer:not(:last-child)::after {
+  content: "✂ découper ici";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  transform: translateY(50%);
+  padding-right: 8px;
+  font-size: 11px;
+  background: var(--color-paper);
+  color: var(--color-ink-muted);
+}
+
+.invite-flyer__qr {
+  border: 6px solid #fff;
   outline: 1px solid var(--color-border);
 }
 
-.kit-flyer__text {
+.invite-flyer__text {
   margin: 0;
-  max-width: 32em;
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.4;
   white-space: pre-line;
   color: var(--color-ink-soft);
 }
 
-.kit-flyer__url {
+.invite-flyer__url {
+  grid-column: 2;
   margin: 0;
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--color-ink);
   word-break: break-all;
 }
 
-.kit-flyer__signature {
+.invite-flyer__signature {
+  grid-column: 2;
   margin: 0;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--color-ink-muted);
 }
 
+/* Autocollant boîte aux lettres : un carré compact, pensé pour être découpé
+   puis collé, pas déposé dans une boîte. */
+.sticker {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 260px;
+  padding: 20px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.sticker__qr {
+  border: 6px solid #fff;
+  outline: 1px solid var(--color-border);
+}
+
+.sticker__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-ink-soft);
+}
+
+.sticker__url {
+  margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--color-ink);
+  word-break: break-all;
+}
+
 @media print {
-  /* Seul le kit papier a vocation à sortir de l'imprimante : en-tête,
-     boutons et texte d'intro n'y ont pas leur place. */
+  /* Seule la feuille demandée (kit papier ou autocollant) a vocation à
+     sortir de l'imprimante : en-tête, boutons et texte d'intro n'y ont pas
+     leur place, et l'autre feuille ne doit pas gâcher une page. */
   .no-print {
     display: none !important;
   }
 
-  .kit-flyer {
+  body[data-print-target="kit"] .sticker-sheet {
+    display: none !important;
+  }
+
+  body[data-print-target="sticker"] .kit-sheet {
+    display: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+
+  /* `.hero--single` plafonne la page à 560px de large à l'écran (cf.
+     common.css) : en conservant cette limite à l'impression, le texte de
+     chaque invitation se retrouve compressé sur une colonne étroite, gonfle
+     en hauteur, et fait déborder les 3 invitations sur une deuxième page.
+     Le kit papier doit au contraire utiliser toute la largeur de la
+     feuille A4. Sélecteur à deux classes (au lieu de `.hero--single` seul)
+     pour battre en spécificité la règle de common.css, injectée après ce
+     fichier au runtime (son <style> de dev arrive après le <link> de cette
+     page dans le <head>). */
+  .hero--single.page-wide {
+    max-width: none;
+  }
+
+  .kit-sheet,
+  .sticker-sheet {
     border: none;
+    border-radius: 0;
     padding: 0;
+  }
+
+  /* Une page A4, coupée en trois invitations identiques par des pointillés
+     — le seul geste demandé à l'habitant est un coup de ciseaux sur chaque
+     trait. La taille du QR code est fixée en mm (au lieu de suivre le
+     nombre de modules, qui varie avec la longueur du nom de rue/ville dans
+     l'URL encodée) : sans ça, les 3 invitations peuvent déborder sur une
+     deuxième page. */
+  .kit-sheet__grid {
+    gap: 4mm;
+  }
+
+  .invite-flyer {
+    padding: 6mm 0;
+  }
+
+  .invite-flyer__qr {
+    width: 32mm;
+    height: 32mm;
+  }
+
+  .sticker-sheet {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Filet de sécurité si les deux feuilles sortent ensemble (impression
+     navigateur déclenchée sans passer par un bouton « Imprimer », donc sans
+     `data-print-target`) : la deuxième feuille démarre sur une nouvelle
+     page plutôt que de se coller au kit papier. Ne doit pas s'appliquer
+     quand un bouton a choisi une seule feuille : sinon la feuille visible,
+     seule sur la page, se retrouve poussée sur une page 2 vide. */
+  body:not([data-print-target]) .sticker-sheet {
+    break-before: page;
+  }
+
+  .sticker {
+    border-style: dashed;
+  }
+
+  .sticker__qr {
+    width: 30mm;
+    height: 30mm;
   }
 }

@@ -1,26 +1,42 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { eq } from "drizzle-orm";
 import { db } from "./client.ts";
-import { house, post, user } from "./schema.ts";
+import { city, house, post, street, user } from "./schema.ts";
 import {
   computeExpiresAt,
   createPost,
+  isFilPostType,
   isPostDuration,
   isPostType,
+  listCityRecommendations,
   listStreetPosts,
   MAX_POST_DURATION_MONTHS,
   MIN_POST_DURATION_MONTHS,
   POSTS_PER_PAGE,
 } from "./posts.ts";
 import { registerInhabitant } from "./users.ts";
-import { cleanupTestStreet, createTestStreet } from "./test_helpers.ts";
+import {
+  cleanupTestStreet,
+  createTestCity,
+  createTestStreet,
+} from "./test_helpers.ts";
 
-Deno.test("isPostType : accepte les trois valeurs de l'enum, rejette le reste", () => {
+Deno.test("isPostType : accepte les quatre valeurs de l'enum, rejette le reste", () => {
   assert(isPostType("cherche"));
   assert(isPostType("propose"));
   assert(isPostType("informe"));
+  assert(isPostType("recommandation"));
   assertFalse(isPostType("autre chose"));
   assertFalse(isPostType(""));
+});
+
+Deno.test("isFilPostType : accepte les trois types de /fil, rejette 'recommandation' et le reste", () => {
+  assert(isFilPostType("cherche"));
+  assert(isFilPostType("propose"));
+  assert(isFilPostType("informe"));
+  assertFalse(isFilPostType("recommandation"));
+  assertFalse(isFilPostType("autre chose"));
+  assertFalse(isFilPostType(""));
 });
 
 Deno.test("isPostDuration : accepte les trois durées, rejette le reste", () => {
@@ -194,6 +210,44 @@ Deno.test("listStreetPosts : filtre par type", async () => {
   }
 });
 
+Deno.test("listStreetPosts : exclut toujours les demandes de recommandation, même sans filtre de type", async () => {
+  const testStreet = await createTestStreet("posts-3b");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    const sought = await createPost({
+      userId: author.id,
+      type: "cherche",
+      content: "Je cherche une perceuse",
+    });
+    // Une recommandation appartient à /recommandations (ville), jamais à
+    // /fil (rue), même si son auteur habite bien cette rue.
+    await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Un dentiste qui prend des patients ?",
+    });
+
+    const result = await listStreetPosts({
+      streetId: testStreet.testStreet.id,
+      page: 1,
+    });
+
+    assertEquals(result.totalCount, 1);
+    assertEquals(result.posts.map((p) => p.id), [sought.id]);
+  } finally {
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
 Deno.test("listStreetPosts : exclut les demandes expirées, garde celles sans expiresAt", async () => {
   const testStreet = await createTestStreet("posts-5");
   const { user: author } = await registerInhabitant({
@@ -285,6 +339,127 @@ Deno.test("listStreetPosts : pagine et ramène une page hors bornes dans les lim
       page: 99,
     });
     assertEquals(outOfRange.page, 2);
+  } finally {
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("listCityRecommendations : chronologique, toute la ville (plusieurs rues), isolé par ville, seulement le type recommandation", async () => {
+  const cityA = await createTestCity("posts-reco-1a");
+  const [streetX] = await db.insert(street).values({
+    name: `Rue X ${crypto.randomUUID()}`,
+    cityId: cityA.id,
+  }).returning();
+  const [streetY] = await db.insert(street).values({
+    name: `Rue Y ${crypto.randomUUID()}`,
+    cityId: cityA.id,
+  }).returning();
+  // Même nom de rue qu'une autre ville, pour vérifier que l'isolement se
+  // fait bien par ville et non par nom de rue.
+  const otherCityStreet = await createTestStreet("posts-reco-1b");
+
+  const { user: authorX } = await registerInhabitant({
+    login: `login-x-${crypto.randomUUID()}`,
+    email: `posts-reco-x-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: streetX.id,
+  });
+  const { user: authorY } = await registerInhabitant({
+    login: `login-y-${crypto.randomUUID()}`,
+    email: `posts-reco-y-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: streetY.id,
+  });
+  const { user: authorOtherCity } = await registerInhabitant({
+    login: `login-z-${crypto.randomUUID()}`,
+    email: `posts-reco-z-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: otherCityStreet.testStreet.id,
+  });
+
+  try {
+    const first = await createPost({
+      userId: authorX.id,
+      type: "recommandation",
+      content: "Un plombier fiable, rue X",
+    });
+    const second = await createPost({
+      userId: authorY.id,
+      type: "recommandation",
+      content: "Un dentiste qui prend des patients, rue Y",
+    });
+    // Ni "cherche" (autre type, réservé à /fil) ni une recommandation d'une
+    // autre ville ne doivent apparaître.
+    await createPost({
+      userId: authorX.id,
+      type: "cherche",
+      content: "Je cherche une perceuse",
+    });
+    await createPost({
+      userId: authorOtherCity.id,
+      type: "recommandation",
+      content: "Recommandation d'une autre ville",
+    });
+
+    const result = await listCityRecommendations({ cityId: cityA.id, page: 1 });
+
+    assertEquals(result.totalCount, 2);
+    assertEquals(result.posts.map((p) => p.id), [second.id, first.id]);
+    assertEquals(result.posts[0].authorStreetName, streetY.name);
+    assertEquals(result.posts[1].authorStreetName, streetX.name);
+  } finally {
+    await db.delete(post).where(eq(post.userId, authorX.id));
+    await db.delete(post).where(eq(post.userId, authorY.id));
+    await db.delete(post).where(eq(post.userId, authorOtherCity.id));
+    await db.delete(user).where(eq(user.id, authorX.id));
+    await db.delete(user).where(eq(user.id, authorY.id));
+    await db.delete(user).where(eq(user.id, authorOtherCity.id));
+    await db.delete(house).where(eq(house.id, authorX.houseId));
+    await db.delete(house).where(eq(house.id, authorY.houseId));
+    await db.delete(house).where(eq(house.id, authorOtherCity.houseId));
+    await db.delete(street).where(eq(street.id, streetX.id));
+    await db.delete(street).where(eq(street.id, streetY.id));
+    await db.delete(city).where(eq(city.id, cityA.id));
+    await cleanupTestStreet(otherCityStreet);
+  }
+});
+
+Deno.test("listCityRecommendations : exclut les demandes expirées, garde celles sans expiresAt", async () => {
+  const testStreet = await createTestStreet("posts-reco-2");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-reco-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const now = new Date();
+
+  try {
+    const expired = await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Recommandation expirée",
+      expiresAt: new Date(now.getTime() - 60_000),
+    });
+    const stillValid = await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Recommandation encore valide",
+      expiresAt: new Date(now.getTime() + 60_000),
+    });
+
+    const result = await listCityRecommendations({
+      cityId: testStreet.testCity.id,
+      page: 1,
+      now,
+    });
+
+    const ids = result.posts.map((p) => p.id);
+    assertEquals(ids.includes(expired.id), false);
+    assertEquals(ids.includes(stillValid.id), true);
   } finally {
     await db.delete(post).where(eq(post.userId, author.id));
     await db.delete(user).where(eq(user.id, author.id));

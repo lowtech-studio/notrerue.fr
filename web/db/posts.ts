@@ -1,9 +1,18 @@
-import { and, count, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, isNull, ne, or } from "drizzle-orm";
 import { db } from "./client.ts";
-import { house, post, postType, user } from "./schema.ts";
+import { house, post, postType, street, user } from "./schema.ts";
 
 export type Post = typeof post.$inferSelect;
 export type PostType = (typeof postType.enumValues)[number];
+
+/**
+ * Les trois types publiés et lus sur /fil, à l'échelle d'une rue —
+ * "recommandation" n'en fait pas partie : ce type se publie et se lit sur
+ * /recommandations, à l'échelle d'une ville (cf. schema.ts). Distingué du
+ * `PostType` complet pour qu'un `type` invalide (y compris
+ * "recommandation") ne puisse pas atterrir sur /fil via un formulaire forgé.
+ */
+export type FilPostType = Exclude<PostType, "recommandation">;
 
 /**
  * Une demande tient en une phrase (cf. backlog « publier en moins de 30
@@ -11,9 +20,14 @@ export type PostType = (typeof postType.enumValues)[number];
  */
 export const MAX_POST_CONTENT_LENGTH = 240;
 
-/** Vrai si `value` est bien l'une des trois valeurs de l'enum `post_type`. */
+/** Vrai si `value` est bien l'une des quatre valeurs de l'enum `post_type`. */
 export function isPostType(value: string): value is PostType {
   return (postType.enumValues as readonly string[]).includes(value);
+}
+
+/** Vrai si `value` est un des trois types publiables sur /fil (cf. `FilPostType`). */
+export function isFilPostType(value: string): value is FilPostType {
+  return isPostType(value) && value !== "recommandation";
 }
 
 /**
@@ -95,7 +109,8 @@ export const POSTS_PER_PAGE = 20;
 
 export interface StreetPost {
   id: number;
-  type: PostType;
+  /** Jamais "recommandation" (cf. `listStreetPosts`, qui l'exclut toujours en base). */
+  type: FilPostType;
   content: string;
   createdAt: Date;
   authorId: number;
@@ -104,8 +119,8 @@ export interface StreetPost {
 
 export interface ListStreetPostsInput {
   streetId: number;
-  /** Filtre optionnel par type ; toutes les demandes si absent. */
-  type?: PostType;
+  /** Filtre optionnel par type ; les trois types de /fil si absent. */
+  type?: FilPostType;
   /** Page 1-indexée. */
   page: number;
   /** N'est là que pour les tests (déterministe) ; sinon l'instant courant. */
@@ -126,7 +141,10 @@ export interface ListStreetPostsResult {
  * seule »). Filtrable par type, paginé. Les demandes expirées (cf. backlog
  * « le fil ne se remplisse pas de demandes mortes ») sont exclues ;
  * `expiresAt` nul (demandes publiées avant l'ajout de cette fonctionnalité)
- * reste visible indéfiniment.
+ * reste visible indéfiniment. Les demandes de recommandation sont toujours
+ * exclues (`ne(post.type, "recommandation")`, même sans filtre `type`) :
+ * elles se lisent sur /recommandations, à l'échelle de la ville — sinon un
+ * habitant les verrait deux fois, ici pour sa rue et là pour sa ville.
  */
 export async function listStreetPosts(
   input: ListStreetPostsInput,
@@ -136,6 +154,7 @@ export async function listStreetPosts(
     eq(house.streetId, input.streetId),
     isNull(post.deletedAt),
     or(isNull(post.expiresAt), gt(post.expiresAt, now)),
+    ne(post.type, "recommandation"),
     input.type ? eq(post.type, input.type) : undefined,
   );
 
@@ -167,7 +186,11 @@ export async function listStreetPosts(
     .limit(POSTS_PER_PAGE)
     .offset((page - 1) * POSTS_PER_PAGE);
 
-  return { posts: rows, totalCount, totalPages, page };
+  // `rows[].type` est typé `PostType` par Drizzle (colonne `post.type`, les
+  // quatre valeurs), mais `where` exclut toujours "recommandation" : le
+  // rétrécir à `FilPostType` documente cette garantie plutôt que de
+  // l'exposer aux appelants (cf. commentaire de `listStreetPosts`).
+  return { posts: rows as StreetPost[], totalCount, totalPages, page };
 }
 
 export interface PostSummary {
@@ -176,13 +199,17 @@ export interface PostSummary {
   content: string;
   authorId: number;
   streetId: number;
+  /** Ville de l'auteur — sert à vérifier une réponse à une recommandation (cf. routes/reponses.ts), portée city plutôt que street pour ce seul type. */
+  cityId: number;
 }
 
 /**
- * Aperçu léger d'une demande (avec la rue de son auteur), pour donner du
- * contexte à un message privé démarré depuis un bouton sur cette demande
- * (cf. backlog messagerie privée) — sans passer par `listStreetPosts`, pas
- * fait pour n'en récupérer qu'une seule.
+ * Aperçu léger d'une demande (avec la rue et la ville de son auteur), pour
+ * donner du contexte à un message privé démarré depuis un bouton sur cette
+ * demande (cf. backlog messagerie privée) ou vérifier une réponse à une
+ * recommandation (cf. routes/reponses.ts) — sans passer par
+ * `listStreetPosts`/`listCityRecommendations`, pas faites pour n'en
+ * récupérer qu'une seule.
  */
 export async function getPostSummary(
   postId: number,
@@ -193,10 +220,87 @@ export async function getPostSummary(
     content: post.content,
     authorId: user.id,
     streetId: house.streetId,
+    cityId: street.cityId,
   })
     .from(post)
     .innerJoin(user, eq(post.userId, user.id))
     .innerJoin(house, eq(user.houseId, house.id))
+    .innerJoin(street, eq(house.streetId, street.id))
     .where(and(eq(post.id, postId), isNull(post.deletedAt)));
   return found ?? null;
+}
+
+export interface CityRecommendationPost {
+  id: number;
+  content: string;
+  createdAt: Date;
+  authorId: number;
+  authorLogin: string;
+  /** Affichée sur la vignette : à l'échelle d'une ville, préciser la rue de l'auteur donne un repère utile (cf. backlog). */
+  authorStreetName: string;
+}
+
+export interface ListCityRecommendationsInput {
+  cityId: number;
+  /** Page 1-indexée. */
+  page: number;
+  /** N'est là que pour les tests (déterministe) ; sinon l'instant courant. */
+  now?: Date;
+}
+
+export interface ListCityRecommendationsResult {
+  posts: CityRecommendationPost[];
+  totalCount: number;
+  totalPages: number;
+  /** Page réellement servie (`input.page` ramenée dans `[1, totalPages]`). */
+  page: number;
+}
+
+/**
+ * Demandes de recommandation (plus récentes d'abord) de toute une ville —
+ * seul type de demande qui dépasse la rue de son auteur (cf. schema.ts :
+ * une seule rue est un bassin trop petit pour connaître un bon artisan).
+ * Mêmes règles d'expiration que `listStreetPosts`.
+ */
+export async function listCityRecommendations(
+  input: ListCityRecommendationsInput,
+): Promise<ListCityRecommendationsResult> {
+  const now = input.now ?? new Date();
+  const where = and(
+    eq(street.cityId, input.cityId),
+    eq(post.type, "recommandation"),
+    isNull(post.deletedAt),
+    or(isNull(post.expiresAt), gt(post.expiresAt, now)),
+  );
+
+  const [{ value: totalCount }] = await db.select({ value: count() })
+    .from(post)
+    .innerJoin(user, eq(post.userId, user.id))
+    .innerJoin(house, eq(user.houseId, house.id))
+    .innerJoin(street, eq(house.streetId, street.id))
+    .where(where);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / POSTS_PER_PAGE));
+  const page = Math.min(Math.max(1, input.page), totalPages);
+
+  const rows = await db.select({
+    id: post.id,
+    content: post.content,
+    createdAt: post.createdAt,
+    authorId: user.id,
+    authorLogin: user.login,
+    authorStreetName: street.name,
+  })
+    .from(post)
+    .innerJoin(user, eq(post.userId, user.id))
+    .innerJoin(house, eq(user.houseId, house.id))
+    .innerJoin(street, eq(house.streetId, street.id))
+    .where(where)
+    // `id` en second critère : cf. `listStreetPosts`, même raison (ordre
+    // stable entre deux pages malgré des demandes créées à la même seconde).
+    .orderBy(desc(post.createdAt), desc(post.id))
+    .limit(POSTS_PER_PAGE)
+    .offset((page - 1) * POSTS_PER_PAGE);
+
+  return { posts: rows, totalCount, totalPages, page };
 }

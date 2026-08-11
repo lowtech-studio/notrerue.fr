@@ -13,7 +13,17 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const postType = pgEnum("post_type", ["cherche", "propose", "informe"]);
+// "recommandation" : demande visible à l'échelle de la ville plutôt que de
+// la seule rue de l'auteur (cf. backlog « recommandation locale... afin
+// d'obtenir une réponse de confiance plutôt qu'un avis Google » — une seule
+// rue est un bassin trop petit pour connaître un bon artisan). Répondue par
+// des `comment` publics (contrairement aux trois autres types, qui se
+// répondent par tap + message privé) : la réponse elle-même doit rester
+// visible aux prochains habitants qui posent la même question.
+export const postType = pgEnum(
+  "post_type",
+  ["cherche", "propose", "informe", "recommandation"],
+);
 
 export const city = pgTable("city", {
   id: serial("id").primaryKey(),

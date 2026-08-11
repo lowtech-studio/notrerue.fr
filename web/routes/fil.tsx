@@ -7,14 +7,14 @@ import { getStreetHousesStatus } from "../db/streets.ts";
 import {
   computeExpiresAt,
   createPost,
+  type FilPostType,
+  isFilPostType,
   isPostDuration,
-  isPostType,
   listStreetPosts,
   MAX_POST_CONTENT_LENGTH,
   MAX_POST_DURATION_MONTHS,
   MIN_POST_DURATION_MONTHS,
   type PostDuration,
-  type PostType,
   type StreetPost,
 } from "../db/posts.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
@@ -26,12 +26,12 @@ import {
 } from "../db/taps.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
 
-const POST_TYPE_LABELS: Record<PostType, string> = {
+const POST_TYPE_LABELS: Record<FilPostType, string> = {
   cherche: "Je cherche",
   propose: "Je propose",
   informe: "J'informe",
 };
-const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
+const POST_TYPES = Object.keys(POST_TYPE_LABELS) as FilPostType[];
 
 /** Libellés des durées fixes — "months" a son propre rendu (select du nombre de mois). */
 const POST_DURATION_LABELS: Record<"today" | "week", string> = {
@@ -44,7 +44,7 @@ const POST_DURATION_MONTHS_OPTIONS = Array.from(
 );
 
 /** Libellé du bouton de réponse en un clic, selon le type de la demande (cf. backlog). */
-const TAP_LABELS: Record<PostType, string> = {
+const TAP_LABELS: Record<FilPostType, string> = {
   cherche: "J'ai",
   propose: "Intéressé",
   informe: "👍",
@@ -93,11 +93,11 @@ interface FilData {
   posts: FilPost[];
   page: number;
   totalPages: number;
-  activeType: PostType | null;
+  activeType: FilPostType | null;
   postError: string | null;
   postPublished: boolean;
   /** Valeurs re-soumises telles quelles si la publication échoue. */
-  postType: PostType;
+  postType: FilPostType;
   postContent: string;
   postDuration: PostDuration;
   postDurationMonths: number;
@@ -108,8 +108,8 @@ function parsePage(raw: string | null): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function parseType(raw: string | null): PostType | null {
-  return raw && isPostType(raw) ? raw : null;
+function parseType(raw: string | null): FilPostType | null {
+  return raw && isFilPostType(raw) ? raw : null;
 }
 
 /** Nombre de mois saisi pour la durée "months" ; borné à l'affichage (le clampage définitif est dans `computeExpiresAt`). */
@@ -168,7 +168,7 @@ export const handler = define.handlers({
 
     const form = await ctx.req.formData();
     const rawType = String(form.get("type") ?? "");
-    const postType: PostType = isPostType(rawType) ? rawType : "cherche";
+    const postType: FilPostType = isFilPostType(rawType) ? rawType : "cherche";
     const rawDuration = String(form.get("duration") ?? "");
     const postDuration: PostDuration = isPostDuration(rawDuration)
       ? rawDuration
@@ -182,7 +182,7 @@ export const handler = define.handlers({
     );
 
     if (
-      isPostType(rawType) && isPostDuration(rawDuration) && content &&
+      isFilPostType(rawType) && isPostDuration(rawDuration) && content &&
       !containsBlockedContent(content)
     ) {
       const expiresAt = computeExpiresAt(postDuration, postDurationMonths);
@@ -193,7 +193,7 @@ export const handler = define.handlers({
     // Erreur : on réaffiche le fil (première page, sans filtre) avec le
     // message d'erreur et le brouillon tapé, plutôt qu'une redirection —
     // même logique que /rejoindre et /inviter.
-    const error = !isPostType(rawType) || !isPostDuration(rawDuration) ||
+    const error = !isFilPostType(rawType) || !isPostDuration(rawDuration) ||
         !content
       ? "Merci de choisir un type, une durée et d'écrire votre demande."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
@@ -222,11 +222,11 @@ export const handler = define.handlers({
   },
 });
 
-function filterHref(type: PostType | null): string {
+function filterHref(type: FilPostType | null): string {
   return type ? `/fil?type=${type}` : "/fil";
 }
 
-function pageHref(activeType: PostType | null, page: number): string {
+function pageHref(activeType: FilPostType | null, page: number): string {
   const params = new URLSearchParams();
   if (activeType) params.set("type", activeType);
   if (page > 1) params.set("page", String(page));

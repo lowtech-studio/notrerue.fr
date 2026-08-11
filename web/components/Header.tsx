@@ -32,6 +32,9 @@ export function Header({ user, isStreetAwake }: HeaderProps = {}) {
                   <a href="/fil" class="site-header__link">
                     Le fil de ma rue
                   </a>
+                  <a href="/recommandations" class="site-header__link">
+                    Recommandations
+                  </a>
                   <a href="/messages" class="site-header__link">
                     Mes messages
                   </a>

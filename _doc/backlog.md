@@ -14,20 +14,17 @@
 - [*] Revoir le style de la liste des messages et en profiter pour découper un fichier de style par page + un fichier commun pour limiter la bande passante utilisée
 - [*] En tant qu'habitant connecté d'une rue  allumée, je veux inviter des voisins via Email, Whatsapps ou kit papier avec QRcode et un petit texte à imprimer
 - [*] En tant qu'habitant connecté d'une rue allumée, je veux choisir la durée de validité de ma demande (aujourd'hui / cette semaine / x mois) à chaque publication, afin que le fil ne se remplisse pas de demandes mortes.
-- [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco conception et la cybersécurité
-
 - [*] En tant que voisin disponible, je veux répondre en un clic/tap (si type "Je cherche" => bouton "J'ai"/ "Je propose" => bouton "Intéressé"/ J'informe => bouton "emoji pouce") avant même d'écrire pour rendre un service, afin que rendre service soit plus facile que scroller.
-- [ ] En tant qu'habitant, je veux un autocollant QR pour ma boîte aux lettres et que le kit papier puisse faire 3 invitations sur un A4 avec des petit pointillé pour découper
+- [*] En tant qu'habitant connecté d'une rue allumée, je veux un autocollant QR pour ma boîte aux lettres et que le kit papier puisse faire 3 invitations sur un A4 avec des petit pointillé pour découper
 - [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu
-
-- [ ] En tant qu'habitant connecté, je veux demander une recommandation locale (artisan, dentiste qui prend des patients, garde), afin d'obtenir une réponse de confiance plutôt qu'un avis Google.
+- [*] En tant qu'habitant connecté, je veux demander une recommandation au niveau de ma ville(artisan, dentiste qui prend des patients, ...), afin d'obtenir une réponse de confiance plutôt qu'un avis Google.
 - [ ] En tant qu'habitant connecté, je veux retrouver les recommandations déjà données dans ma rue, afin de ne pas reposer une question résolue.
 - [ ] En tant qu'habitant connecté, je veux une seule notification mail par semaine par défaut, afin de ne pas désinstaller.
 - [ ] En tant que voisin en difficulté, je veux publier une demande urgente qui notifie immédiatement toute la rue, limitée à une par foyer et par mois, afin que l'urgence reste rare et crédible.
-
 - [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.
 - [ ] En tant que demandeur, je veux être notifié immédiatement quand quelqu'un répond, car c'est la seule notification qui mérite d'interrompre.
 - [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier).
+- [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco conception et la cybersécurité
 
 ## V0.1
 

@@ -224,28 +224,67 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
                 <span>ou</span>
               </p>
 
-              <PrintButton class="button button--secondary no-print">
-                <PrinterIcon /> Imprimer le kit papier
+              <PrintButton
+                class="button button--secondary no-print"
+                target="kit"
+              >
+                <PrinterIcon /> Imprimer le kit papier (3 invitations)
+              </PrintButton>
+
+              <p class="invite-actions__divider">
+                <span>ou</span>
+              </p>
+
+              <PrintButton
+                class="button button--secondary no-print"
+                target="sticker"
+              >
+                <PrinterIcon /> Imprimer l'autocollant boîte aux lettres
               </PrintButton>
             </div>
           </div>
 
-          <div class="kit-flyer">
-            <p class="kit-flyer__eyebrow no-print">
-              Kit papier — à imprimer et déposer dans les boîtes aux lettres
+          <div class="kit-sheet">
+            <p class="kit-sheet__eyebrow no-print">
+              Kit papier — 3 invitations sur une page A4, à découper sur les
+              pointillés et déposer dans les boîtes aux lettres
             </p>
-            <QrCode value={joinUrl} cellSize={7} class="kit-flyer__qr" />
-            <p class="kit-flyer__text">
-              👋 Bonjour voisin·e,{"\n\n"}
-              On lance NotreRue.fr sur la {streetName}{" "}
-              : un espace privé pour s'entraider entre voisins (partage, coup de
-              main, bons plans), sans réseau social ni publicité.{"\n\n"}
-              Scannez ce QR code pour nous rejoindre, ou tapez :
+            <div class="kit-sheet__grid">
+              {[0, 1, 2].map((i) => (
+                <div class="invite-flyer" key={i}>
+                  <QrCode
+                    value={joinUrl}
+                    cellSize={5}
+                    class="invite-flyer__qr"
+                  />
+                  <p class="invite-flyer__text">
+                    👋 Bonjour voisin·e,{"\n\n"}
+                    On lance NotreRue.fr sur la {streetName}{" "}
+                    : un espace privé pour s'entraider entre voisins (partage,
+                    coup de main, bons plans), sans réseau social ni
+                    publicité.{"\n\n"}
+                    Scannez ce QR code pour nous rejoindre, ou tapez :
+                  </p>
+                  <p class="invite-flyer__url">{joinUrl}</p>
+                  <p class="invite-flyer__signature">
+                    — Vos voisins de la {streetName}, {cityName}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="sticker-sheet">
+            <p class="sticker-sheet__eyebrow no-print">
+              Autocollant boîte aux lettres — à découper sur les pointillés
             </p>
-            <p class="kit-flyer__url">{joinUrl}</p>
-            <p class="kit-flyer__signature">
-              — Vos voisins de la {streetName}, {cityName}
-            </p>
+            <div class="sticker">
+              <QrCode value={joinUrl} cellSize={5} class="sticker__qr" />
+              <p class="sticker__text">
+                👋 Cette maison s'entraide avec ses voisins sur NotreRue.fr
+              </p>
+              <p class="sticker__url">{joinUrl}</p>
+            </div>
           </div>
         </section>
       </main>

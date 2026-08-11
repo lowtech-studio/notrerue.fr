@@ -3,6 +3,13 @@ import type { ComponentChildren } from "preact";
 interface PrintButtonProps {
   children: ComponentChildren;
   class?: string;
+  /**
+   * Quand la page imprimable contient plusieurs feuilles distinctes (kit
+   * papier / autocollant sur /inviter), indique laquelle imprimer via
+   * `data-print-target` sur `<body>` : le CSS `@media print` masque les
+   * autres feuilles. Omis si la page n'a qu'un seul contenu imprimable.
+   */
+  target?: string;
 }
 
 /**
@@ -11,13 +18,16 @@ interface PrintButtonProps {
  * liens, servis même sans JavaScript.
  */
 export default function PrintButton(
-  { children, class: className }: PrintButtonProps,
+  { children, class: className, target }: PrintButtonProps,
 ) {
   return (
     <button
       type="button"
       class={className}
-      onClick={() => globalThis.print()}
+      onClick={() => {
+        if (target) document.body.dataset.printTarget = target;
+        globalThis.print();
+      }}
     >
       {children}
     </button>
