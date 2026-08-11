@@ -1,0 +1,1 @@
+ALTER TABLE "post" ADD COLUMN "expires_at" timestamp with time zone;

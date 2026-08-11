@@ -7,6 +7,7 @@ import { house, post, tap, user } from "../db/schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
 import { toggleTap } from "../db/taps.ts";
+import { createPost, MIN_POST_DURATION_MONTHS } from "../db/posts.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
 import { handler } from "./fil.tsx";
 
@@ -172,6 +173,7 @@ Deno.test("GET /fil : ?type=propose → ne filtre que ce type", async () => {
         form: (() => {
           const form = new FormData();
           form.set("type", "cherche");
+          form.set("duration", "week");
           form.set("content", "Je cherche une perceuse");
           return form;
         })(),
@@ -183,6 +185,7 @@ Deno.test("GET /fil : ?type=propose → ne filtre que ce type", async () => {
         form: (() => {
           const form = new FormData();
           form.set("type", "propose");
+          form.set("duration", "week");
           form.set("content", "Je prête ma tondeuse");
           return form;
         })(),
@@ -258,7 +261,7 @@ Deno.test("POST /fil : contenu vide ou type invalide → erreur, rien en base", 
 
     assertEquals(
       result.data.postError,
-      "Merci de choisir un type et d'écrire votre demande.",
+      "Merci de choisir un type, une durée et d'écrire votre demande.",
     );
 
     const posts = await db.select().from(post).where(
@@ -276,6 +279,7 @@ Deno.test("POST /fil : message agressif → bloqué, rien en base", async () => 
   try {
     const form = new FormData();
     form.set("type", "informe");
+    form.set("duration", "week");
     form.set("content", "Bande de connard, dégagez de ma rue");
 
     const result = await handler.POST!(
@@ -303,6 +307,7 @@ Deno.test("POST /fil : message valide → publié, redirection avec confirmation
   try {
     const form = new FormData();
     form.set("type", "propose");
+    form.set("duration", "week");
     form.set("content", "Je prête ma tondeuse ce week-end");
 
     const response = await handler.POST!(
@@ -333,6 +338,7 @@ Deno.test("GET /fil : tappers rempli (id + login) sur ses propres demandes, vide
   try {
     const publishForm = new FormData();
     publishForm.set("type", "cherche");
+    publishForm.set("duration", "week");
     publishForm.set("content", "Je cherche une perceuse");
     await handler.POST!(
       makeContext("http://localhost/fil", {
@@ -380,6 +386,127 @@ Deno.test("GET /fil : tappers rempli (id + login) sur ses propres demandes, vide
     await db.delete(tap).where(eq(tap.userId, tapper.id));
     await db.delete(user).where(eq(user.id, tapper.id));
     await db.delete(house).where(eq(house.id, tapper.houseId));
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test('GET /fil : durée par défaut "cette semaine" à l\'ouverture du formulaire', async () => {
+  const awake = await createAwakeStreetWithUser("fil-10");
+
+  try {
+    const result = await handler.GET!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser }),
+    ) as { data: { postDuration: string; postDurationMonths: number } };
+
+    assertEquals(result.data.postDuration, "week");
+    assertEquals(result.data.postDurationMonths, MIN_POST_DURATION_MONTHS);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("POST /fil : durée absente ou invalide → erreur mentionnant la durée, rien en base", async () => {
+  const awake = await createAwakeStreetWithUser("fil-11");
+
+  try {
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("content", "Je cherche une perceuse");
+    // Pas de "duration" du tout.
+
+    const result = await handler.POST!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser, form }),
+    ) as { data: { postError: string | null } };
+
+    assertStringIncludes(result.data.postError ?? "", "durée");
+
+    const posts = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+    assertEquals(posts.length, 0);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("POST /fil : erreur → durée et nombre de mois resoumis réaffichés", async () => {
+  const awake = await createAwakeStreetWithUser("fil-12");
+
+  try {
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("duration", "months");
+    form.set("durationMonths", "4");
+    form.set("content", ""); // contenu vide → erreur
+
+    const result = await handler.POST!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser, form }),
+    ) as { data: { postDuration: string; postDurationMonths: number } };
+
+    assertEquals(result.data.postDuration, "months");
+    assertEquals(result.data.postDurationMonths, 4);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test('POST /fil : durée "months" → expiresAt calculée avec le nombre de mois choisi', async () => {
+  const awake = await createAwakeStreetWithUser("fil-13");
+
+  try {
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("duration", "months");
+    form.set("durationMonths", "3");
+    form.set("content", "Je cherche une perceuse");
+
+    const before = new Date();
+    await handler.POST!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser, form }),
+    );
+    const after = new Date();
+
+    const [created] = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+    // ~3 mois : large tolérance (28-31 j/mois) plutôt que de recalculer la
+    // date exacte ici — ce détail est déjà couvert par les tests de
+    // `computeExpiresAt` dans db/posts_test.ts.
+    const minExpected = new Date(before.getTime() + 85 * 24 * 60 * 60 * 1000);
+    const maxExpected = new Date(after.getTime() + 95 * 24 * 60 * 60 * 1000);
+    assertEquals(created.expiresAt !== null, true);
+    assertEquals(created.expiresAt!.getTime() >= minExpected.getTime(), true);
+    assertEquals(created.expiresAt!.getTime() <= maxExpected.getTime(), true);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("GET /fil : une demande expirée n'apparaît plus dans le fil", async () => {
+  const awake = await createAwakeStreetWithUser("fil-14");
+
+  try {
+    const expired = await createPost({
+      userId: awake.created.id,
+      type: "cherche",
+      content: "Demande expirée",
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+    const stillValid = await createPost({
+      userId: awake.created.id,
+      type: "cherche",
+      content: "Demande encore valide",
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    const result = await handler.GET!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser }),
+    ) as { data: { posts: { id: number }[] } };
+
+    const ids = result.data.posts.map((p) => p.id);
+    assertEquals(ids.includes(expired.id), false);
+    assertEquals(ids.includes(stillValid.id), true);
+  } finally {
     await cleanupAwakeStreet(awake);
   }
 });

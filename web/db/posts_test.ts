@@ -3,9 +3,13 @@ import { eq } from "drizzle-orm";
 import { db } from "./client.ts";
 import { house, post, user } from "./schema.ts";
 import {
+  computeExpiresAt,
   createPost,
+  isPostDuration,
   isPostType,
   listStreetPosts,
+  MAX_POST_DURATION_MONTHS,
+  MIN_POST_DURATION_MONTHS,
   POSTS_PER_PAGE,
 } from "./posts.ts";
 import { registerInhabitant } from "./users.ts";
@@ -17,6 +21,54 @@ Deno.test("isPostType : accepte les trois valeurs de l'enum, rejette le reste", 
   assert(isPostType("informe"));
   assertFalse(isPostType("autre chose"));
   assertFalse(isPostType(""));
+});
+
+Deno.test("isPostDuration : accepte les trois durées, rejette le reste", () => {
+  assert(isPostDuration("today"));
+  assert(isPostDuration("week"));
+  assert(isPostDuration("months"));
+  assertFalse(isPostDuration("year"));
+  assertFalse(isPostDuration(""));
+});
+
+Deno.test("computeExpiresAt : durées fixes (today/week) depuis l'instant donné", () => {
+  const now = new Date("2026-01-01T10:00:00Z");
+
+  assertEquals(
+    computeExpiresAt("today", 1, now).toISOString(),
+    "2026-01-02T10:00:00.000Z",
+  );
+  assertEquals(
+    computeExpiresAt("week", 1, now).toISOString(),
+    "2026-01-08T10:00:00.000Z",
+  );
+});
+
+Deno.test('computeExpiresAt : "months" ajoute le nombre de mois donné', () => {
+  const now = new Date("2026-01-15T10:00:00Z");
+  const expiresAt = computeExpiresAt("months", 3, now);
+
+  // Comparé en champs locaux plutôt qu'en ISO/UTC : `setMonth` (heure locale
+  // inchangée) traverse ici un passage à l'heure d'été, qui décale
+  // l'instant UTC équivalent d'une heure — pas un bug, l'heure du jour
+  // perçue par l'habitant reste la même.
+  assertEquals(expiresAt.getFullYear(), 2026);
+  assertEquals(expiresAt.getMonth(), 3); // avril (0-indexé)
+  assertEquals(expiresAt.getDate(), now.getDate());
+  assertEquals(expiresAt.getHours(), now.getHours());
+});
+
+Deno.test('computeExpiresAt : "months" plafonne un nombre hors bornes', () => {
+  const now = new Date("2026-01-15T10:00:00Z");
+
+  assertEquals(
+    computeExpiresAt("months", 0, now).toISOString(),
+    computeExpiresAt("months", MIN_POST_DURATION_MONTHS, now).toISOString(),
+  );
+  assertEquals(
+    computeExpiresAt("months", 99, now).toISOString(),
+    computeExpiresAt("months", MAX_POST_DURATION_MONTHS, now).toISOString(),
+  );
 });
 
 Deno.test("createPost : enregistre le type et le contenu pour l'auteur donné", async () => {
@@ -134,6 +186,58 @@ Deno.test("listStreetPosts : filtre par type", async () => {
 
     assertEquals(result.totalCount, 1);
     assertEquals(result.posts.map((p) => p.id), [proposed.id]);
+  } finally {
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("listStreetPosts : exclut les demandes expirées, garde celles sans expiresAt", async () => {
+  const testStreet = await createTestStreet("posts-5");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const now = new Date();
+  const past = new Date(now.getTime() - 60_000);
+  const future = new Date(now.getTime() + 60_000);
+
+  try {
+    const expired = await createPost({
+      userId: author.id,
+      type: "cherche",
+      content: "Demande expirée",
+      expiresAt: past,
+    });
+    const stillValid = await createPost({
+      userId: author.id,
+      type: "cherche",
+      content: "Demande encore valide",
+      expiresAt: future,
+    });
+    // `expiresAt` nul (demande publiée avant cette fonctionnalité) : reste
+    // visible indéfiniment plutôt que de disparaître rétroactivement.
+    const [legacy] = await db.insert(post).values({
+      userId: author.id,
+      type: "informe",
+      content: "Demande sans date d'expiration",
+      expiresAt: null,
+    }).returning();
+
+    const result = await listStreetPosts({
+      streetId: testStreet.testStreet.id,
+      page: 1,
+      now,
+    });
+
+    const ids = result.posts.map((p) => p.id);
+    assertEquals(ids.includes(expired.id), false);
+    assertEquals(ids.includes(stillValid.id), true);
+    assertEquals(ids.includes(legacy.id), true);
   } finally {
     await db.delete(post).where(eq(post.userId, author.id));
     await db.delete(user).where(eq(user.id, author.id));

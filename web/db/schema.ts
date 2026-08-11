@@ -110,6 +110,12 @@ export const post = pgTable("post", {
   // Tap à l'origine du post, le cas échéant.
   tapId: integer("tap_id").references((): AnyPgColumn => tap.id),
   type: postType("type").notNull(),
+  // Durée de validité choisie à la publication (cf. backlog « le fil ne se
+  // remplisse pas de demandes mortes ») : passé cette date, la demande n'est
+  // plus servie par `listStreetPosts`. Nullable pour les demandes publiées
+  // avant l'ajout de cette colonne — elles restent visibles indéfiniment
+  // plutôt que de disparaître rétroactivement.
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
 });
 
 export const comment = pgTable("comment", {

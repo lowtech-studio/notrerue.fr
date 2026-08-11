@@ -50,6 +50,22 @@
   background: var(--color-paper-warm);
 }
 
+/* Nombre de mois de la durée "x mois" : un <select> natif posé dans la
+   pilule de durée, sans son chrome par défaut pour se fondre dedans. */
+.compose-post__duration-select {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+}
+
+.compose-post__duration-select:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
 /* Filtres par type, liste chronologique, pagination. */
 .fil-filters {
   display: flex;

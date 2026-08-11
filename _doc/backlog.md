@@ -13,7 +13,7 @@
 - [*] Ajouter un picto enveloppe/mail à coté des noms des voisins pour envoyer un message à partir d'une demande
 - [*] Revoir le style de la liste des messages et en profiter pour découper un fichier de style par page + un fichier commun pour limiter la bande passante utilisée
 - [*] En tant qu'habitant connecté d'une rue  allumée, je veux inviter des voisins via Email, Whatsapps ou kit papier avec QRcode et un petit texte à imprimer
-- [ ] En tant qu'habitant connecté d'une rue allumée, je veux choisir la durée de validité de ma demande (aujourd'hui / cette semaine / x mois) à chaque publication, afin que le fil ne se remplisse pas de demandes mortes.
+- [*] En tant qu'habitant connecté d'une rue allumée, je veux choisir la durée de validité de ma demande (aujourd'hui / cette semaine / x mois) à chaque publication, afin que le fil ne se remplisse pas de demandes mortes.
 - [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco conception et la cybersécurité
 
 - [*] En tant que voisin disponible, je veux répondre en un clic/tap (si type "Je cherche" => bouton "J'ai"/ "Je propose" => bouton "Intéressé"/ J'informe => bouton "emoji pouce") avant même d'écrire pour rendre un service, afin que rendre service soit plus facile que scroller.

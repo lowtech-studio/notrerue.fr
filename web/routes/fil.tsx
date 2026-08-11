@@ -5,10 +5,15 @@ import { Header } from "../components/Header.tsx";
 import { MailIcon } from "../components/icons.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
 import {
+  computeExpiresAt,
   createPost,
+  isPostDuration,
   isPostType,
   listStreetPosts,
   MAX_POST_CONTENT_LENGTH,
+  MAX_POST_DURATION_MONTHS,
+  MIN_POST_DURATION_MONTHS,
+  type PostDuration,
   type PostType,
   type StreetPost,
 } from "../db/posts.ts";
@@ -27,6 +32,16 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
   informe: "J'informe",
 };
 const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
+
+/** Libellés des durées fixes — "months" a son propre rendu (select du nombre de mois). */
+const POST_DURATION_LABELS: Record<"today" | "week", string> = {
+  today: "Aujourd'hui",
+  week: "Cette semaine",
+};
+const POST_DURATION_MONTHS_OPTIONS = Array.from(
+  { length: MAX_POST_DURATION_MONTHS - MIN_POST_DURATION_MONTHS + 1 },
+  (_, i) => MIN_POST_DURATION_MONTHS + i,
+);
 
 /** Libellé du bouton de réponse en un clic, selon le type de la demande (cf. backlog). */
 const TAP_LABELS: Record<PostType, string> = {
@@ -84,6 +99,8 @@ interface FilData {
   /** Valeurs re-soumises telles quelles si la publication échoue. */
   postType: PostType;
   postContent: string;
+  postDuration: PostDuration;
+  postDurationMonths: number;
 }
 
 function parsePage(raw: string | null): number {
@@ -93,6 +110,16 @@ function parsePage(raw: string | null): number {
 
 function parseType(raw: string | null): PostType | null {
   return raw && isPostType(raw) ? raw : null;
+}
+
+/** Nombre de mois saisi pour la durée "months" ; borné à l'affichage (le clampage définitif est dans `computeExpiresAt`). */
+function parseDurationMonths(raw: FormDataEntryValue | null): number {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed)) return MIN_POST_DURATION_MONTHS;
+  return Math.min(
+    Math.max(parsed, MIN_POST_DURATION_MONTHS),
+    MAX_POST_DURATION_MONTHS,
+  );
 }
 
 export const handler = define.handlers({
@@ -126,6 +153,8 @@ export const handler = define.handlers({
         postPublished: ctx.url.searchParams.get("published") === "1",
         postType: "cherche",
         postContent: "",
+        postDuration: "week",
+        postDurationMonths: MIN_POST_DURATION_MONTHS,
       },
     };
   },
@@ -140,21 +169,33 @@ export const handler = define.handlers({
     const form = await ctx.req.formData();
     const rawType = String(form.get("type") ?? "");
     const postType: PostType = isPostType(rawType) ? rawType : "cherche";
+    const rawDuration = String(form.get("duration") ?? "");
+    const postDuration: PostDuration = isPostDuration(rawDuration)
+      ? rawDuration
+      : "week";
+    const postDurationMonths = parseDurationMonths(
+      form.get("durationMonths"),
+    );
     const content = String(form.get("content") ?? "").trim().slice(
       0,
       MAX_POST_CONTENT_LENGTH,
     );
 
-    if (isPostType(rawType) && content && !containsBlockedContent(content)) {
-      await createPost({ userId: user.id, type: postType, content });
+    if (
+      isPostType(rawType) && isPostDuration(rawDuration) && content &&
+      !containsBlockedContent(content)
+    ) {
+      const expiresAt = computeExpiresAt(postDuration, postDurationMonths);
+      await createPost({ userId: user.id, type: postType, content, expiresAt });
       return ctx.redirect("/fil?published=1");
     }
 
     // Erreur : on réaffiche le fil (première page, sans filtre) avec le
     // message d'erreur et le brouillon tapé, plutôt qu'une redirection —
     // même logique que /rejoindre et /inviter.
-    const error = !isPostType(rawType) || !content
-      ? "Merci de choisir un type et d'écrire votre demande."
+    const error = !isPostType(rawType) || !isPostDuration(rawDuration) ||
+        !content
+      ? "Merci de choisir un type, une durée et d'écrire votre demande."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
     const { posts: rawPosts, totalPages, page } = await listStreetPosts({
       streetId: user.street.id,
@@ -172,6 +213,8 @@ export const handler = define.handlers({
         activeType: null,
         postError: error,
         postPublished: false,
+        postDuration,
+        postDurationMonths,
         postType,
         postContent: content,
       },
@@ -203,6 +246,8 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     postPublished,
     postType,
     postContent,
+    postDuration,
+    postDurationMonths,
   } = data as FilData;
 
   return (
@@ -242,6 +287,48 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                     {POST_TYPE_LABELS[value]}
                   </label>
                 ))}
+              </div>
+
+              <div
+                class="compose-post__types"
+                role="radiogroup"
+                aria-label="Durée de validité de la demande"
+              >
+                {(["today", "week"] as const).map((value) => (
+                  <label key={value} class="compose-post__type">
+                    <input
+                      type="radio"
+                      name="duration"
+                      value={value}
+                      checked={postDuration === value}
+                    />
+                    {POST_DURATION_LABELS[value]}
+                  </label>
+                ))}
+                <label class="compose-post__type">
+                  <input
+                    type="radio"
+                    name="duration"
+                    value="months"
+                    checked={postDuration === "months"}
+                  />
+                  <select
+                    name="durationMonths"
+                    class="compose-post__duration-select"
+                    aria-label="Nombre de mois"
+                  >
+                    {POST_DURATION_MONTHS_OPTIONS.map((months) => (
+                      <option
+                        key={months}
+                        value={months}
+                        selected={months === postDurationMonths}
+                      >
+                        {months}
+                      </option>
+                    ))}
+                  </select>{" "}
+                  mois
+                </label>
               </div>
 
               <input
