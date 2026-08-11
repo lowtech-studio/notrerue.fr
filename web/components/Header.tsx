@@ -37,6 +37,15 @@ export function Header({ user, isStreetAwake }: HeaderProps = {}) {
                   </a>
                 </>
               )}
+              {
+                /* Toujours accessible, rue endormie ou allumée : la seule
+                  action possible tant qu'elle dort (cf. backlog), et celle
+                  qui la fait grandir une fois allumée (cf. backlog « rue
+                  allumée, inviter des voisins »). */
+              }
+              <a href="/inviter" class="site-header__link">
+                Inviter mes voisins
+              </a>
               <form
                 method="POST"
                 action="/deconnexion"

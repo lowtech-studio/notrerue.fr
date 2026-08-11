@@ -2,7 +2,9 @@
    assets/common.css pour le reste (en-tête, hero, boutons...). */
 
 /* Seule action offerte à un habitant connecté tant que sa rue n'est pas
-   allumée (cf. backlog). */
+   allumée (cf. backlog). Même largeur que le reste de la page (.page-wide,
+   70% centré et responsive) — pas de plafond propre, cohérent avec
+   .compose-post sur /fil ou .message-compose sur /messages. */
 .invite-actions {
   display: grid;
   gap: 16px;

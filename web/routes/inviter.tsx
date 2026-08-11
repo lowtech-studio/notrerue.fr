@@ -171,7 +171,7 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
         <Header user={state.user} isStreetAwake={state.isStreetAwake} />
       </div>
       <main>
-        <section class="container hero hero--single">
+        <section class="container hero hero--single page-wide">
           <div class="no-print">
             <h1 class="hero__title">Invitez vos voisins</h1>
             <p class="hero__subtitle">{buildSubtitle(streetName, status)}</p>
