@@ -98,6 +98,8 @@ interface FilData {
   /** Recherche active (URL `?q=`), `null` si aucune. */
   search: string | null;
   activeType: FilPostType | null;
+  /** URL courante (chemin + query) : filtre/page/recherche à restaurer après /modifier ou /supprimer. */
+  backPath: string;
   postError: string | null;
   postPublished: boolean;
   /** Valeurs re-soumises telles quelles si la publication échoue. */
@@ -163,6 +165,7 @@ export const handler = define.handlers({
         totalCount,
         search,
         activeType,
+        backPath: ctx.url.pathname + ctx.url.search,
         postError: null,
         postPublished: ctx.url.searchParams.get("published") === "1",
         postType: "cherche",
@@ -228,6 +231,7 @@ export const handler = define.handlers({
         totalCount,
         search: null,
         activeType: null,
+        backPath: "/fil",
         postError: error,
         postPublished: false,
         postDuration,
@@ -270,6 +274,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     totalCount,
     search,
     activeType,
+    backPath,
     postError,
     postPublished,
     postType,
@@ -446,6 +451,39 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   </span>
                 </div>
                 <p class="fil-post__content">{item.content}</p>
+
+                {
+                  /* Formulaire d'édition posé ici, à la place du contenu
+                    ci-dessus (masqué par CSS dès que la case ci-dessous est
+                    cochée) plutôt que replié sous les boutons Modifier/
+                    Supprimer — cf. retour utilisateur : le champ de saisie
+                    doit remplacer visuellement le texte, pas s'ajouter plus
+                    bas. Le déclencheur (case + libellé "Modifier") reste
+                    dans .fil-post__owner-actions, à côté de "Supprimer". */
+                }
+                {state.user && item.authorId === state.user.id && (
+                  <form
+                    method="POST"
+                    action="/modifier"
+                    class="fil-post__edit-form"
+                  >
+                    <input type="hidden" name="postId" value={item.id} />
+                    <input type="hidden" name="back" value={backPath} />
+                    <input
+                      type="text"
+                      name="content"
+                      class="lookup-form__input"
+                      maxlength={MAX_POST_CONTENT_LENGTH}
+                      value={item.content}
+                      autocomplete="off"
+                      required
+                    />
+                    <button type="submit" class="button button--secondary">
+                      Enregistrer
+                    </button>
+                  </form>
+                )}
+
                 <div class="fil-post__footer">
                   <p class="fil-post__author">{item.authorLogin}</p>
 
@@ -487,49 +525,109 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                     </div>
                   )}
 
-                  {state.user && item.authorId === state.user.id &&
-                    item.tappers.length > 0 && (
-                    <div class="fil-post__tappers">
-                      <span class="fil-post__tappers-label">
-                        {item.tappers.length} {TAP_LABELS[item.type]} :
-                      </span>
-                      {item.tappers.slice(0, TAPPERS_VISIBLE_LIMIT).map((
-                        tapper,
-                      ) => (
-                        <a
-                          key={tapper.id}
-                          href={`/messages?with=${tapper.id}&postId=${item.id}`}
-                          class="fil-post__tappers-link"
-                        >
-                          <MailIcon class="fil-post__mail-icon" />
-                          {tapper.login}
-                        </a>
-                      ))}
-                      {item.tappers.length > TAPPERS_VISIBLE_LIMIT && (
-                        <details class="fil-post__tappers-more">
-                          <summary class="fil-post__tappers-link">
-                            +{item.tappers.length - TAPPERS_VISIBLE_LIMIT}{" "}
-                            autres
-                          </summary>
-                          <div class="fil-post__tappers-more-list">
-                            {item.tappers.slice(TAPPERS_VISIBLE_LIMIT).map((
-                              tapper,
-                            ) => (
-                              <a
-                                key={tapper.id}
-                                href={`/messages?with=${tapper.id}&postId=${item.id}`}
-                                class="fil-post__tappers-link"
-                              >
-                                <MailIcon class="fil-post__mail-icon" />
-                                {tapper.login}
-                              </a>
-                            ))}
-                          </div>
-                        </details>
+                  {state.user && item.authorId === state.user.id && (
+                    <>
+                      {item.tappers.length > 0 && (
+                        <div class="fil-post__tappers">
+                          <span class="fil-post__tappers-label">
+                            {item.tappers.length} {TAP_LABELS[item.type]} :
+                          </span>
+                          {item.tappers.slice(0, TAPPERS_VISIBLE_LIMIT).map((
+                            tapper,
+                          ) => (
+                            <a
+                              key={tapper.id}
+                              href={`/messages?with=${tapper.id}&postId=${item.id}`}
+                              class="fil-post__tappers-link"
+                            >
+                              <MailIcon class="fil-post__mail-icon" />
+                              {tapper.login}
+                            </a>
+                          ))}
+                          {item.tappers.length > TAPPERS_VISIBLE_LIMIT && (
+                            <details class="fil-post__tappers-more">
+                              <summary class="fil-post__tappers-link">
+                                +{item.tappers.length -
+                                  TAPPERS_VISIBLE_LIMIT} autres
+                              </summary>
+                              <div class="fil-post__tappers-more-list">
+                                {item.tappers.slice(TAPPERS_VISIBLE_LIMIT).map(
+                                  (
+                                    tapper,
+                                  ) => (
+                                    <a
+                                      key={tapper.id}
+                                      href={`/messages?with=${tapper.id}&postId=${item.id}`}
+                                      class="fil-post__tappers-link"
+                                    >
+                                      <MailIcon class="fil-post__mail-icon" />
+                                      {tapper.login}
+                                    </a>
+                                  ),
+                                )}
+                              </div>
+                            </details>
+                          )}
+                        </div>
                       )}
-                    </div>
+
+                      {
+                        /* Corriger ou supprimer sa propre demande (cf.
+                          backlog « corriger des erreurs de saisie ») —
+                          jamais proposé sur la demande d'un autre. */
+                      }
+                      <div class="fil-post__owner-actions">
+                        <input
+                          type="checkbox"
+                          id={`fil-edit-toggle-${item.id}`}
+                          class="fil-post__edit-toggle"
+                        />
+                        <label
+                          for={`fil-edit-toggle-${item.id}`}
+                          class="fil-post__owner-link"
+                        >
+                          Modifier
+                        </label>
+
+                        <input
+                          type="checkbox"
+                          id={`fil-delete-toggle-${item.id}`}
+                          class="fil-post__delete-toggle"
+                        />
+                        <label
+                          for={`fil-delete-toggle-${item.id}`}
+                          class="fil-post__owner-link fil-post__owner-link--danger"
+                        >
+                          Supprimer
+                        </label>
+                      </div>
+                    </>
                   )}
                 </div>
+
+                {
+                  /* Confirmation de suppression : un bandeau posé en pleine
+                    largeur sous les actions (masqué par CSS tant que la case
+                    ci-dessus n'est pas cochée), plutôt qu'imbriqué dans le
+                    <details> "Supprimer" — qui l'écrasait à côté de
+                    "Modifier" en cas d'ouverture (cf. retour utilisateur). */
+                }
+                {state.user && item.authorId === state.user.id && (
+                  <form
+                    method="POST"
+                    action="/supprimer"
+                    class="fil-post__delete-form"
+                  >
+                    <input type="hidden" name="postId" value={item.id} />
+                    <input type="hidden" name="back" value={backPath} />
+                    <p class="fil-post__delete-confirm">
+                      Confirmer la suppression de cette demande ?
+                    </p>
+                    <button type="submit" class="button button--secondary">
+                      Oui, supprimer
+                    </button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>

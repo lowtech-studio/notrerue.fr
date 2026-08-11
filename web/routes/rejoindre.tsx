@@ -1,20 +1,22 @@
 import { Head } from "fresh/runtime";
-import postgres from "postgres";
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { findCityById } from "../db/cities.ts";
+import { isUniqueViolation } from "../db/errors.ts";
 import { findOrCreateStreet, getStreetAwakeningStatus } from "../db/streets.ts";
 import { findStreetUsers, registerInhabitant } from "../db/users.ts";
 import {
   sendLoginCodeEmail,
   sendStreetAwakeningEmail,
 } from "../email/brevo.ts";
-import { MAX_EMAIL_LENGTH } from "../utils/validation.ts";
+import {
+  MAX_EMAIL_LENGTH,
+  MAX_HOUSE_NUMBER_LENGTH,
+  MAX_LOGIN_LENGTH,
+} from "../utils/validation.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 
-const MAX_LOGIN_LENGTH = 40;
 const MAX_STREET_LENGTH = 80;
-const MAX_HOUSE_NUMBER_LENGTH = 10;
 const MAX_CITY_LABEL_LENGTH = 120;
 
 interface RejoindreData {
@@ -194,21 +196,19 @@ export const handler = define.handlers({
         }
       }
     } catch (error) {
-      if (error instanceof postgres.PostgresError && error.code === "23505") {
-        if (error.constraint_name === "user_login_unique") {
-          return {
-            data: { ...resubmitted, error: "Ce login est déjà utilisé." },
-          };
-        }
-        if (error.constraint_name === "user_email_unique") {
-          return {
-            data: {
-              ...resubmitted,
-              error:
-                "Cet e-mail est déjà inscrit. Connectez-vous avec le code reçu par e-mail.",
-            },
-          };
-        }
+      if (isUniqueViolation(error, "user_login_unique")) {
+        return {
+          data: { ...resubmitted, error: "Ce login est déjà utilisé." },
+        };
+      }
+      if (isUniqueViolation(error, "user_email_unique")) {
+        return {
+          data: {
+            ...resubmitted,
+            error:
+              "Cet e-mail est déjà inscrit. Connectez-vous avec le code reçu par e-mail.",
+          },
+        };
       }
       throw error;
     }

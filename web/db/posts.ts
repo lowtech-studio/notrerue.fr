@@ -119,6 +119,53 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
   return created;
 }
 
+/**
+ * Corrige le contenu d'une demande (cf. backlog « corriger des erreurs de
+ * saisie ») — seulement le texte, pas le type ni la durée : une coquille se
+ * corrige, une demande ne change pas de nature après coup. `null` si
+ * `postId` n'existe pas, n'appartient pas à `userId` ou est déjà supprimée
+ * (vérifié en base, pas seulement côté UI — cf. `toggleTap` pour la même
+ * précaution).
+ */
+export async function updatePostContent(
+  postId: number,
+  userId: number,
+  content: string,
+): Promise<Post | null> {
+  const [updated] = await db.update(post)
+    .set({ content })
+    .where(
+      and(eq(post.id, postId), eq(post.userId, userId), isNull(post.deletedAt)),
+    )
+    .returning();
+  return updated ?? null;
+}
+
+/**
+ * Supprime (soft delete) une demande — invisible dès lors partout
+ * (`listStreetPosts`/`listCityRecommendations`/`getPostSummary` filtrent
+ * déjà `isNull(post.deletedAt)`), sans effacer taps/commentaires déjà
+ * associés. Vrai seulement si une ligne appartenant à `userId` et pas déjà
+ * supprimée a été trouvée.
+ */
+export async function softDeletePost(
+  postId: number,
+  userId: number,
+): Promise<boolean> {
+  const updated = await db.update(post)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(eq(post.id, postId), eq(post.userId, userId), isNull(post.deletedAt)),
+    )
+    .returning({ id: post.id });
+  return updated.length > 0;
+}
+
+/** Page où se lit une demande selon son type — /recommandations pour les recommandations, /fil pour les trois autres (cf. schema.ts). */
+export function postListPath(type: PostType): "/fil" | "/recommandations" {
+  return type === "recommandation" ? "/recommandations" : "/fil";
+}
+
 /** Nombre de demandes affichées par page du fil (cf. backlog éco-conception : pagination plutôt que défilement infini). */
 export const POSTS_PER_PAGE = 20;
 

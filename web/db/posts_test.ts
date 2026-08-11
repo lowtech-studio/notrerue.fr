@@ -12,7 +12,10 @@ import {
   listStreetPosts,
   MAX_POST_DURATION_MONTHS,
   MIN_POST_DURATION_MONTHS,
+  postListPath,
   POSTS_PER_PAGE,
+  softDeletePost,
+  updatePostContent,
 } from "./posts.ts";
 import { createComment } from "./comments.ts";
 import { registerInhabitant } from "./users.ts";
@@ -621,6 +624,121 @@ Deno.test("listCityRecommendations : recherche sans résultat → liste vide, pa
     await db.delete(post).where(eq(post.userId, author.id));
     await db.delete(user).where(eq(user.id, author.id));
     await db.delete(house).where(eq(house.id, author.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("postListPath : /recommandations pour une recommandation, /fil pour le reste", () => {
+  assertEquals(postListPath("recommandation"), "/recommandations");
+  assertEquals(postListPath("cherche"), "/fil");
+  assertEquals(postListPath("propose"), "/fil");
+  assertEquals(postListPath("informe"), "/fil");
+});
+
+Deno.test("updatePostContent : corrige le contenu du propriétaire, ignore un autre utilisateur ou une demande supprimée", async () => {
+  const testStreet = await createTestStreet("posts-edit-1");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-edit-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const { user: other } = await registerInhabitant({
+    login: `login-o-${crypto.randomUUID()}`,
+    email: `posts-edit-o-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    const created = await createPost({
+      userId: author.id,
+      type: "cherche",
+      content: "Je cherche une perceuse",
+    });
+
+    // Un autre utilisateur ne peut rien corriger.
+    const byOther = await updatePostContent(created.id, other.id, "Piraté");
+    assertEquals(byOther, null);
+
+    const updated = await updatePostContent(
+      created.id,
+      author.id,
+      "Je cherche une perceuse à percussion",
+    );
+    assertEquals(updated?.content, "Je cherche une perceuse à percussion");
+
+    const [reloaded] = await db.select().from(post).where(
+      eq(post.id, created.id),
+    );
+    assertEquals(reloaded.content, "Je cherche une perceuse à percussion");
+
+    // Une fois supprimée, plus rien à corriger.
+    await db.update(post).set({ deletedAt: new Date() }).where(
+      eq(post.id, created.id),
+    );
+    const afterDelete = await updatePostContent(
+      created.id,
+      author.id,
+      "Trop tard",
+    );
+    assertEquals(afterDelete, null);
+  } finally {
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(user).where(eq(user.id, other.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await db.delete(house).where(eq(house.id, other.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("softDeletePost : supprime la demande du propriétaire, ignore un autre utilisateur, idempotent", async () => {
+  const testStreet = await createTestStreet("posts-delete-1");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-delete-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const { user: other } = await registerInhabitant({
+    login: `login-o-${crypto.randomUUID()}`,
+    email: `posts-delete-o-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    const created = await createPost({
+      userId: author.id,
+      type: "cherche",
+      content: "Je cherche une perceuse",
+    });
+
+    // Un autre utilisateur ne peut rien supprimer.
+    assertEquals(await softDeletePost(created.id, other.id), false);
+
+    assertEquals(await softDeletePost(created.id, author.id), true);
+    const [reloaded] = await db.select().from(post).where(
+      eq(post.id, created.id),
+    );
+    assertEquals(reloaded.deletedAt !== null, true);
+
+    // Déjà supprimée : un second appel ne fait rien (pas d'erreur).
+    assertEquals(await softDeletePost(created.id, author.id), false);
+
+    // Invisible du fil de sa rue une fois supprimée.
+    const result = await listStreetPosts({
+      streetId: testStreet.testStreet.id,
+      page: 1,
+    });
+    assertEquals(result.posts.map((p) => p.id).includes(created.id), false);
+  } finally {
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(user).where(eq(user.id, other.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await db.delete(house).where(eq(house.id, other.houseId));
     await cleanupTestStreet(testStreet);
   }
 });

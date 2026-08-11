@@ -10,6 +10,12 @@ export interface SessionUser {
     name: string;
     city: { id: number; name: string };
   };
+  /**
+   * Numéro du foyer (facultatif, cf. /rejoindre), affiché/modifiable sur
+   * /profil — optionnel ici pour ne pas casser les `SessionUser` construits
+   * à la main dans les tests qui ne le renseignent pas.
+   */
+  houseNumber?: string | null;
 }
 
 // This specifies the type of "ctx.state" which is used to share

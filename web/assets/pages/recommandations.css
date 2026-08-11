@@ -144,6 +144,97 @@
   color: var(--color-ink-soft);
 }
 
+/* Modifier/supprimer sa propre demande (cf. backlog « corriger des erreurs
+   de saisie ») — jamais affiché sur la demande d'un autre. Même gabarit
+   que .fil-post__owner-actions sur /fil (cf. assets/pages/fil.css) : deux
+   bascules "case à cocher masquée + pilule" plutôt que des <details>. */
+.reco-post__owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.reco-post__edit-toggle,
+.reco-post__delete-toggle {
+  display: none;
+}
+
+/* Pilule discrète, même gabarit que .fil-post__owner-link sur /fil. */
+.reco-post__owner-link {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  background: var(--color-paper);
+}
+
+.reco-post__owner-link:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.reco-post__owner-link--danger:hover {
+  border-color: var(--color-brand-hover);
+  color: var(--color-brand-hover);
+}
+
+.reco-post__edit-toggle:checked + .reco-post__owner-link,
+.reco-post__delete-toggle:checked + .reco-post__owner-link {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
+.reco-post:has(.reco-post__edit-toggle:checked) > .reco-post__content {
+  display: none;
+}
+
+.reco-post__edit-form {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.reco-post:has(.reco-post__edit-toggle:checked) > .reco-post__edit-form {
+  display: flex;
+}
+
+/* Confirmation de suppression : un bandeau teinté en pleine largeur, sous
+   les pilules Modifier/Supprimer plutôt qu'imbriqué dedans (cf. plus haut). */
+.reco-post__delete-form {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(154, 63, 18, 0.08);
+}
+
+.reco-post:has(.reco-post__delete-toggle:checked) > .reco-post__delete-form {
+  display: flex;
+}
+
+.reco-post__edit-form .lookup-form__input {
+  flex: 1 1 240px;
+}
+
+.reco-post__delete-confirm {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-ink-soft);
+}
+
 /* Réponses déjà données — publiques et cumulatives (cf. backlog « retrouver
    les recommandations déjà données ») : à la différence des tapeurs de
    /fil, jamais réservées à l'auteur de la demande. */

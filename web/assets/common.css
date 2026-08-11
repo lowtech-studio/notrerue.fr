@@ -185,6 +185,160 @@ button.site-header__link {
   margin: 0;
 }
 
+/* "Mes messages", à côté de l'avatar de compte : icône seule (enveloppe),
+   même gabarit rond que .account-menu__avatar pour rester aligné avec lui. */
+.site-header__icon-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--color-ink-soft);
+}
+
+.site-header__icon-link:hover {
+  background: var(--color-paper-warm);
+  color: var(--color-brand);
+}
+
+.site-header__icon-link-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Menu de compte (avatar + panneau) : <details> natif, même logique sans JS
+   que le reste du site (cf. .fil-post__tappers-more, .fil-post__edit-toggle
+   sur /fil). Remplace l'ancien bouton "Déconnexion" isolé dans la nav. */
+.account-menu {
+  position: relative;
+}
+
+.account-menu__trigger {
+  display: flex;
+  cursor: pointer;
+  list-style: none;
+}
+
+.account-menu__trigger::-webkit-details-marker {
+  display: none;
+}
+
+.account-menu__avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: var(--color-paper-warm);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-menu__trigger:hover .account-menu__avatar {
+  background: var(--color-brand-hover);
+}
+
+.account-menu[open] .account-menu__trigger .account-menu__avatar {
+  box-shadow: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-brand);
+}
+
+.account-menu__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  width: 260px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+  box-shadow: 0 8px 24px rgba(27, 26, 23, 0.12);
+}
+
+.account-menu__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.account-menu__avatar--large {
+  width: 44px;
+  height: 44px;
+  font-size: 15px;
+}
+
+.account-menu__login {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.account-menu__email {
+  display: block;
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  word-break: break-all;
+}
+
+.account-menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-menu__item:hover {
+  background: var(--color-paper-warm);
+}
+
+.account-menu__item-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-ink-muted);
+}
+
+.account-menu__item--danger {
+  color: var(--color-brand-hover);
+}
+
+.account-menu__item--danger .account-menu__item-icon {
+  color: inherit;
+}
+
+.account-menu__form {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 480px) {
+  .account-menu__panel {
+    width: 220px;
+    right: -8px;
+  }
+}
+
 /* Coquille du hero, commune à toutes les pages (accueil en deux colonnes,
    /fil /messages /connexion /rejoindre /inviter en une seule via
    .hero--single). Le contenu propre à chaque page (cartes, listes...) est

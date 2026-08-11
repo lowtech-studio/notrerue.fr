@@ -216,5 +216,37 @@ export async function findSessionUserById(
         name: found.house.street.city.name,
       },
     },
+    houseNumber: found.house.number,
   };
+}
+
+export interface UpdateUserProfileInput {
+  login: string;
+  houseNumber: string | null;
+}
+
+/**
+ * Modifie le login et le numéro de foyer d'un habitant depuis /profil — pas
+ * l'e-mail (identifiant de connexion, affiché en lecture seule) ni la
+ * rue/ville (rattacher un compte à une autre rue a des implications sur le
+ * statut d'ambassadeur, hors scope ici). Laisse l'appelant traduire la
+ * violation d'unicité du login (`user_login_unique`, cf. registerInhabitant)
+ * en message pour l'utilisateur.
+ */
+export async function updateUserProfile(
+  userId: number,
+  input: UpdateUserProfileInput,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [existing] = await tx.select({ houseId: user.houseId }).from(user)
+      .where(eq(user.id, userId));
+    if (!existing) return;
+
+    await tx.update(user).set({ login: input.login }).where(
+      eq(user.id, userId),
+    );
+    await tx.update(house).set({ number: input.houseNumber }).where(
+      eq(house.id, existing.houseId),
+    );
+  });
 }

@@ -5,6 +5,14 @@
  */
 export const MAX_EMAIL_LENGTH = 254;
 
+/** Longueur maximale du login. Partagé entre /rejoindre et /profil (même
+ * champ, modifiable une fois le compte créé). */
+export const MAX_LOGIN_LENGTH = 40;
+
+/** Longueur maximale du numéro de foyer. Partagé entre /rejoindre et
+ * /profil (même champ). */
+export const MAX_HOUSE_NUMBER_LENGTH = 10;
+
 /**
  * Échappe `%`, `_` et `\` pour qu'un texte saisi par l'utilisateur soit
  * traité comme littéral dans un motif SQL `LIKE`/`ILIKE` (via `ESCAPE '\'`,

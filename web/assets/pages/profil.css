@@ -1,0 +1,18 @@
+/* Styles propres à la page /profil (routes/profil.tsx) — cf.
+   assets/common.css pour le reste (en-tête, hero, .lookup-card,
+   .lookup-form__input, .form-field, boutons...). */
+
+/* E-mail affiché en lecture seule (identifiant de connexion, non modifiable
+   ici) : même gabarit visuel qu'un champ de saisie, sans être un <input>. */
+.profil-email {
+  margin: 0;
+  padding: 12px 16px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 18px;
+  color: var(--color-ink-muted);
+  background: var(--color-paper-warm);
+}

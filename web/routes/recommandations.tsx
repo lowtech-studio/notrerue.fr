@@ -49,6 +49,8 @@ interface RecoData {
   totalCount: number;
   /** Recherche active (URL `?q=`), `null` si aucune. */
   search: string | null;
+  /** URL courante (chemin + query) : recherche/page à restaurer après /modifier ou /supprimer. */
+  backPath: string;
   postError: string | null;
   postPublished: boolean;
   /** Valeur re-soumise telle quelle si la publication échoue. */
@@ -106,6 +108,7 @@ export const handler = define.handlers({
         totalPages,
         totalCount,
         search,
+        backPath: ctx.url.pathname + ctx.url.search,
         postError: null,
         postPublished: ctx.url.searchParams.get("published") === "1",
         postContent: "",
@@ -169,6 +172,7 @@ export const handler = define.handlers({
         totalPages,
         totalCount,
         search: null,
+        backPath: "/recommandations",
         postError: error,
         postPublished: false,
         postDuration,
@@ -196,6 +200,7 @@ export default define.page<typeof handler>(
       totalPages,
       totalCount,
       search,
+      backPath,
       postError,
       postPublished,
       postContent,
@@ -334,7 +339,97 @@ export default define.page<typeof handler>(
                     </span>
                   </div>
                   <p class="reco-post__content">{item.content}</p>
+
+                  {
+                    /* Formulaire d'édition posé ici, à la place du contenu
+                      ci-dessus (masqué par CSS dès que la case cochée dans
+                      .reco-post__owner-actions plus bas est cochée) plutôt
+                      que replié sous les boutons Modifier/Supprimer — cf.
+                      retour utilisateur : le champ de saisie doit remplacer
+                      visuellement le texte, pas s'ajouter plus bas. */
+                  }
+                  {state.user && item.authorId === state.user.id && (
+                    <form
+                      method="POST"
+                      action="/modifier"
+                      class="reco-post__edit-form"
+                    >
+                      <input type="hidden" name="postId" value={item.id} />
+                      <input type="hidden" name="back" value={backPath} />
+                      <input
+                        type="text"
+                        name="content"
+                        class="lookup-form__input"
+                        maxlength={MAX_POST_CONTENT_LENGTH}
+                        value={item.content}
+                        autocomplete="off"
+                        required
+                      />
+                      <button type="submit" class="button button--secondary">
+                        Enregistrer
+                      </button>
+                    </form>
+                  )}
+
                   <p class="reco-post__author">{item.authorLogin}</p>
+
+                  {
+                    /* Corriger ou supprimer sa propre demande (cf. backlog
+                      « corriger des erreurs de saisie ») — jamais proposé
+                      sur la demande d'un autre. */
+                  }
+                  {state.user && item.authorId === state.user.id && (
+                    <div class="reco-post__owner-actions">
+                      <input
+                        type="checkbox"
+                        id={`reco-edit-toggle-${item.id}`}
+                        class="reco-post__edit-toggle"
+                      />
+                      <label
+                        for={`reco-edit-toggle-${item.id}`}
+                        class="reco-post__owner-link"
+                      >
+                        Modifier
+                      </label>
+
+                      <input
+                        type="checkbox"
+                        id={`reco-delete-toggle-${item.id}`}
+                        class="reco-post__delete-toggle"
+                      />
+                      <label
+                        for={`reco-delete-toggle-${item.id}`}
+                        class="reco-post__owner-link reco-post__owner-link--danger"
+                      >
+                        Supprimer
+                      </label>
+                    </div>
+                  )}
+
+                  {
+                    /* Confirmation de suppression : un bandeau posé en pleine
+                      largeur sous les pilules (masqué par CSS tant que la
+                      case ci-dessus n'est pas cochée), plutôt qu'imbriqué
+                      dans un <details> "Supprimer" — qui l'écrasait à côté
+                      de "Modifier" en cas d'ouverture (cf. retour
+                      utilisateur). */
+                  }
+                  {state.user && item.authorId === state.user.id && (
+                    <form
+                      method="POST"
+                      action="/supprimer"
+                      class="reco-post__delete-form"
+                    >
+                      <input type="hidden" name="postId" value={item.id} />
+                      <input type="hidden" name="back" value={backPath} />
+                      <p class="reco-post__delete-confirm">
+                        Confirmer la suppression de cette demande ?
+                      </p>
+                      <button type="submit" class="button button--secondary">
+                        Oui, supprimer
+                      </button>
+                    </form>
+                  )}
 
                   {item.comments.length > 0 && (
                     <ul class="reco-post__replies">

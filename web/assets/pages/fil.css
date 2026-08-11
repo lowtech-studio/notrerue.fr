@@ -230,6 +230,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  /* Collé à droite (comme .fil-post__actions ci-dessus, qui l'est déjà via
+     le space-between du parent à deux items) même quand ça déborde sur sa
+     propre ligne à côté de .fil-post__author — sans ça, seul sur sa ligne,
+     un item flex reste par défaut à gauche. */
+  margin-left: auto;
 }
 
 .fil-post__tappers-label {
@@ -303,4 +308,109 @@
 .fil-pagination__status {
   font-size: 14px;
   color: var(--color-ink-muted);
+}
+
+/* Modifier/supprimer sa propre demande (cf. backlog « corriger des erreurs
+   de saisie ») — jamais affiché sur la demande d'un autre. Deux bascules
+   "case à cocher masquée + libellé en pilule" plutôt que des <details> :
+   les déclencheurs restent groupés ici, à droite, pendant que ce qu'ils
+   révèlent vit ailleurs dans la carte (le formulaire d'édition à la place
+   du contenu plus haut, la confirmation de suppression en pleine largeur
+   plus bas), grâce à :has() sur l'ancêtre commun .fil-post — sans ça, un
+   <details> ouvert grandissait sur place et écrasait son voisin (cf. retour
+   utilisateur : "pas beau"). */
+.fil-post__owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  /* Collé à droite même seul sur sa ligne (sous les taps) : .fil-post__footer
+     est en flex-wrap, donc chaque ligne a son propre alignement — sans ça,
+     un item seul sur sa ligne reste à gauche malgré le space-between du
+     parent. */
+  margin-left: auto;
+}
+
+.fil-post__edit-toggle,
+.fil-post__delete-toggle {
+  display: none;
+}
+
+/* Pilule discrète, même gabarit que .fil-post__tappers-link — plus
+   "professionnel" qu'un lien souligné brut, cohérent avec le reste des
+   actions de la carte (tap, message privé, filtres). */
+.fil-post__owner-link {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  background: var(--color-paper);
+}
+
+.fil-post__owner-link:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.fil-post__owner-link--danger:hover {
+  border-color: var(--color-brand-hover);
+  color: var(--color-brand-hover);
+}
+
+/* Pilule "active" tant que le panneau qu'elle déclenche reste ouvert — même
+   principe que .fil-filters__tab--active. */
+.fil-post__edit-toggle:checked + .fil-post__owner-link,
+.fil-post__delete-toggle:checked + .fil-post__owner-link {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-paper-warm);
+}
+
+.fil-post:has(.fil-post__edit-toggle:checked) > .fil-post__content {
+  display: none;
+}
+
+.fil-post__edit-form {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.fil-post:has(.fil-post__edit-toggle:checked) > .fil-post__edit-form {
+  display: flex;
+}
+
+.fil-post__edit-form .lookup-form__input {
+  flex: 1 1 240px;
+}
+
+/* Confirmation de suppression : un bandeau teinté en pleine largeur, sous
+   les pilules Modifier/Supprimer plutôt qu'imbriqué dedans (cf. plus haut). */
+.fil-post__delete-form {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(154, 63, 18, 0.08);
+}
+
+.fil-post:has(.fil-post__delete-toggle:checked) > .fil-post__delete-form {
+  display: flex;
+}
+
+.fil-post__delete-confirm {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-ink-soft);
 }

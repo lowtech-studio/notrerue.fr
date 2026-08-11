@@ -16,12 +16,10 @@
 - [*] En tant qu'habitant connecté d'une rue allumée, je veux choisir la durée de validité de ma demande (aujourd'hui / cette semaine / x mois) à chaque publication, afin que le fil ne se remplisse pas de demandes mortes.
 - [*] En tant que voisin disponible, je veux répondre en un clic/tap (si type "Je cherche" => bouton "J'ai"/ "Je propose" => bouton "Intéressé"/ J'informe => bouton "emoji pouce") avant même d'écrire pour rendre un service, afin que rendre service soit plus facile que scroller.
 - [*] En tant qu'habitant connecté d'une rue allumée, je veux un autocollant QR pour ma boîte aux lettres et que le kit papier puisse faire 3 invitations sur un A4 avec des petit pointillé pour découper
-- [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu
 - [*] En tant qu'habitant connecté, je veux demander une recommandation au niveau de ma ville(artisan, dentiste qui prend des patients, ...), afin d'obtenir une réponse de confiance plutôt qu'un avis Google.
 - [*] En tant qu'habitant connecté, je veux retrouver les recommandations déjà données dans ma rue, afin de ne pas reposer une question résolue.
-- [ ] En tant qu'habitant connecté, je veux une seule notification mail par semaine par défaut, afin de ne pas désinstaller.
-- [ ] En tant que voisin en difficulté, je veux publier une demande urgente qui notifie immédiatement toute la rue, limitée à une par foyer et par mois, afin que l'urgence reste rare et crédible.
-- [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.
+- [*] En tant qu'habitant connecté, je veux editer ou supprimer (soft delete) les demandes ou recommandations que j'ai créé afin de corriger des erreurs de saisie
+- [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications et mettre un lien dans le menu gérer mon profil , afin de rester maître de mes données.
 - [ ] En tant que demandeur, je veux être notifié immédiatement quand quelqu'un répond, car c'est la seule notification qui mérite d'interrompre.
 - [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du consentement numérique en France ; à afficher, à contrôler à l'inscription, à rappeler dans le kit papier).
 - [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco conception et la cybersécurité
@@ -42,7 +40,7 @@
 - [ ] En tant qu'habitant, je veux signaler un contenu en deux taps.
 - [ ] En tant qu'habitant, je veux bloquer un voisin, afin de couper court à un conflit.
 - [ ] En tant qu'habitant, je veux renforcer ma certification (courrier postal ou parrainage supplémentaire) pour accéder aux échanges sensibles.
-
+- [ ] En tant qu'habitant connecté, je veux une seule notification mail par semaine par défaut, afin de ne pas désinstaller.
 ## V0.3
 
 - [ ] En tant qu'habitant, je veux créer un événement en 3 champs (quoi, quand, où).
@@ -50,6 +48,7 @@
 - [ ] En tant que rue active, je veux une suggestion de rituel (café des voisins, accueil des nouveaux, repair café, Fête des Voisins).
 - [ ] En tant qu'habitant, je veux souhaiter la bienvenue à un nouvel arrivant avec un mot pré-rédigé. (Jeanine — le vrai rituel de rue)
 - [ ] En tant qu'organisateur, je veux une affiche imprimable pour mon événement, afin de toucher les non-inscrits. Note calendaire : Fête des Voisins le dernier vendredi de mai — prochaine édition fin mai 2027. C'est le pic à instrumenter, et il faut être prêt trois mois avant.
+- [ ] En tant que voisin en difficulté, je veux publier une demande urgente qui notifie immédiatement toute la rue, limitée à une par foyer et par mois, afin que l'urgence reste rare et crédible.
 
 ## V0.4
 
