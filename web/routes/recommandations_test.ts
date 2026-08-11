@@ -379,3 +379,38 @@ Deno.test("GET /recommandations : les réponses déjà données sont attachées 
     await cleanupAwakeStreet(awake);
   }
 });
+
+Deno.test("GET /recommandations : ?q=... filtre la liste et remonte le nombre de résultats", async () => {
+  const awake = await createAwakeStreetWithUser("reco-10");
+
+  try {
+    const matching = await createPost({
+      userId: awake.created.id,
+      type: "recommandation",
+      content: "Un plombier fiable pour une fuite ?",
+    });
+    await createPost({
+      userId: awake.created.id,
+      type: "recommandation",
+      content: "Une nounou disponible le mercredi ?",
+    });
+
+    const result = await handler.GET!(
+      makeContext("http://localhost/recommandations?q=plombier", {
+        user: awake.sessionUser,
+      }),
+    ) as {
+      data: {
+        posts: { id: number }[];
+        totalCount: number;
+        search: string | null;
+      };
+    };
+
+    assertEquals(result.data.posts.map((p) => p.id), [matching.id]);
+    assertEquals(result.data.totalCount, 1);
+    assertEquals(result.data.search, "plombier");
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});

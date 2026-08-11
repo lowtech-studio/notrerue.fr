@@ -510,3 +510,38 @@ Deno.test("GET /fil : une demande expirée n'apparaît plus dans le fil", async 
     await cleanupAwakeStreet(awake);
   }
 });
+
+Deno.test("GET /fil : ?q=... filtre la liste et remonte le nombre de résultats", async () => {
+  const awake = await createAwakeStreetWithUser("fil-15");
+
+  try {
+    const matching = await createPost({
+      userId: awake.created.id,
+      type: "cherche",
+      content: "Je cherche une perceuse",
+    });
+    await createPost({
+      userId: awake.created.id,
+      type: "propose",
+      content: "Je prête ma tondeuse",
+    });
+
+    const result = await handler.GET!(
+      makeContext("http://localhost/fil?q=perceuse", {
+        user: awake.sessionUser,
+      }),
+    ) as {
+      data: {
+        posts: { id: number }[];
+        totalCount: number;
+        search: string | null;
+      };
+    };
+
+    assertEquals(result.data.posts.map((p) => p.id), [matching.id]);
+    assertEquals(result.data.totalCount, 1);
+    assertEquals(result.data.search, "perceuse");
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});

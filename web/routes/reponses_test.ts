@@ -231,3 +231,25 @@ Deno.test("POST /reponses : contenu vide ou postId invalide → ignoré sans pla
     await teardown(setup);
   }
 });
+
+Deno.test("POST /reponses : recherche active (?q=) préservée dans la redirection", async () => {
+  const setup = await setupRecommendation("reponses-5");
+
+  try {
+    const form = new FormData();
+    form.set("postId", String(setup.post.id));
+    form.set("content", "Dupont Plomberie");
+    form.set("q", "plombier");
+
+    const response = await handler.POST!(
+      makeContext({ user: setup.authorSession, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(
+      response.headers.get("location"),
+      "/recommandations?q=plombier",
+    );
+  } finally {
+    await teardown(setup);
+  }
+});

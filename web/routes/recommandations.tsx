@@ -11,6 +11,7 @@ import {
   listCityRecommendations,
   MAX_POST_CONTENT_LENGTH,
   MAX_POST_DURATION_MONTHS,
+  MAX_SEARCH_LENGTH,
   MIN_POST_DURATION_MONTHS,
   type PostDuration,
 } from "../db/posts.ts";
@@ -45,6 +46,9 @@ interface RecoData {
   posts: RecoPost[];
   page: number;
   totalPages: number;
+  totalCount: number;
+  /** Recherche active (URL `?q=`), `null` si aucune. */
+  search: string | null;
   postError: string | null;
   postPublished: boolean;
   /** Valeur re-soumise telle quelle si la publication échoue. */
@@ -56,6 +60,11 @@ interface RecoData {
 function parsePage(raw: string | null): number {
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function parseSearch(raw: string | null): string | null {
+  const trimmed = raw?.trim().slice(0, MAX_SEARCH_LENGTH) ?? "";
+  return trimmed || null;
 }
 
 /** Nombre de mois saisi pour la durée "months" ; borné à l'affichage (le clampage définitif est dans `computeExpiresAt`). */
@@ -80,12 +89,13 @@ export const handler = define.handlers({
     const streetStatus = await getStreetHousesStatus(user.street.id);
     if (!streetStatus.isAwake) return ctx.redirect("/");
 
-    const { posts: rawPosts, totalPages, page } = await listCityRecommendations(
-      {
+    const search = parseSearch(ctx.url.searchParams.get("q"));
+    const { posts: rawPosts, totalPages, totalCount, page } =
+      await listCityRecommendations({
         cityId: user.street.city.id,
         page: parsePage(ctx.url.searchParams.get("page")),
-      },
-    );
+        search: search ?? undefined,
+      });
     const posts = await attachComments(rawPosts);
 
     return {
@@ -94,6 +104,8 @@ export const handler = define.handlers({
         posts,
         page,
         totalPages,
+        totalCount,
+        search,
         postError: null,
         postPublished: ctx.url.searchParams.get("published") === "1",
         postContent: "",
@@ -145,9 +157,8 @@ export const handler = define.handlers({
     const error = !isPostDuration(rawDuration) || !content
       ? "Merci de choisir une durée et d'écrire votre demande."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
-    const { posts: rawPosts, totalPages, page } = await listCityRecommendations(
-      { cityId: user.street.city.id, page: 1 },
-    );
+    const { posts: rawPosts, totalPages, totalCount, page } =
+      await listCityRecommendations({ cityId: user.street.city.id, page: 1 });
     const posts = await attachComments(rawPosts);
 
     return {
@@ -156,6 +167,8 @@ export const handler = define.handlers({
         posts,
         page,
         totalPages,
+        totalCount,
+        search: null,
         postError: error,
         postPublished: false,
         postDuration,
@@ -166,8 +179,12 @@ export const handler = define.handlers({
   },
 });
 
-function pageHref(page: number): string {
-  return page > 1 ? `/recommandations?page=${page}` : "/recommandations";
+function pageHref(page: number, search: string | null): string {
+  const params = new URLSearchParams();
+  if (search) params.set("q", search);
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+  return qs ? `/recommandations?${qs}` : "/recommandations";
 }
 
 export default define.page<typeof handler>(
@@ -177,6 +194,8 @@ export default define.page<typeof handler>(
       posts,
       page,
       totalPages,
+      totalCount,
+      search,
       postError,
       postPublished,
       postContent,
@@ -203,6 +222,36 @@ export default define.page<typeof handler>(
               <p class="hero__confirmation">Votre demande a été publiée !</p>
             )}
             {postError && <p class="form-error" role="alert">{postError}</p>}
+
+            {
+              /* Avant de publier : retrouver une recommandation déjà donnée
+                (cf. backlog), pour ne pas reposer une question résolue. */
+            }
+            <form method="GET" class="reco-search">
+              <input
+                type="search"
+                name="q"
+                class="lookup-form__input"
+                placeholder="Rechercher (ex : plombier, Dupont…)"
+                maxlength={MAX_SEARCH_LENGTH}
+                value={search ?? ""}
+                autocomplete="off"
+              />
+              <button type="submit" class="button button--secondary">
+                Rechercher
+              </button>
+            </form>
+
+            {search && (
+              <p class="reco-search__status">
+                {totalCount === 0 ? <>Aucun résultat pour « {search} ».</> : (
+                  <>
+                    {totalCount} résultat{totalCount > 1 ? "s" : ""} pour «{" "}
+                    {search} ».
+                  </>
+                )} <a href="/recommandations">Réinitialiser</a>
+              </p>
+            )}
 
             <div class="compose-post">
               <h2 class="compose-post__title">
@@ -312,6 +361,9 @@ export default define.page<typeof handler>(
                       {page > 1 && (
                         <input type="hidden" name="page" value={page} />
                       )}
+                      {search && (
+                        <input type="hidden" name="q" value={search} />
+                      )}
                       <input
                         type="text"
                         name="content"
@@ -341,7 +393,7 @@ export default define.page<typeof handler>(
                 {page > 1
                   ? (
                     <a
-                      href={pageHref(page - 1)}
+                      href={pageHref(page - 1, search)}
                       class="button button--secondary"
                     >
                       ← Précédent
@@ -354,7 +406,7 @@ export default define.page<typeof handler>(
                 {page < totalPages
                   ? (
                     <a
-                      href={pageHref(page + 1)}
+                      href={pageHref(page + 1, search)}
                       class="button button--secondary"
                     >
                       Suivant →

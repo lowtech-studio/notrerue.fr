@@ -1,5 +1,5 @@
 import { define } from "../utils.ts";
-import { getPostSummary, isPostType } from "../db/posts.ts";
+import { getPostSummary, isPostType, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { toggleTap } from "../db/taps.ts";
 
 /**
@@ -17,10 +17,15 @@ export const handler = define.handlers({
     const postId = Number(form.get("postId"));
     const rawType = String(form.get("type") ?? "");
     const rawPage = String(form.get("page") ?? "");
+    const rawSearch = String(form.get("q") ?? "").trim().slice(
+      0,
+      MAX_SEARCH_LENGTH,
+    );
 
     const params = new URLSearchParams();
     if (isPostType(rawType)) params.set("type", rawType);
     if (rawPage) params.set("page", rawPage);
+    if (rawSearch) params.set("q", rawSearch);
     const backToFil = params.size > 0 ? `/fil?${params}` : "/fil";
 
     if (!Number.isInteger(postId) || postId <= 0) {

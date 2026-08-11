@@ -1,6 +1,18 @@
-import { and, count, desc, eq, gt, isNull, ne, or } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  ne,
+  or,
+} from "drizzle-orm";
 import { db } from "./client.ts";
-import { house, post, postType, street, user } from "./schema.ts";
+import { comment, house, post, postType, street, user } from "./schema.ts";
+import { escapeLikePattern } from "../utils/validation.ts";
 
 export type Post = typeof post.$inferSelect;
 export type PostType = (typeof postType.enumValues)[number];
@@ -19,6 +31,9 @@ export type FilPostType = Exclude<PostType, "recommandation">;
  * secondes ») : limite courte, façon SMS, plutôt qu'un article.
  */
 export const MAX_POST_CONTENT_LENGTH = 240;
+
+/** Recherche libre sur /recommandations (cf. backlog « retrouver les recommandations déjà données ») — large, une longue phrase collée reste inoffensive vu le `ilike` en base. */
+export const MAX_SEARCH_LENGTH = 100;
 
 /** Vrai si `value` est bien l'une des quatre valeurs de l'enum `post_type`. */
 export function isPostType(value: string): value is PostType {
@@ -123,6 +138,14 @@ export interface ListStreetPostsInput {
   type?: FilPostType;
   /** Page 1-indexée. */
   page: number;
+  /**
+   * Recherche libre (même principe que sur /recommandations, cf.
+   * `ListCityRecommendationsInput.search`) : filtre sur le contenu de la
+   * demande. Pas de réponses à chercher ici (contrairement aux
+   * recommandations) — /fil se répond par tap + message privé, jamais par
+   * commentaire public.
+   */
+  search?: string;
   /** N'est là que pour les tests (déterministe) ; sinon l'instant courant. */
   now?: Date;
 }
@@ -150,12 +173,14 @@ export async function listStreetPosts(
   input: ListStreetPostsInput,
 ): Promise<ListStreetPostsResult> {
   const now = input.now ?? new Date();
+  const search = input.search?.trim();
   const where = and(
     eq(house.streetId, input.streetId),
     isNull(post.deletedAt),
     or(isNull(post.expiresAt), gt(post.expiresAt, now)),
     ne(post.type, "recommandation"),
     input.type ? eq(post.type, input.type) : undefined,
+    search ? ilike(post.content, `%${escapeLikePattern(search)}%`) : undefined,
   );
 
   const [{ value: totalCount }] = await db.select({ value: count() })
@@ -244,6 +269,14 @@ export interface ListCityRecommendationsInput {
   cityId: number;
   /** Page 1-indexée. */
   page: number;
+  /**
+   * Recherche libre (cf. backlog « retrouver les recommandations déjà
+   * données ») : filtre sur la demande ET sur les réponses déjà publiées
+   * (cf. `findPostIdsWithMatchingComment`) — la réponse cherchée est
+   * souvent un nom d'artisan qui ne figure que dans une réponse, pas dans
+   * la demande elle-même.
+   */
+  search?: string;
   /** N'est là que pour les tests (déterministe) ; sinon l'instant courant. */
   now?: Date;
 }
@@ -256,6 +289,17 @@ export interface ListCityRecommendationsResult {
   page: number;
 }
 
+/** Identifiants des demandes ayant au moins une réponse (non supprimée) contenant `search`. */
+async function findPostIdsWithMatchingComment(
+  search: string,
+): Promise<number[]> {
+  const pattern = `%${escapeLikePattern(search)}%`;
+  const rows = await db.selectDistinct({ postId: comment.postId }).from(
+    comment,
+  ).where(and(ilike(comment.content, pattern), isNull(comment.deletedAt)));
+  return rows.map((row) => row.postId).filter((id) => id !== null);
+}
+
 /**
  * Demandes de recommandation (plus récentes d'abord) de toute une ville —
  * seul type de demande qui dépasse la rue de son auteur (cf. schema.ts :
@@ -266,11 +310,25 @@ export async function listCityRecommendations(
   input: ListCityRecommendationsInput,
 ): Promise<ListCityRecommendationsResult> {
   const now = input.now ?? new Date();
+  const search = input.search?.trim();
+  const matchingCommentPostIds = search
+    ? await findPostIdsWithMatchingComment(search)
+    : [];
+  const searchCondition = search
+    ? or(
+      ilike(post.content, `%${escapeLikePattern(search)}%`),
+      matchingCommentPostIds.length > 0
+        ? inArray(post.id, matchingCommentPostIds)
+        : undefined,
+    )
+    : undefined;
+
   const where = and(
     eq(street.cityId, input.cityId),
     eq(post.type, "recommandation"),
     isNull(post.deletedAt),
     or(isNull(post.expiresAt), gt(post.expiresAt, now)),
+    searchCondition,
   );
 
   const [{ value: totalCount }] = await db.select({ value: count() })

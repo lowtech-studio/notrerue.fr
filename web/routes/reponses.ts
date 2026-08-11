@@ -1,5 +1,5 @@
 import { define } from "../utils.ts";
-import { getPostSummary } from "../db/posts.ts";
+import { getPostSummary, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { createComment, MAX_COMMENT_CONTENT_LENGTH } from "../db/comments.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 
@@ -24,9 +24,14 @@ export const handler = define.handlers({
       MAX_COMMENT_CONTENT_LENGTH,
     );
     const rawPage = String(form.get("page") ?? "");
+    const rawSearch = String(form.get("q") ?? "").trim().slice(
+      0,
+      MAX_SEARCH_LENGTH,
+    );
 
     const params = new URLSearchParams();
     if (rawPage) params.set("page", rawPage);
+    if (rawSearch) params.set("q", rawSearch);
     const back = params.size > 0
       ? `/recommandations?${params}`
       : "/recommandations";

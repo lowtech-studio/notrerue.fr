@@ -13,6 +13,7 @@ import {
   listStreetPosts,
   MAX_POST_CONTENT_LENGTH,
   MAX_POST_DURATION_MONTHS,
+  MAX_SEARCH_LENGTH,
   MIN_POST_DURATION_MONTHS,
   type PostDuration,
   type StreetPost,
@@ -93,6 +94,9 @@ interface FilData {
   posts: FilPost[];
   page: number;
   totalPages: number;
+  totalCount: number;
+  /** Recherche active (URL `?q=`), `null` si aucune. */
+  search: string | null;
   activeType: FilPostType | null;
   postError: string | null;
   postPublished: boolean;
@@ -110,6 +114,11 @@ function parsePage(raw: string | null): number {
 
 function parseType(raw: string | null): FilPostType | null {
   return raw && isFilPostType(raw) ? raw : null;
+}
+
+function parseSearch(raw: string | null): string | null {
+  const trimmed = raw?.trim().slice(0, MAX_SEARCH_LENGTH) ?? "";
+  return trimmed || null;
 }
 
 /** Nombre de mois saisi pour la durée "months" ; borné à l'affichage (le clampage définitif est dans `computeExpiresAt`). */
@@ -134,11 +143,14 @@ export const handler = define.handlers({
     if (!streetStatus.isAwake) return ctx.redirect("/");
 
     const activeType = parseType(ctx.url.searchParams.get("type"));
-    const { posts: rawPosts, totalPages, page } = await listStreetPosts({
-      streetId: user.street.id,
-      type: activeType ?? undefined,
-      page: parsePage(ctx.url.searchParams.get("page")),
-    });
+    const search = parseSearch(ctx.url.searchParams.get("q"));
+    const { posts: rawPosts, totalPages, totalCount, page } =
+      await listStreetPosts({
+        streetId: user.street.id,
+        type: activeType ?? undefined,
+        page: parsePage(ctx.url.searchParams.get("page")),
+        search: search ?? undefined,
+      });
     const posts = await attachTapInfo(rawPosts, user.id);
 
     return {
@@ -148,6 +160,8 @@ export const handler = define.handlers({
         posts,
         page,
         totalPages,
+        totalCount,
+        search,
         activeType,
         postError: null,
         postPublished: ctx.url.searchParams.get("published") === "1",
@@ -197,10 +211,11 @@ export const handler = define.handlers({
         !content
       ? "Merci de choisir un type, une durée et d'écrire votre demande."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
-    const { posts: rawPosts, totalPages, page } = await listStreetPosts({
-      streetId: user.street.id,
-      page: 1,
-    });
+    const { posts: rawPosts, totalPages, totalCount, page } =
+      await listStreetPosts({
+        streetId: user.street.id,
+        page: 1,
+      });
     const posts = await attachTapInfo(rawPosts, user.id);
 
     return {
@@ -210,6 +225,8 @@ export const handler = define.handlers({
         posts,
         page,
         totalPages,
+        totalCount,
+        search: null,
         activeType: null,
         postError: error,
         postPublished: false,
@@ -222,13 +239,22 @@ export const handler = define.handlers({
   },
 });
 
-function filterHref(type: FilPostType | null): string {
-  return type ? `/fil?type=${type}` : "/fil";
+function filterHref(type: FilPostType | null, search: string | null): string {
+  const params = new URLSearchParams();
+  if (type) params.set("type", type);
+  if (search) params.set("q", search);
+  const qs = params.toString();
+  return qs ? `/fil?${qs}` : "/fil";
 }
 
-function pageHref(activeType: FilPostType | null, page: number): string {
+function pageHref(
+  activeType: FilPostType | null,
+  search: string | null,
+  page: number,
+): string {
   const params = new URLSearchParams();
   if (activeType) params.set("type", activeType);
+  if (search) params.set("q", search);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/fil?${qs}` : "/fil";
@@ -241,6 +267,8 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     posts,
     page,
     totalPages,
+    totalCount,
+    search,
     activeType,
     postError,
     postPublished,
@@ -267,6 +295,39 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
             <p class="hero__confirmation">Votre demande a été publiée !</p>
           )}
           {postError && <p class="form-error" role="alert">{postError}</p>}
+
+          {
+            /* Avant de publier : retrouver une demande déjà passée sur le
+              fil, même principe que sur /recommandations. */
+          }
+          <form method="GET" class="fil-search">
+            <input
+              type="search"
+              name="q"
+              class="lookup-form__input"
+              placeholder="Rechercher (ex : perceuse, tondeuse…)"
+              maxlength={MAX_SEARCH_LENGTH}
+              value={search ?? ""}
+              autocomplete="off"
+            />
+            {activeType && (
+              <input type="hidden" name="type" value={activeType} />
+            )}
+            <button type="submit" class="button button--secondary">
+              Rechercher
+            </button>
+          </form>
+
+          {search && (
+            <p class="fil-search__status">
+              {totalCount === 0 ? <>Aucun résultat pour « {search} ».</> : (
+                <>
+                  {totalCount} résultat{totalCount > 1 ? "s" : ""} pour «{" "}
+                  {search} ».
+                </>
+              )} <a href={filterHref(activeType, null)}>Réinitialiser</a>
+            </p>
+          )}
 
           <div class="compose-post">
             <h2 class="compose-post__title">Quoi de neuf sur votre rue ?</h2>
@@ -348,7 +409,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
 
           <nav class="fil-filters" aria-label="Filtrer par type">
             <a
-              href={filterHref(null)}
+              href={filterHref(null, search)}
               class={`fil-filters__tab ${
                 !activeType ? "fil-filters__tab--active" : ""
               }`}
@@ -358,7 +419,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
             {POST_TYPES.map((value) => (
               <a
                 key={value}
-                href={filterHref(value)}
+                href={filterHref(value, search)}
                 class={`fil-filters__tab ${
                   activeType === value ? "fil-filters__tab--active" : ""
                 }`}
@@ -401,6 +462,9 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                         )}
                         {page > 1 && (
                           <input type="hidden" name="page" value={page} />
+                        )}
+                        {search && (
+                          <input type="hidden" name="q" value={search} />
                         )}
                         <button
                           type="submit"
@@ -475,7 +539,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
               {page > 1
                 ? (
                   <a
-                    href={pageHref(activeType, page - 1)}
+                    href={pageHref(activeType, search, page - 1)}
                     class="button button--secondary"
                   >
                     ← Précédent
@@ -488,7 +552,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
               {page < totalPages
                 ? (
                   <a
-                    href={pageHref(activeType, page + 1)}
+                    href={pageHref(activeType, search, page + 1)}
                     class="button button--secondary"
                   >
                     Suivant →

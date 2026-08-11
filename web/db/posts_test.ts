@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { eq } from "drizzle-orm";
 import { db } from "./client.ts";
-import { city, house, post, street, user } from "./schema.ts";
+import { city, comment, house, post, street, user } from "./schema.ts";
 import {
   computeExpiresAt,
   createPost,
@@ -14,6 +14,7 @@ import {
   MIN_POST_DURATION_MONTHS,
   POSTS_PER_PAGE,
 } from "./posts.ts";
+import { createComment } from "./comments.ts";
 import { registerInhabitant } from "./users.ts";
 import {
   cleanupTestStreet,
@@ -207,6 +208,68 @@ Deno.test("listStreetPosts : filtre par type", async () => {
     await db.delete(user).where(eq(user.id, author.id));
     await db.delete(house).where(eq(house.id, author.houseId));
     await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("listStreetPosts : recherche sur le contenu, combinable avec le filtre de type, isolée par rue", async () => {
+  const streetA = await createTestStreet("posts-3c");
+  const streetB = await createTestStreet("posts-3d");
+  const { user: authorA } = await registerInhabitant({
+    login: `login-a-${crypto.randomUUID()}`,
+    email: `posts-a-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: streetA.testStreet.id,
+  });
+  const { user: authorB } = await registerInhabitant({
+    login: `login-b-${crypto.randomUUID()}`,
+    email: `posts-b-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: streetB.testStreet.id,
+  });
+
+  try {
+    const matching = await createPost({
+      userId: authorA.id,
+      type: "cherche",
+      content: "Je cherche une perceuse",
+    });
+    await createPost({
+      userId: authorA.id,
+      type: "propose",
+      content: "Je prête ma tondeuse",
+    });
+    // Même mot, autre rue : ne doit pas remonter.
+    await createPost({
+      userId: authorB.id,
+      type: "cherche",
+      content: "Je cherche une perceuse aussi",
+    });
+
+    const result = await listStreetPosts({
+      streetId: streetA.testStreet.id,
+      search: "perceuse",
+      page: 1,
+    });
+    assertEquals(result.posts.map((p) => p.id), [matching.id]);
+
+    // Combiné avec le filtre de type : la demande "propose" ne contient pas
+    // "perceuse", donc rien ne remonte.
+    const combined = await listStreetPosts({
+      streetId: streetA.testStreet.id,
+      type: "propose",
+      search: "perceuse",
+      page: 1,
+    });
+    assertEquals(combined.posts, []);
+  } finally {
+    await db.delete(post).where(eq(post.userId, authorA.id));
+    await db.delete(post).where(eq(post.userId, authorB.id));
+    await db.delete(user).where(eq(user.id, authorA.id));
+    await db.delete(user).where(eq(user.id, authorB.id));
+    await db.delete(house).where(eq(house.id, authorA.houseId));
+    await db.delete(house).where(eq(house.id, authorB.houseId));
+    await cleanupTestStreet(streetA);
+    await cleanupTestStreet(streetB);
   }
 });
 
@@ -460,6 +523,100 @@ Deno.test("listCityRecommendations : exclut les demandes expirées, garde celles
     const ids = result.posts.map((p) => p.id);
     assertEquals(ids.includes(expired.id), false);
     assertEquals(ids.includes(stillValid.id), true);
+  } finally {
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("listCityRecommendations : recherche sur la demande ET sur les réponses déjà données", async () => {
+  const testStreet = await createTestStreet("posts-reco-3");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-reco-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const { user: responder } = await registerInhabitant({
+    login: `login-r-${crypto.randomUUID()}`,
+    email: `posts-reco-r-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    // Le mot cherché figure dans la demande elle-même.
+    const matchByContent = await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Un plombier fiable pour une fuite ?",
+    });
+    // Le mot cherché ne figure que dans la réponse (le vrai cas d'usage :
+    // retrouver un nom d'artisan déjà recommandé).
+    const matchByReply = await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Un dentiste qui prend des patients ?",
+    });
+    await createComment({
+      userId: responder.id,
+      postId: matchByReply.id,
+      content: "Dupont Plomberie, très réactif",
+    });
+    // Ni la demande ni ses réponses ne contiennent le mot cherché.
+    await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Une nounou disponible le mercredi ?",
+    });
+
+    const result = await listCityRecommendations({
+      cityId: testStreet.testCity.id,
+      page: 1,
+      search: "plomb",
+    });
+
+    assertEquals(
+      new Set(result.posts.map((p) => p.id)),
+      new Set([matchByContent.id, matchByReply.id]),
+    );
+  } finally {
+    await db.delete(comment).where(eq(comment.userId, responder.id));
+    await db.delete(post).where(eq(post.userId, author.id));
+    await db.delete(user).where(eq(user.id, author.id));
+    await db.delete(user).where(eq(user.id, responder.id));
+    await db.delete(house).where(eq(house.id, author.houseId));
+    await db.delete(house).where(eq(house.id, responder.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("listCityRecommendations : recherche sans résultat → liste vide, pas une erreur", async () => {
+  const testStreet = await createTestStreet("posts-reco-4");
+  const { user: author } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `posts-reco-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    await createPost({
+      userId: author.id,
+      type: "recommandation",
+      content: "Un plombier fiable pour une fuite ?",
+    });
+
+    const result = await listCityRecommendations({
+      cityId: testStreet.testCity.id,
+      page: 1,
+      search: "vétérinaire",
+    });
+
+    assertEquals(result.posts, []);
+    assertEquals(result.totalCount, 0);
   } finally {
     await db.delete(post).where(eq(post.userId, author.id));
     await db.delete(user).where(eq(user.id, author.id));

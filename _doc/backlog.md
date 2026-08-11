@@ -18,7 +18,7 @@
 - [*] En tant qu'habitant connecté d'une rue allumée, je veux un autocollant QR pour ma boîte aux lettres et que le kit papier puisse faire 3 invitations sur un A4 avec des petit pointillé pour découper
 - [ ] En tant qu'habitant connecté, je veux qu'aucun contenu de rue ne soit lisible sans appartenance vérifiée à cette rue, afin que mon quartier ne soit pas consultable par un inconnu
 - [*] En tant qu'habitant connecté, je veux demander une recommandation au niveau de ma ville(artisan, dentiste qui prend des patients, ...), afin d'obtenir une réponse de confiance plutôt qu'un avis Google.
-- [ ] En tant qu'habitant connecté, je veux retrouver les recommandations déjà données dans ma rue, afin de ne pas reposer une question résolue.
+- [*] En tant qu'habitant connecté, je veux retrouver les recommandations déjà données dans ma rue, afin de ne pas reposer une question résolue.
 - [ ] En tant qu'habitant connecté, je veux une seule notification mail par semaine par défaut, afin de ne pas désinstaller.
 - [ ] En tant que voisin en difficulté, je veux publier une demande urgente qui notifie immédiatement toute la rue, limitée à une par foyer et par mois, afin que l'urgence reste rare et crédible.
 - [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes publications en deux étapes, afin de rester maître de mes données.

@@ -194,3 +194,24 @@ Deno.test("POST /taps : postId absent/invalide → redirigé sans planter", asyn
     await teardown(setup);
   }
 });
+
+Deno.test("POST /taps : recherche active (?q=) préservée dans la redirection", async () => {
+  const setup = await setupPost("taps-route-5");
+
+  try {
+    const form = new FormData();
+    form.set("postId", String(setup.post.id));
+    form.set("q", "perceuse");
+
+    const response = await handler.POST!(
+      makeContext({ user: setup.viewerSession, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(
+      response.headers.get("location"),
+      "/fil?q=perceuse",
+    );
+  } finally {
+    await teardown(setup);
+  }
+});

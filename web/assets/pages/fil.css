@@ -1,6 +1,26 @@
 /* Styles propres à la page /fil (routes/fil.tsx) — cf. assets/common.css
    pour le reste (en-tête, hero, boutons, .page-wide, .empty-state...). */
 
+/* Recherche libre, avant même le formulaire de publication — même principe
+   et même gabarit que .reco-search sur /recommandations (cf.
+   assets/pages/recommandations.css), dupliqué plutôt que partagé (cf.
+   convention du projet : chaque page charge sa propre feuille de style). */
+.fil-search {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.fil-search .lookup-form__input {
+  flex: 1 1 auto;
+}
+
+.fil-search__status {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
 /* Publication d'une demande (rue allumée) — cf. backlog « publier en moins
    de 30 secondes ». Même gabarit de carte que .street-status : une seule
    action mise en avant, avant/après l'éveil de la rue. */

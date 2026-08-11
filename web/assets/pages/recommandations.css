@@ -2,6 +2,25 @@
    cf. assets/common.css pour le reste (en-tête, hero, boutons, .page-wide,
    .empty-state...). */
 
+/* Recherche libre, avant même le formulaire de publication (cf. backlog
+   « retrouver les recommandations déjà données, afin de ne pas reposer une
+   question résolue ») : un champ + un bouton, sur une seule ligne. */
+.reco-search {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.reco-search .lookup-form__input {
+  flex: 1 1 auto;
+}
+
+.reco-search__status {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
 /* Publication d'une demande de recommandation (rue allumée) — même gabarit
    de carte que .compose-post sur /fil (cf. assets/pages/fil.css), dupliqué
    plutôt que partagé : chaque page charge sa propre feuille de style,
