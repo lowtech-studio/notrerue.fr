@@ -41,18 +41,33 @@ async function setupPost(label: string) {
     houseNumber: null,
     streetId: testStreet.testStreet.id,
   });
+  const street = {
+    id: testStreet.testStreet.id,
+    name: testStreet.testStreet.name,
+    city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
+  };
+  const authorSession: SessionUser = {
+    id: author.id,
+    login: author.login,
+    email: author.email,
+    isAmbassador: author.isAmbassador,
+    street,
+  };
   const viewerSession: SessionUser = {
     id: viewer.id,
     login: viewer.login,
     email: viewer.email,
     isAmbassador: viewer.isAmbassador,
-    street: {
-      id: testStreet.testStreet.id,
-      name: testStreet.testStreet.name,
-      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
-    },
+    street,
   };
-  return { testStreet, author, post: createdPost, viewer, viewerSession };
+  return {
+    testStreet,
+    author,
+    authorSession,
+    post: createdPost,
+    viewer,
+    viewerSession,
+  };
 }
 
 async function teardown(setup: Awaited<ReturnType<typeof setupPost>>) {
@@ -137,6 +152,28 @@ Deno.test("POST /taps : demande d'une autre rue → ignoré, rien tapé", async 
     await db.delete(user).where(eq(user.id, otherViewer.id));
     await db.delete(house).where(eq(house.id, otherViewer.houseId));
     await cleanupTestStreet(otherStreet);
+    await teardown(setup);
+  }
+});
+
+Deno.test("POST /taps : sur sa propre demande → ignoré, rien tapé (cf. revue : POST forgé sans passer par l'UI)", async () => {
+  const setup = await setupPost("taps-route-4");
+
+  try {
+    const form = new FormData();
+    form.set("postId", String(setup.post.id));
+
+    const response = await handler.POST!(
+      makeContext({ user: setup.authorSession, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(response.headers.get("location"), "/fil");
+
+    assertEquals(
+      await findTappedPostIds(setup.author.id, [setup.post.id]),
+      new Set(),
+    );
+  } finally {
     await teardown(setup);
   }
 });

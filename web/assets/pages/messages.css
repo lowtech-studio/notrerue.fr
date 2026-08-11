@@ -1,6 +1,6 @@
 /* Styles propres à la page /messages (routes/messages.tsx) — cf.
-   assets/common.css pour le reste (en-tête, hero, boutons, .fil-page,
-   .fil-list__empty...). Redessiné (cf. backlog « revoir le style de la
+   assets/common.css pour le reste (en-tête, hero, boutons, .page-wide,
+   .empty-state...). Redessiné (cf. backlog « revoir le style de la
    liste des messages ») : avatar-initiale dans la boîte de réception pour
    scanner plus vite qui a écrit, bulles façon messagerie (coin « pointé »
    du côté de l'expéditeur, resserrées entre messages consécutifs d'une

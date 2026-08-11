@@ -2,9 +2,15 @@ import type { SessionUser } from "../utils.ts";
 
 interface HeaderProps {
   user?: SessionUser | null;
+  /**
+   * `/fil` et `/messages` redirigent vers `/` tant que la rue n'est pas
+   * allumée : ne proposer ces liens que si elle l'est, pour ne pas mener
+   * nulle part (cf. revue). `undefined`/`null` masque les deux liens.
+   */
+  isStreetAwake?: boolean | null;
 }
 
-export function Header({ user }: HeaderProps = {}) {
+export function Header({ user, isStreetAwake }: HeaderProps = {}) {
   return (
     <header class="site-header">
       <div class="container site-header__bar">
@@ -21,8 +27,16 @@ export function Header({ user }: HeaderProps = {}) {
         {user
           ? (
             <nav class="site-header__nav">
-              <a href="/fil" class="site-header__link">Le fil de ma rue</a>
-              <a href="/messages" class="site-header__link">Mes messages</a>
+              {isStreetAwake && (
+                <>
+                  <a href="/fil" class="site-header__link">
+                    Le fil de ma rue
+                  </a>
+                  <a href="/messages" class="site-header__link">
+                    Mes messages
+                  </a>
+                </>
+              )}
               <form
                 method="POST"
                 action="/deconnexion"

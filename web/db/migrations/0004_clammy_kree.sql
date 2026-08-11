@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "tap_user_post_active_unique" ON "tap" USING btree ("user_id","post_id") WHERE "tap"."deleted_at" IS NULL;

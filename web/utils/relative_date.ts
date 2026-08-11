@@ -22,10 +22,9 @@ export function formatRelativeDate(date: Date, now: Date = new Date()): string {
 
   if (absMs < 60_000) return "à l'instant";
 
-  for (const { unit, ms } of UNITS) {
-    if (absMs >= ms) {
-      return RELATIVE_TIME_FORMATTER.format(Math.round(diffMs / ms), unit);
-    }
-  }
-  return RELATIVE_TIME_FORMATTER.format(Math.round(diffMs / 60_000), "minute");
+  // `UNITS` se termine par "minute" (60_000 ms) : la garde ci-dessus
+  // garantit qu'une entrée matche toujours, `find` ne peut donc pas renvoyer
+  // `undefined` (cf. revue : un `return` de repli après la boucle était mort).
+  const { unit, ms } = UNITS.find(({ ms }) => absMs >= ms)!;
+  return RELATIVE_TIME_FORMATTER.format(Math.round(diffMs / ms), unit);
 }

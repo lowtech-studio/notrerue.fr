@@ -50,7 +50,7 @@ export interface ConversationSummary {
  * qu'un self-join : on prend tous les messages impliquant `userId`, on
  * garde en JS la première occurrence (la plus récente, vu le tri) par
  * interlocuteur, puis on résout les logins en une seule requête — même
- * approche que `listTapperLogins` dans db/taps.ts.
+ * approche que `listTappers` dans db/taps.ts.
  */
 export async function listConversations(
   userId: number,

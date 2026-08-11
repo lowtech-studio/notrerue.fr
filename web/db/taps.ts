@@ -1,12 +1,24 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
+import postgres from "postgres";
 import { db } from "./client.ts";
-import { house, post, tap, user } from "./schema.ts";
+import { tap, user } from "./schema.ts";
+
+/** Code Postgres `unique_violation` (contrainte `tap_user_post_active_unique`). */
+const UNIQUE_VIOLATION = "23505";
 
 /**
  * Bascule le tap d'un habitant sur une demande : le crée s'il n'existe pas
  * encore (actif), le retire (soft delete) s'il existait déjà — un clic
  * suffit pour répondre ou se rétracter (cf. backlog « en un clic, avant
  * même d'écrire »). Retourne le nouvel état (vrai = tapé).
+ *
+ * Le select-puis-insert n'est pas atomique : deux requêtes concurrentes
+ * (double-clic) peuvent toutes deux passer le select sans rien trouver, puis
+ * tenter d'insérer. La contrainte d'unicité partielle sur `tap` (un seul tap
+ * actif par habitant/demande, cf. schema.ts) fait échouer la seconde plutôt
+ * que de créer un doublon qui fausserait compteurs et liste de tapeurs ; on
+ * traite cet échec comme un succès idempotent (cf. revue) — le tap est actif
+ * dans tous les cas, peu importe laquelle des deux requêtes a gagné.
  */
 export async function toggleTap(
   userId: number,
@@ -23,7 +35,20 @@ export async function toggleTap(
     return false;
   }
 
-  await db.insert(tap).values({ userId, postId });
+  try {
+    await db.insert(tap).values({ userId, postId });
+  } catch (error) {
+    // drizzle-orm enveloppe l'erreur du driver dans un `DrizzleQueryError` ;
+    // la `PostgresError` d'origine est sur `.cause`.
+    const cause = error instanceof Error ? error.cause : undefined;
+    if (
+      cause instanceof postgres.PostgresError &&
+      cause.code === UNIQUE_VIOLATION
+    ) {
+      return true;
+    }
+    throw error;
+  }
   return true;
 }
 
@@ -98,19 +123,4 @@ export async function listTappers(
     tappers.set(row.postId, list);
   }
   return tappers;
-}
-
-/**
- * Rue à laquelle appartient une demande (via son auteur), ou `null` si la
- * demande n'existe pas. Sert à vérifier qu'on ne tape pas sur une demande
- * d'une autre rue (cf. backlog « aucun contenu de rue lisible sans
- * appartenance vérifiée »).
- */
-export async function getPostStreetId(postId: number): Promise<number | null> {
-  const [found] = await db.select({ streetId: house.streetId })
-    .from(post)
-    .innerJoin(user, eq(post.userId, user.id))
-    .innerJoin(house, eq(user.houseId, house.id))
-    .where(eq(post.id, postId));
-  return found?.streetId ?? null;
 }

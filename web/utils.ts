@@ -17,6 +17,14 @@ export interface SessionUser {
 export interface State {
   /** Peuplé par routes/_middleware.ts ; `null` si non authentifié. */
   user: SessionUser | null;
+  /**
+   * Rue de l'utilisateur allumée ? `null` si non authentifié. Peuplé par
+   * routes/_middleware.ts pour que le Header sache s'il peut proposer les
+   * liens « Le fil de ma rue »/« Mes messages » — ces pages redirigent vers
+   * `/` tant que la rue n'est pas allumée (cf. revue : liens menant nulle
+   * part sinon).
+   */
+  isStreetAwake: boolean | null;
 }
 
 export const define = createDefine<State>();

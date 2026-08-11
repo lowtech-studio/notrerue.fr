@@ -168,7 +168,7 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
         <title>Inviter mes voisins — NotreRue.fr</title>
       </Head>
       <div class="no-print">
-        <Header user={state.user} />
+        <Header user={state.user} isStreetAwake={state.isStreetAwake} />
       </div>
       <main>
         <section class="container hero hero--single">

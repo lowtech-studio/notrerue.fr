@@ -1,6 +1,6 @@
 import { define } from "../utils.ts";
-import { isPostType } from "../db/posts.ts";
-import { getPostStreetId, toggleTap } from "../db/taps.ts";
+import { getPostSummary, isPostType } from "../db/posts.ts";
+import { toggleTap } from "../db/taps.ts";
 
 /**
  * Bascule un tap sur une demande (« J'ai » / « Intéressé » / 👍 selon le
@@ -28,9 +28,15 @@ export const handler = define.handlers({
     }
 
     // On ne tape que sur une demande de sa propre rue (jamais visible
-    // ailleurs de toute façon, mais vérifié aussi côté serveur).
-    const streetId = await getPostStreetId(postId);
-    if (streetId !== user.street.id) {
+    // ailleurs de toute façon, mais vérifié aussi côté serveur), ni sur sa
+    // propre demande (l'UI masque déjà le bouton, mais rien n'empêchait un
+    // POST forgé — cf. revue) ; `getPostSummary` ignore aussi les demandes
+    // supprimées.
+    const summary = await getPostSummary(postId);
+    if (!summary || summary.streetId !== user.street.id) {
+      return ctx.redirect(backToFil);
+    }
+    if (summary.authorId === user.id) {
       return ctx.redirect(backToFil);
     }
 

@@ -1,5 +1,5 @@
 import { Head } from "fresh/runtime";
-import "../assets/pages/home.css" with { type: "css" };
+import "../assets/pages/index.css" with { type: "css" };
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { StreetProgress } from "../components/StreetProgress.tsx";
@@ -67,7 +67,7 @@ export default define.page<typeof handler>(function Home({ data, state }) {
       <Head>
         <title>NotreRue.fr — Créer du lien entre voisins</title>
       </Head>
-      <Header user={user} />
+      <Header user={user} isStreetAwake={state.isStreetAwake} />
       <main>
         <section class="container hero" id="trouver-ma-rue">
           <div>

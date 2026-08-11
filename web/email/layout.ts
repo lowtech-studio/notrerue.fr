@@ -52,6 +52,12 @@ export function emailParagraph(html: string, muted = false): string {
  * carte et le pied de page communs. `preheaderText` est le texte d'aperçu
  * affiché par la boîte de réception avant l'ouverture (masqué à l'affichage) —
  * évite qu'elle improvise un extrait à partir du premier texte visible.
+ *
+ * `bodyHtml` et `preheaderText` sont insérés tels quels dans le HTML, sans
+ * échappement ici : à la charge de l'appelant d'échapper toute donnée
+ * saisie par un habitant (login, nom de rue...) avant de les construire —
+ * comme le fait déjà `email/brevo.ts` via `escapeHtml`. Un oubli sur l'un
+ * des deux ouvrirait une injection HTML dans l'e-mail (cf. revue).
  */
 export function renderEmailLayout(
   bodyHtml: string,

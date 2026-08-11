@@ -89,7 +89,14 @@ export const tap = pgTable("tap", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  // Un seul tap actif par (habitant, demande) : `toggleTap` fait un
+  // select-puis-insert non atomique, cette contrainte empêche un
+  // double-clic ou deux requêtes concurrentes de créer deux taps actifs
+  // pour la même paire (cf. revue).
+  uniqueIndex("tap_user_post_active_unique").on(table.userId, table.postId)
+    .where(sql`${table.deletedAt} IS NULL`),
+]);
 
 export const post = pgTable("post", {
   id: serial("id").primaryKey(),

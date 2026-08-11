@@ -210,9 +210,9 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
       <Head>
         <title>Le fil de {streetName} — NotreRue.fr</title>
       </Head>
-      <Header user={state.user} />
+      <Header user={state.user} isStreetAwake={state.isStreetAwake} />
       <main>
-        <section class="container hero hero--single fil-page">
+        <section class="container hero hero--single page-wide">
           <h1 class="hero__title">Le fil de ma rue</h1>
           <p class="hero__subtitle">
             {housesCount} foyers · du plus récent au plus ancien
@@ -283,7 +283,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
 
           <ul class="fil-list">
             {posts.length === 0 && (
-              <li class="fil-list__empty">
+              <li class="empty-state">
                 Rien à afficher ici pour l'instant.
               </li>
             )}

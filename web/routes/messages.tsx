@@ -111,7 +111,6 @@ export const handler = define.handlers({
 
     const form = await ctx.req.formData();
     const otherUserId = parseId(String(form.get("to") ?? ""));
-    const postId = parseId(String(form.get("postId") ?? ""));
     const content = String(form.get("content") ?? "").trim().slice(
       0,
       MAX_MESSAGE_CONTENT_LENGTH,
@@ -126,14 +125,31 @@ export const handler = define.handlers({
       return ctx.redirect("/messages");
     }
 
+    // Revalidé ici plutôt que de faire confiance au postId brut du
+    // formulaire : un postId forgé (inexistant, d'une autre rue, sans
+    // rapport avec les deux participants) provoquerait sinon une violation
+    // de FK à l'insertion, ou serait stocké sans contrôle (cf. revue).
+    const postContext = await resolvePostContext(
+      parseId(String(form.get("postId") ?? "")),
+      user.street.id,
+      user.id,
+      otherUserId,
+    );
+
     if (content && !containsBlockedContent(content)) {
       await sendMessage({
         fromUserId: user.id,
         toUserId: otherUserId,
-        postId,
+        postId: postContext?.id ?? null,
         content,
       });
-      return ctx.redirect(`/messages?with=${otherUserId}`);
+      const redirectParams = new URLSearchParams({
+        with: String(otherUserId),
+      });
+      // Conservé dans la redirection : sinon le bandeau « À propos de »
+      // disparaît dès le premier message envoyé (cf. revue).
+      if (postContext) redirectParams.set("postId", String(postContext.id));
+      return ctx.redirect(`/messages?${redirectParams}`);
     }
 
     // Erreur : on réaffiche la conversation avec le message d'erreur et le
@@ -141,12 +157,6 @@ export const handler = define.handlers({
     const error = !content
       ? "Écrivez votre message avant de l'envoyer."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
-    const postContext = await resolvePostContext(
-      postId,
-      user.street.id,
-      user.id,
-      otherUserId,
-    );
     const messages = await getConversation(user.id, otherUserId);
 
     return {
@@ -175,9 +185,9 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
       <Head>
         <title>Mes messages — NotreRue.fr</title>
       </Head>
-      <Header user={state.user} />
+      <Header user={state.user} isStreetAwake={state.isStreetAwake} />
       <main>
-        <section class="container hero hero--single fil-page">
+        <section class="container hero hero--single page-wide">
           {messagesData.view === "inbox"
             ? (
               <>
@@ -189,7 +199,7 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
 
                 {messagesData.conversations.length === 0
                   ? (
-                    <p class="fil-list__empty">
+                    <p class="empty-state">
                       Aucune conversation pour l'instant. Répondez à une demande
                       du fil avec le bouton « Message privé » pour en démarrer
                       une.
@@ -248,7 +258,7 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
 
                 {messagesData.messages.length === 0
                   ? (
-                    <p class="fil-list__empty">
+                    <p class="empty-state">
                       Aucun message échangé pour l'instant. Écrivez le premier
                       ci-dessous.
                     </p>

@@ -1,12 +1,12 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { eq } from "drizzle-orm";
+import postgres from "postgres";
 import { db } from "./client.ts";
 import { house, post, tap, user } from "./schema.ts";
 import { createPost } from "./posts.ts";
 import {
   countTapsByPost,
   findTappedPostIds,
-  getPostStreetId,
   listTappers,
   toggleTap,
 } from "./taps.ts";
@@ -80,6 +80,69 @@ Deno.test("toggleTap : crée un tap actif, puis le retire au second appel", asyn
   }
 });
 
+Deno.test("tap : la contrainte d'unicité rejette un second tap actif pour la même paire", async () => {
+  const setup = await setupPost("taps-5");
+  const { user: viewer } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `taps-race-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: setup.testStreet.testStreet.id,
+  });
+
+  try {
+    await db.insert(tap).values({ userId: viewer.id, postId: setup.post.id });
+
+    // Second insert direct (contourne le select de `toggleTap`) : simule
+    // l'issue d'une vraie course où les deux select passent avant que l'un
+    // des deux insert ne commite. La contrainte d'unicité partielle du
+    // schéma (cf. revue) doit le rejeter plutôt que de créer un doublon.
+    // drizzle-orm enveloppe l'erreur du driver dans un `DrizzleQueryError` ;
+    // la `PostgresError` d'origine (avec son `.code`) est sur `.cause`.
+    const error = await assertRejects(
+      () => db.insert(tap).values({ userId: viewer.id, postId: setup.post.id }),
+    );
+    const cause = error instanceof Error ? error.cause : undefined;
+    assertEquals(cause instanceof postgres.PostgresError, true);
+    assertEquals(
+      cause instanceof postgres.PostgresError ? cause.code : undefined,
+      "23505",
+    );
+
+    const counts = await countTapsByPost([setup.post.id]);
+    assertEquals(counts.get(setup.post.id), 1);
+  } finally {
+    await teardown(setup, [viewer]);
+  }
+});
+
+Deno.test("toggleTap : deux appels concurrents (double-clic) → jamais plus d'un tap actif, aucun n'échoue", async () => {
+  const setup = await setupPost("taps-6");
+  const { user: viewer } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `taps-race2-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: setup.testStreet.testStreet.id,
+  });
+
+  try {
+    // L'entrelacement réel des deux appels n'est pas garanti (vraie course
+    // sur l'insert, ou exécution de fait séquentielle où le second voit le
+    // tap du premier et le retire) : les deux issues sont correctes. Ce qui
+    // compte est qu'aucun appel ne plante et qu'il n'y ait jamais plus d'un
+    // tap actif au final (cf. revue).
+    const results = await Promise.all([
+      toggleTap(viewer.id, setup.post.id),
+      toggleTap(viewer.id, setup.post.id),
+    ]);
+    assertEquals(results.length, 2);
+
+    const counts = await countTapsByPost([setup.post.id]);
+    assertEquals((counts.get(setup.post.id) ?? 0) <= 1, true);
+  } finally {
+    await teardown(setup, [viewer]);
+  }
+});
+
 Deno.test("countTapsByPost : compte uniquement les taps actifs, par demande", async () => {
   const setup = await setupPost("taps-2");
   const { user: viewerA } = await registerInhabitant({
@@ -148,18 +211,4 @@ Deno.test("listTappers : id + login des taps actifs, dans l'ordre, sans les rét
 
 Deno.test("listTappers : liste de postId vide → carte vide", async () => {
   assertEquals(await listTappers([]), new Map());
-});
-
-Deno.test("getPostStreetId : retrouve la rue de l'auteur, null si le post n'existe pas", async () => {
-  const setup = await setupPost("taps-3");
-
-  try {
-    assertEquals(
-      await getPostStreetId(setup.post.id),
-      setup.testStreet.testStreet.id,
-    );
-    assertEquals(await getPostStreetId(-1), null);
-  } finally {
-    await teardown(setup);
-  }
 });

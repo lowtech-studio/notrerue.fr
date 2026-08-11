@@ -99,7 +99,10 @@ export async function listStreetPosts(
     .innerJoin(user, eq(post.userId, user.id))
     .innerJoin(house, eq(user.houseId, house.id))
     .where(where)
-    .orderBy(desc(post.createdAt))
+    // `id` en second critère : deux demandes créées à la même seconde (ou un
+    // insert en masse) auraient sinon un ordre instable d'une requête à
+    // l'autre, avec un risque de doublons/trous entre deux pages (cf. revue).
+    .orderBy(desc(post.createdAt), desc(post.id))
     .limit(POSTS_PER_PAGE)
     .offset((page - 1) * POSTS_PER_PAGE);
 

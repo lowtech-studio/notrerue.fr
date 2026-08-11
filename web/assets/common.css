@@ -268,7 +268,7 @@ button.site-header__link {
    `.hero--single` sur grand écran — mais toujours pleine largeur sur mobile
    (cf. .hero--single ci-dessus, appliqué en dessous de 760px). */
 @media (min-width: 760px) {
-  .fil-page {
+  .page-wide {
     max-width: min(70%, var(--container-width));
   }
 }
@@ -444,7 +444,7 @@ button.site-header__link {
 }
 
 /* Liste vide (fil et messages : « aucune demande »/« aucune conversation »). */
-.fil-list__empty {
+.empty-state {
   padding: 24px;
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-lg);
@@ -473,7 +473,7 @@ button.site-header__link {
 
 .street-status__title {
   margin: 0 0 8px;
-  font-family: "Newsreader", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 26px;
   font-weight: 600;
   line-height: 1.15;

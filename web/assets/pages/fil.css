@@ -1,5 +1,5 @@
 /* Styles propres à la page /fil (routes/fil.tsx) — cf. assets/common.css
-   pour le reste (en-tête, hero, boutons, .fil-page, .fil-list__empty...). */
+   pour le reste (en-tête, hero, boutons, .page-wide, .empty-state...). */
 
 /* Publication d'une demande (rue allumée) — cf. backlog « publier en moins
    de 30 secondes ». Même gabarit de carte que .street-status : une seule
@@ -14,7 +14,7 @@
 
 .compose-post__title {
   margin: 0 0 16px;
-  font-family: "Newsreader", Georgia, serif;
+  font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
   color: var(--color-ink);

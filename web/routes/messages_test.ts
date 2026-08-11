@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context } from "fresh";
 import type { SessionUser, State } from "../utils.ts";
 import { db } from "../db/client.ts";
@@ -366,12 +366,23 @@ Deno.test("POST puis GET /messages : envoyé depuis une demande → contexte aff
     form.set("to", String(setup.bob.id));
     form.set("postId", String(bobPost.id));
     form.set("content", "J'en ai une à vous prêter");
-    await handler.POST!(
+    const response = await handler.POST!(
       makeContext("http://localhost/messages", {
         user: setup.aliceSession,
         form,
       }),
+    ) as Response;
+    // Le postId validé est conservé dans la redirection, sinon le bandeau
+    // « À propos de » disparaîtrait dès le premier message (cf. revue).
+    assertEquals(
+      response.headers.get("location"),
+      `/messages?with=${setup.bob.id}&postId=${bobPost.id}`,
     );
+
+    const [storedFirst] = await db.select().from(message).where(
+      eq(message.userFromId, setup.alice.id),
+    );
+    assertEquals(storedFirst.postId, bobPost.id);
 
     const withContext = await handler.GET!(
       makeContext(
@@ -401,6 +412,30 @@ Deno.test("POST puis GET /messages : envoyé depuis une demande → contexte aff
       ),
     ) as { data: { postContext: unknown } };
     assertEquals(wrongContext.data.postContext, null);
+
+    // Même postId usurpé envoyé en POST : ignoré, jamais stocké tel quel
+    // (cf. revue — pas de violation de FK ni de fuite d'une autre rue).
+    const forgedForm = new FormData();
+    forgedForm.set("to", String(setup.bob.id));
+    forgedForm.set("postId", String(carlaPost.id));
+    forgedForm.set("content", "Message avec un postId usurpé");
+    const forgedResponse = await handler.POST!(
+      makeContext("http://localhost/messages", {
+        user: setup.aliceSession,
+        form: forgedForm,
+      }),
+    ) as Response;
+    assertEquals(
+      forgedResponse.headers.get("location"),
+      `/messages?with=${setup.bob.id}`,
+    );
+    const [storedForged] = await db.select().from(message).where(
+      and(
+        eq(message.userFromId, setup.alice.id),
+        eq(message.content, "Message avec un postId usurpé"),
+      ),
+    );
+    assertEquals(storedForged.postId, null);
 
     await db.delete(post).where(eq(post.userId, carla.id));
     await db.delete(user).where(eq(user.id, carla.id));
