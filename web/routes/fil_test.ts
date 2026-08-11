@@ -3,9 +3,10 @@ import { eq } from "drizzle-orm";
 import type { Context } from "fresh";
 import type { SessionUser, State } from "../utils.ts";
 import { db } from "../db/client.ts";
-import { house, post, user } from "../db/schema.ts";
+import { house, post, tap, user } from "../db/schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
+import { toggleTap } from "../db/taps.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
 import { handler } from "./fil.tsx";
 
@@ -316,6 +317,69 @@ Deno.test("POST /fil : message valide → publié, redirection avec confirmation
     assertEquals(created.content, "Je prête ma tondeuse ce week-end");
     assertEquals(created.type, "propose");
   } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("GET /fil : tappers rempli (id + login) sur ses propres demandes, vide sur celles des autres", async () => {
+  const awake = await createAwakeStreetWithUser("fil-9");
+  const { user: tapper } = await registerInhabitant({
+    login: `tapper-${crypto.randomUUID()}`,
+    email: `fil-tapper-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: awake.testStreet.testStreet.id,
+  });
+
+  try {
+    const publishForm = new FormData();
+    publishForm.set("type", "cherche");
+    publishForm.set("content", "Je cherche une perceuse");
+    await handler.POST!(
+      makeContext("http://localhost/fil", {
+        user: awake.sessionUser,
+        form: publishForm,
+      }),
+    );
+    const [created] = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+
+    const tapperSession: SessionUser = {
+      id: tapper.id,
+      login: tapper.login,
+      email: tapper.email,
+      isAmbassador: tapper.isAmbassador,
+      street: awake.sessionUser.street,
+    };
+    await toggleTap(tapper.id, created.id);
+
+    const asAuthor = await handler.GET!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser }),
+    ) as {
+      data: {
+        posts: { id: number; tappers: { id: number; login: string }[] }[];
+      };
+    };
+    assertEquals(
+      asAuthor.data.posts.find((p) => p.id === created.id)?.tappers,
+      [{ id: tapper.id, login: tapper.login }],
+    );
+
+    const asTapper = await handler.GET!(
+      makeContext("http://localhost/fil", { user: tapperSession }),
+    ) as {
+      data: {
+        posts: { id: number; tappers: { id: number; login: string }[] }[];
+      };
+    };
+    assertEquals(
+      asTapper.data.posts.find((p) => p.id === created.id)?.tappers,
+      [],
+    );
+  } finally {
+    await db.delete(tap).where(eq(tap.userId, tapper.id));
+    await db.delete(user).where(eq(user.id, tapper.id));
+    await db.delete(house).where(eq(house.id, tapper.houseId));
     await cleanupAwakeStreet(awake);
   }
 });

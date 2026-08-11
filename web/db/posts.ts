@@ -44,6 +44,7 @@ export interface StreetPost {
   type: PostType;
   content: string;
   createdAt: Date;
+  authorId: number;
   authorLogin: string;
 }
 
@@ -91,6 +92,7 @@ export async function listStreetPosts(
     type: post.type,
     content: post.content,
     createdAt: post.createdAt,
+    authorId: user.id,
     authorLogin: user.login,
   })
     .from(post)
@@ -102,4 +104,35 @@ export async function listStreetPosts(
     .offset((page - 1) * POSTS_PER_PAGE);
 
   return { posts: rows, totalCount, totalPages, page };
+}
+
+export interface PostSummary {
+  id: number;
+  type: PostType;
+  content: string;
+  authorId: number;
+  streetId: number;
+}
+
+/**
+ * Aperçu léger d'une demande (avec la rue de son auteur), pour donner du
+ * contexte à un message privé démarré depuis un bouton sur cette demande
+ * (cf. backlog messagerie privée) — sans passer par `listStreetPosts`, pas
+ * fait pour n'en récupérer qu'une seule.
+ */
+export async function getPostSummary(
+  postId: number,
+): Promise<PostSummary | null> {
+  const [found] = await db.select({
+    id: post.id,
+    type: post.type,
+    content: post.content,
+    authorId: user.id,
+    streetId: house.streetId,
+  })
+    .from(post)
+    .innerJoin(user, eq(post.userId, user.id))
+    .innerJoin(house, eq(user.houseId, house.id))
+    .where(and(eq(post.id, postId), isNull(post.deletedAt)));
+  return found ?? null;
 }

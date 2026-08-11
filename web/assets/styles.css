@@ -50,6 +50,8 @@ a {
   --color-accent: #e8a33d;
   --color-ink-dark: #2b2722;
   --color-paper-dark: #efe7d8;
+  --color-success: #2f6b3a;
+  --color-success-bg: #eef6ee;
 
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -324,6 +326,14 @@ button.site-header__link {
   background: var(--color-paper-warm);
 }
 
+.street-status__headline {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-brand);
+}
+
 .street-status__title {
   margin: 0 0 8px;
   font-family: "Newsreader", Georgia, serif;
@@ -488,11 +498,129 @@ button.site-header__link {
   color: var(--color-ink);
 }
 
+.fil-post__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .fil-post__author {
   margin: 0;
   font-size: 14px;
   font-weight: 700;
   color: var(--color-ink-soft);
+}
+
+/* Réponse en un clic (« J'ai » / « Intéressé » / 👍 selon le type) — cf.
+   backlog « rendre service plus facile que scroller ». */
+.fil-post__tap {
+  padding: 8px 16px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fil-post__tap:hover {
+  border-color: var(--color-brand);
+}
+
+.fil-post__tap--active {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.fil-post__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Message privé démarré depuis une demande — cf. backlog messagerie
+   privée. Même gabarit de bouton que .fil-post__tap (pilule, même
+   padding/bordure) pour rester dans la même rangée d'actions ; jamais
+   « actif » comme un tap, donc pas de variante remplie. */
+.fil-post__message-link {
+  padding: 8px 16px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fil-post__message-link:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+/* Sur ses propres demandes : qui a tapé, avec un lien par voisin vers un
+   message privé pour s'organiser (cf. backlog). Liste toujours visible
+   plutôt qu'un tooltip au survol : les liens qu'elle contient doivent
+   rester atteignables au clavier et au tactile (pas de vrai survol sur
+   mobile). */
+.fil-post__tappers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fil-post__tappers-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-ink-soft);
+}
+
+.fil-post__tappers-link {
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--color-paper-warm);
+  color: var(--color-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.fil-post__tappers-link:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+/* Au-delà de TAPPERS_VISIBLE_LIMIT tapeurs, le reste se replie derrière un
+   <summary> plutôt que de déborder de la vignette (cf. retour utilisateur :
+   « si j'ai 50 voisins qui répondent »). Natif HTML, pas de JS. */
+.fil-post__tappers-more {
+  display: inline-flex;
+}
+
+.fil-post__tappers-more summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.fil-post__tappers-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.fil-post__tappers-more[open] {
+  display: block;
+  width: 100%;
+}
+
+.fil-post__tappers-more-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .fil-pagination {
@@ -505,6 +633,136 @@ button.site-header__link {
 .fil-pagination__status {
   font-size: 14px;
   color: var(--color-ink-muted);
+}
+
+/* /messages — boîte de réception (une ligne par interlocuteur) et fil de
+   discussion privé avec un voisin (cf. backlog messagerie privée). */
+.messages-list {
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.messages-list__item {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-paper);
+  color: inherit;
+  text-decoration: none;
+}
+
+.messages-list__item:hover {
+  border-color: var(--color-brand);
+}
+
+.messages-list__login {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.messages-list__preview {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--color-ink-soft);
+}
+
+.messages-list__date {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .messages-list__item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .messages-list__preview {
+    grid-column: 1 / -1;
+  }
+}
+
+.message-thread__post-context {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--color-paper-warm);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--color-ink-soft);
+}
+
+.message-thread {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.message-thread__bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+}
+
+.message-thread__bubble--mine {
+  justify-self: end;
+  background: var(--color-brand);
+  color: var(--color-paper-warm);
+}
+
+.message-thread__bubble--theirs {
+  justify-self: start;
+  background: var(--color-paper-warm);
+  color: var(--color-ink);
+}
+
+.message-thread__content {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.message-thread__date {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.message-compose__form {
+  display: grid;
+  gap: 12px;
+}
+
+.message-compose__input {
+  min-height: 96px;
+  padding: 12px 16px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.message-compose__input:focus {
+  outline: none;
+  border-color: var(--color-brand);
 }
 
 .trust-card {
@@ -635,6 +893,16 @@ button.site-header__link {
 .hero--single {
   grid-template-columns: minmax(0, 1fr);
   max-width: 560px;
+}
+
+/* Page /fil : messages et formulaire de publication sur une colonne plus
+   large que /rejoindre et /connexion, pour profiter de l'espace sur grand
+   écran — mais toujours pleine largeur sur mobile (cf. .hero--single
+   ci-dessus, appliqué en dessous de 760px). */
+@media (min-width: 760px) {
+  .fil-page {
+    max-width: min(70%, var(--container-width));
+  }
 }
 
 .registration-form {

@@ -21,6 +21,8 @@ export function Header({ user }: HeaderProps = {}) {
         {user
           ? (
             <nav class="site-header__nav">
+              <a href="/fil" class="site-header__link">Le fil de ma rue</a>
+              <a href="/messages" class="site-header__link">Mes messages</a>
               <form
                 method="POST"
                 action="/deconnexion"

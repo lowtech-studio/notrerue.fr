@@ -11,6 +11,12 @@ import {
   type StreetPost,
 } from "../db/posts.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
+import {
+  countTapsByPost,
+  findTappedPostIds,
+  listTappers,
+  type Tapper,
+} from "../db/taps.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
 
 const POST_TYPE_LABELS: Record<PostType, string> = {
@@ -20,10 +26,54 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
 };
 const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
 
+/** Libellé du bouton de réponse en un clic, selon le type de la demande (cf. backlog). */
+const TAP_LABELS: Record<PostType, string> = {
+  cherche: "J'ai",
+  propose: "Intéressé",
+  informe: "👍",
+};
+
+/** Noms de tapeurs affichés directement sur la vignette avant de replier le
+ * reste dans un <details> — au-delà, une demande très répondue déborderait
+ * de la carte (cf. retour utilisateur : "50 voisins qui répondent"). */
+const TAPPERS_VISIBLE_LIMIT = 6;
+
+interface FilPost extends StreetPost {
+  tapCount: number;
+  viewerHasTapped: boolean;
+  /** Qui a tapé — rempli seulement pour ses propres demandes (cf. backlog
+   * « qui a tapé sur mes messages, au survol » et « message privé à un
+   * tapeur pour s'organiser »), vide sinon : pas besoin d'exposer qui a
+   * répondu chez les autres. */
+  tappers: Tapper[];
+}
+
+/** Complète chaque demande avec son nombre de taps, si `viewerId` a déjà tapé, et qui a tapé sur ses propres demandes. */
+async function attachTapInfo(
+  posts: StreetPost[],
+  viewerId: number,
+): Promise<FilPost[]> {
+  const postIds = posts.map((p) => p.id);
+  const ownPostIds = posts.filter((p) => p.authorId === viewerId).map((p) =>
+    p.id
+  );
+  const [counts, tapped, tappersByPost] = await Promise.all([
+    countTapsByPost(postIds),
+    findTappedPostIds(viewerId, postIds),
+    listTappers(ownPostIds),
+  ]);
+  return posts.map((p) => ({
+    ...p,
+    tapCount: counts.get(p.id) ?? 0,
+    viewerHasTapped: tapped.has(p.id),
+    tappers: tappersByPost.get(p.id) ?? [],
+  }));
+}
+
 interface FilData {
   streetName: string;
   housesCount: number;
-  posts: StreetPost[];
+  posts: FilPost[];
   page: number;
   totalPages: number;
   activeType: PostType | null;
@@ -55,11 +105,12 @@ export const handler = define.handlers({
     if (!streetStatus.isAwake) return ctx.redirect("/");
 
     const activeType = parseType(ctx.url.searchParams.get("type"));
-    const { posts, totalPages, page } = await listStreetPosts({
+    const { posts: rawPosts, totalPages, page } = await listStreetPosts({
       streetId: user.street.id,
       type: activeType ?? undefined,
       page: parsePage(ctx.url.searchParams.get("page")),
     });
+    const posts = await attachTapInfo(rawPosts, user.id);
 
     return {
       data: {
@@ -103,10 +154,11 @@ export const handler = define.handlers({
     const error = !isPostType(rawType) || !content
       ? "Merci de choisir un type et d'écrire votre demande."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
-    const { posts, totalPages, page } = await listStreetPosts({
+    const { posts: rawPosts, totalPages, page } = await listStreetPosts({
       streetId: user.street.id,
       page: 1,
     });
+    const posts = await attachTapInfo(rawPosts, user.id);
 
     return {
       data: {
@@ -158,8 +210,8 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
       </Head>
       <Header user={state.user} />
       <main>
-        <section class="container hero hero--single">
-          <h1 class="hero__title">Le fil de la rue</h1>
+        <section class="container hero hero--single fil-page">
+          <h1 class="hero__title">Le fil de ma rue</h1>
           <p class="hero__subtitle">
             {housesCount} foyers · du plus récent au plus ancien
           </p>
@@ -244,7 +296,84 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   </span>
                 </div>
                 <p class="fil-post__content">{item.content}</p>
-                <p class="fil-post__author">{item.authorLogin}</p>
+                <div class="fil-post__footer">
+                  <p class="fil-post__author">{item.authorLogin}</p>
+
+                  {state.user && item.authorId !== state.user.id && (
+                    <div class="fil-post__actions">
+                      <form method="POST" action="/taps">
+                        <input type="hidden" name="postId" value={item.id} />
+                        {activeType && (
+                          <input
+                            type="hidden"
+                            name="type"
+                            value={activeType}
+                          />
+                        )}
+                        {page > 1 && (
+                          <input type="hidden" name="page" value={page} />
+                        )}
+                        <button
+                          type="submit"
+                          class={`fil-post__tap ${
+                            item.viewerHasTapped ? "fil-post__tap--active" : ""
+                          }`}
+                        >
+                          {item.viewerHasTapped ? "✓ " : ""}
+                          {TAP_LABELS[item.type]}
+                          {item.tapCount > 0 && ` · ${item.tapCount} déjà`}
+                        </button>
+                      </form>
+                      <a
+                        href={`/messages?with=${item.authorId}&postId=${item.id}`}
+                        class="fil-post__message-link"
+                      >
+                        Message privé
+                      </a>
+                    </div>
+                  )}
+
+                  {state.user && item.authorId === state.user.id &&
+                    item.tappers.length > 0 && (
+                    <div class="fil-post__tappers">
+                      <span class="fil-post__tappers-label">
+                        {item.tappers.length} {TAP_LABELS[item.type]} :
+                      </span>
+                      {item.tappers.slice(0, TAPPERS_VISIBLE_LIMIT).map((
+                        tapper,
+                      ) => (
+                        <a
+                          key={tapper.id}
+                          href={`/messages?with=${tapper.id}&postId=${item.id}`}
+                          class="fil-post__tappers-link"
+                        >
+                          {tapper.login}
+                        </a>
+                      ))}
+                      {item.tappers.length > TAPPERS_VISIBLE_LIMIT && (
+                        <details class="fil-post__tappers-more">
+                          <summary class="fil-post__tappers-link">
+                            +{item.tappers.length - TAPPERS_VISIBLE_LIMIT}{" "}
+                            autres
+                          </summary>
+                          <div class="fil-post__tappers-more-list">
+                            {item.tappers.slice(TAPPERS_VISIBLE_LIMIT).map((
+                              tapper,
+                            ) => (
+                              <a
+                                key={tapper.id}
+                                href={`/messages?with=${tapper.id}&postId=${item.id}`}
+                                class="fil-post__tappers-link"
+                              >
+                                {tapper.login}
+                              </a>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

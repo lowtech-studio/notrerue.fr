@@ -70,28 +70,37 @@ export default define.page<typeof handler>(function Home({ data, state }) {
       <main>
         <section class="container hero" id="trouver-ma-rue">
           <div>
-            <p class="hero__eyebrow">Créer du lien entre voisins</p>
-            <h1 class="hero__title">
-              Partagez, échangez et connectez-vous avec vos voisins!
-            </h1>
-            <p class="hero__subtitle">
-              100% Local, 100% Réel :<br />
-              Un dentiste à conseiller? Un outil à prêter? Un événement de
-              quartier à partager? ...
-            </p>
-
-            {user
-              ? (
-                <>
-                  <p class="hero__confirmation">
+            <p class="hero__eyebrow">
+              {user
+                ? (
+                  <>
                     Bienvenue <strong>{user.login}</strong> ! {user.isAmbassador
                       ? "Vous êtes ambassadeur de "
                       : "Vous habitez "}
                     <strong>
                       {user.street.name}, {user.street.city.name}
                     </strong>.
-                  </p>
+                  </>
+                )
+                : "Créer du lien entre voisins"}
+            </p>
 
+            {!user && (
+              <>
+                <h1 class="hero__title">
+                  Partagez, échangez et connectez-vous avec vos voisins!
+                </h1>
+                <p class="hero__subtitle">
+                  100% Local, 100% Réel :<br />
+                  Un dentiste à conseiller? Un outil à prêter? Un événement de
+                  quartier à partager? ...
+                </p>
+              </>
+            )}
+
+            {user
+              ? (
+                <>
                   {ownStreetStatus && !ownStreetStatus.isAwake && (
                     <div class="street-status">
                       <h2 class="street-status__title">
@@ -121,10 +130,12 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                       <h2 class="street-status__title">
                         Votre rue est allumée !
                       </h2>
+                      <p class="street-status__headline">
+                        {ownStreetStatus.housesCount} foyers vous ont rejoint.
+                      </p>
                       <p class="street-status__subtitle">
-                        {ownStreetStatus.housesCount}{" "}
-                        foyers vous ont rejoint. Direction le fil pour voir les
-                        demandes de vos voisins et publier la vôtre.
+                        Direction le fil pour voir les demandes de vos voisins
+                        et publier les vôtres.
                       </p>
                       <a href="/fil" class="button">
                         Voir le fil de ma rue
@@ -185,58 +196,63 @@ export default define.page<typeof handler>(function Home({ data, state }) {
           </aside>
         </section>
 
-        <section class="container preview-wall" aria-labelledby="apercu-titre">
-          <h2 id="apercu-titre" class="preview-wall__title">
-            À quoi ressemble une rue allumée ?
-          </h2>
-          <p class="preview-wall__subtitle">
-            Un aperçu du fil de votre rue une fois quelques voisins inscrits :
-            demandes, coups de main, infos pratiques, recommandations et petits
-            rendez-vous entre voisins.
-          </p>
-          <div class="preview-wall__grid">
-            <img
-              src="/screenshots/fil.jpg"
-              alt="Fil de la rue : une demande « Je cherche » (perceuse à emprunter) avec les réponses des voisins"
-              width={465}
-              height={363}
-              loading="lazy"
-              class="preview-wall__img"
-            />
-            <img
-              src="/screenshots/petit-job.jpg"
-              alt="Petit job proposé par un voisin : babysitting le samedi soir"
-              width={461}
-              height={300}
-              loading="lazy"
-              class="preview-wall__img"
-            />
-            <img
-              src="/screenshots/information.jpg"
-              alt="Information pratique publiée par un voisin : une coupure d'eau annoncée à l'avance"
-              width={458}
-              height={228}
-              loading="lazy"
-              class="preview-wall__img"
-            />
-            <img
-              src="/screenshots/recommandations.jpg"
-              alt="Recommandations d'artisans partagées entre voisins : plombier, dentiste, garde d'enfants"
-              width={622}
-              height={475}
-              loading="lazy"
-              class="preview-wall__img"
-            />
-            <img
-              src="/screenshots/evenements.jpg"
-              alt="Rendez-vous entre voisins : café des voisins et accueil d'une nouvelle famille"
-              width={672}
-              height={344}
-              loading="lazy"
-              class="preview-wall__img"
-            />
-          </div>
-        </section>
+        {!user && (
+          <section
+            class="container preview-wall"
+            aria-labelledby="apercu-titre"
+          >
+            <h2 id="apercu-titre" class="preview-wall__title">
+              À quoi ressemble une rue allumée ?
+            </h2>
+            <p class="preview-wall__subtitle">
+              Un aperçu du fil de votre rue une fois quelques voisins inscrits :
+              demandes, coups de main, infos pratiques, recommandations et
+              petits rendez-vous entre voisins.
+            </p>
+            <div class="preview-wall__grid">
+              <img
+                src="/screenshots/fil.jpg"
+                alt="Fil de la rue : une demande « Je cherche » (perceuse à emprunter) avec les réponses des voisins"
+                width={465}
+                height={363}
+                loading="lazy"
+                class="preview-wall__img"
+              />
+              <img
+                src="/screenshots/petit-job.jpg"
+                alt="Petit job proposé par un voisin : babysitting le samedi soir"
+                width={461}
+                height={300}
+                loading="lazy"
+                class="preview-wall__img"
+              />
+              <img
+                src="/screenshots/information.jpg"
+                alt="Information pratique publiée par un voisin : une coupure d'eau annoncée à l'avance"
+                width={458}
+                height={228}
+                loading="lazy"
+                class="preview-wall__img"
+              />
+              <img
+                src="/screenshots/recommandations.jpg"
+                alt="Recommandations d'artisans partagées entre voisins : plombier, dentiste, garde d'enfants"
+                width={622}
+                height={475}
+                loading="lazy"
+                class="preview-wall__img"
+              />
+              <img
+                src="/screenshots/evenements.jpg"
+                alt="Rendez-vous entre voisins : café des voisins et accueil d'une nouvelle famille"
+                width={672}
+                height={344}
+                loading="lazy"
+                class="preview-wall__img"
+              />
+            </div>
+          </section>
+        )}
       </main>
       <footer class="site-footer">
         <p class="container site-footer__text">
