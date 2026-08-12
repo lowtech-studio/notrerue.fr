@@ -35,6 +35,27 @@ Deno.test("_middleware : isStreetAwake nul si non authentifié", async () => {
   assertEquals(body.isStreetAwake, null);
 });
 
+Deno.test("_middleware : en-têtes de sécurité posés sur toute réponse (cf. AGENTS.md, ANSSI-PA-009)", async () => {
+  const handle = buildTestHandler();
+  const res = await handle(new Request("http://localhost/__probe"));
+
+  const csp = res.headers.get("Content-Security-Policy");
+  assertEquals(csp?.includes("default-src 'self'"), true);
+  assertEquals(csp?.includes("frame-ancestors 'none'"), true);
+  // Sous `deno test`, non passé par Vite : CSP stricte (pas d'assouplissement
+  // dev), donc rien de tout ça ne doit apparaître (cf. commentaire dans
+  // _middleware.ts sur `import.meta.env?.DEV`).
+  assertEquals(csp?.includes("unsafe-inline"), false);
+  assertEquals(csp?.includes("unsafe-eval"), false);
+  assertEquals(csp?.includes("data:"), false);
+
+  assertEquals(res.headers.get("X-Frame-Options"), "DENY");
+  assertEquals(
+    res.headers.get("Referrer-Policy"),
+    "strict-origin-when-cross-origin",
+  );
+});
+
 Deno.test("_middleware : isStreetAwake reflète l'état réel de la rue de l'utilisateur", async () => {
   const asleepStreet = await createTestStreet("middleware-asleep");
   const { user: asleepUser } = await registerInhabitant({

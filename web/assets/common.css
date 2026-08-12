@@ -533,6 +533,26 @@ button.site-header__link {
   gap: 8px;
 }
 
+/* Case à cocher + libellé sur une ligne (déclaration d'âge sur /rejoindre) :
+   déroge à la grille verticale champ+libellé de .form-field ci-dessus, la
+   case étant elle-même le contrôle plutôt qu'un champ texte au-dessus
+   duquel poser un libellé. */
+.form-field--checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.form-field--checkbox input {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.form-field--checkbox .lookup-card__label {
+  margin: 0;
+  font-weight: 400;
+}
+
 .form-error {
   margin: 0 0 20px;
   padding: 16px 20px;

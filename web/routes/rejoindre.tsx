@@ -34,6 +34,12 @@ interface RejoindreData {
    * fréquent et l'ancien comportement de cette page.
    */
   willBeAmbassador: boolean;
+  /**
+   * Case à cocher re-soumise telle quelle en cas d'erreur ailleurs dans le
+   * formulaire, pour ne pas faire recocher une déclaration déjà faite
+   * (cf. backlog « préciser qu'il faut avoir plus de 15 ans »).
+   */
+  ageConfirmed: boolean;
 }
 
 const EMPTY_FORM: Omit<RejoindreData, "error"> = {
@@ -44,6 +50,7 @@ const EMPTY_FORM: Omit<RejoindreData, "error"> = {
   cityId: null,
   cityLabel: "",
   willBeAmbassador: true,
+  ageConfirmed: false,
 };
 
 /**
@@ -113,6 +120,11 @@ export const handler = define.handlers({
     const submittedCityId = Number.isInteger(cityIdRaw) && cityIdRaw > 0
       ? cityIdRaw
       : null;
+    // Déclaratif (pas de date de naissance demandée) : cohérent avec
+    // « rester maître de mes données » — pas de donnée personnelle
+    // supplémentaire pour un contrôle que la plupart des services en ligne
+    // traitent aussi par simple déclaration (cf. backlog).
+    const ageConfirmed = form.get("ageConfirmed") === "on";
 
     // Valeurs re-soumises telles quelles en cas d'erreur : évite de faire
     // ressaisir le formulaire en entier (login/e-mail perdus au moindre
@@ -129,7 +141,21 @@ export const handler = define.handlers({
         submittedCityId,
         streetName,
       ),
+      ageConfirmed,
     };
+
+    // Contrôlé avant le reste : seuil légal du consentement numérique en
+    // France (15 ans), distinct d'un simple champ manquant — message dédié
+    // plutôt que noyé dans l'erreur générique ci-dessous.
+    if (!ageConfirmed) {
+      return {
+        data: {
+          ...resubmitted,
+          error:
+            "Merci de confirmer avoir plus de 15 ans pour vous inscrire (seuil légal du consentement numérique en France).",
+        },
+      };
+    }
 
     if (!login || !email.includes("@") || !streetName || !cityIdRaw) {
       return {
@@ -227,6 +253,7 @@ export default define.page<typeof handler>(function Rejoindre({ data }) {
     cityId,
     cityLabel,
     willBeAmbassador,
+    ageConfirmed,
   } = data as RejoindreData;
 
   return (
@@ -303,6 +330,20 @@ export default define.page<typeof handler>(function Rejoindre({ data }) {
                 <p class="autocomplete-field__hint">
                   Seuls les foyers que vous choisirez pourront le voir.
                 </p>
+              </div>
+
+              <div class="form-field form-field--checkbox">
+                <input
+                  id="ageConfirmed"
+                  name="ageConfirmed"
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  required
+                />
+                <label class="lookup-card__label" for="ageConfirmed">
+                  Je certifie avoir plus de 15 ans (seuil légal du consentement
+                  numérique en France)
+                </label>
               </div>
 
               <button type="submit" class="button">

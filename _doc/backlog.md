@@ -62,7 +62,7 @@
 - [*] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes mes
   publications et mettre un lien dans le menu gérer mon profil , afin de rester
   maître de mes données.
-- [ ] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du
+- [*] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du
       consentement numérique en France ; à afficher, à contrôler à
       l'inscription).
 - [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco

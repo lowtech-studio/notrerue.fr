@@ -36,6 +36,7 @@ const EMPTY_FORM_DATA = {
   cityId: null,
   cityLabel: "",
   willBeAmbassador: true,
+  ageConfirmed: false,
 };
 
 Deno.test("GET /rejoindre : non connecté → affiche le formulaire", async () => {
@@ -66,7 +67,35 @@ Deno.test("POST /rejoindre : champs manquants → erreur, pas d'écriture en bas
       data: {
         ...EMPTY_FORM_DATA,
         error:
-          "Merci de renseigner un login, un e-mail valide, et de choisir votre ville et votre rue dans les suggestions.",
+          // Contrôlée avant le reste : formulaire vide ⇒ case d'âge non
+          // cochée aussi, c'est cette erreur-là qui remonte en premier.
+          "Merci de confirmer avoir plus de 15 ans pour vous inscrire (seuil légal du consentement numérique en France).",
+      },
+    },
+  );
+});
+
+Deno.test("POST /rejoindre : case d'âge non cochée → erreur dédiée même avec le reste du formulaire complet", async () => {
+  const form = new FormData();
+  form.set("login", "camille");
+  form.set("email", "camille@exemple.fr");
+  form.set("street", "Rue des Lilas");
+  form.set("cityId", "1");
+  const result = await handler.POST!(makeContext({ form }));
+  assertEquals(
+    result,
+    {
+      data: {
+        login: "camille",
+        email: "camille@exemple.fr",
+        houseNumber: "",
+        streetName: "Rue des Lilas",
+        cityId: 1,
+        cityLabel: "",
+        willBeAmbassador: true,
+        ageConfirmed: false,
+        error:
+          "Merci de confirmer avoir plus de 15 ans pour vous inscrire (seuil légal du consentement numérique en France).",
       },
     },
   );
@@ -78,6 +107,7 @@ Deno.test("POST /rejoindre : e-mail sans @ → erreur de validation, le reste du
   form.set("email", "pas-un-email");
   form.set("street", "Rue des Lilas");
   form.set("cityId", "1");
+  form.set("ageConfirmed", "on");
   const result = await handler.POST!(makeContext({ form }));
   assertEquals(
     result,
@@ -90,6 +120,7 @@ Deno.test("POST /rejoindre : e-mail sans @ → erreur de validation, le reste du
         cityId: 1,
         cityLabel: "",
         willBeAmbassador: true,
+        ageConfirmed: true,
         error:
           "Merci de renseigner un login, un e-mail valide, et de choisir votre ville et votre rue dans les suggestions.",
       },
@@ -104,6 +135,7 @@ Deno.test("POST /rejoindre : ville inconnue → erreur dédiée, cityId réiniti
   form.set("street", "Rue des Lilas");
   form.set("houseNumber", "14");
   form.set("cityId", "999999999");
+  form.set("ageConfirmed", "on");
   const result = await handler.POST!(makeContext({ form }));
   assertEquals(
     result,
@@ -116,6 +148,7 @@ Deno.test("POST /rejoindre : ville inconnue → erreur dédiée, cityId réiniti
         cityId: null,
         cityLabel: "",
         willBeAmbassador: true,
+        ageConfirmed: true,
         error: "Merci de choisir votre ville dans la liste proposée.",
       },
     },
