@@ -71,11 +71,15 @@ Deno.test("GET /inviter : connecté sur une rue non allumée → statut et lien 
     assertEquals(result.data.cityName, testStreet.testCity.name);
     assertEquals(result.data.status.housesCount, 1);
     assertEquals(result.data.status.isAwake, STREET_AWAKENING_THRESHOLD <= 1);
+    // Pas de paramètre `city` : /rejoindre reconstruit le libellé ville
+    // depuis `cityId` (cf. revue : raccourcir le lien de partage).
+    const expectedParams = new URLSearchParams({
+      cityId: String(testStreet.testCity.id),
+      street: testStreet.testStreet.name,
+    });
     assertEquals(
       result.data.joinUrl,
-      `http://localhost/rejoindre?cityId=${testStreet.testCity.id}` +
-        `&city=${encodeURIComponent(testStreet.testCity.name)}` +
-        `&street=${encodeURIComponent(testStreet.testStreet.name)}`,
+      `http://localhost/rejoindre?${expectedParams}`,
     );
     assertStringIncludes(result.data.message, result.data.joinUrl);
     assertStringIncludes(result.data.message, testStreet.testStreet.name);

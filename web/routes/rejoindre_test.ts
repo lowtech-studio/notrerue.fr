@@ -155,7 +155,7 @@ Deno.test("POST /rejoindre : ville inconnue → erreur dédiée, cityId réiniti
   );
 });
 
-Deno.test("GET /rejoindre : rue déjà occupée (via cityId/street en query) → pré-rempli, pas ambassadeur", async () => {
+Deno.test("GET /rejoindre : rue déjà occupée (via cityId/street en query, lien court sans `city`) → pré-rempli, pas ambassadeur", async () => {
   const testStreet = await createTestStreet("rejoindre-1");
   const { user: created } = await registerInhabitant({
     login: `login-${crypto.randomUUID()}`,
@@ -165,13 +165,23 @@ Deno.test("GET /rejoindre : rue déjà occupée (via cityId/street en query) →
   });
 
   try {
+    // Lien de partage raccourci (cf. revue) : `city` n'est plus émis, le
+    // libellé ville est reconstruit depuis `cityId` en base.
     const url = `http://localhost/rejoindre?cityId=${testStreet.testCity.id}` +
-      `&city=${encodeURIComponent(testStreet.testCity.name)}` +
       `&street=${encodeURIComponent(testStreet.testStreet.name)}`;
     const result = await handler.GET!(makeContext({ url })) as {
-      data: { cityId: number; streetName: string; willBeAmbassador: boolean };
+      data: {
+        cityId: number;
+        cityLabel: string;
+        streetName: string;
+        willBeAmbassador: boolean;
+      };
     };
     assertEquals(result.data.cityId, testStreet.testCity.id);
+    assertEquals(
+      result.data.cityLabel,
+      `${testStreet.testCity.name} (${testStreet.testCity.department})`,
+    );
     assertEquals(result.data.streetName, testStreet.testStreet.name);
     assertEquals(result.data.willBeAmbassador, false);
   } finally {
@@ -179,4 +189,45 @@ Deno.test("GET /rejoindre : rue déjà occupée (via cityId/street en query) →
     await db.delete(house).where(eq(house.id, created.houseId));
     await cleanupTestStreet(testStreet);
   }
+});
+
+Deno.test("GET /rejoindre : ancien lien avec `city` en trop → toujours pré-rempli, le paramètre superflu est ignoré", async () => {
+  const testStreet = await createTestStreet("rejoindre-1b");
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `rejoindre-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  try {
+    const url = `http://localhost/rejoindre?cityId=${testStreet.testCity.id}` +
+      `&city=${encodeURIComponent("Un ancien libellé quelconque")}` +
+      `&street=${encodeURIComponent(testStreet.testStreet.name)}`;
+    const result = await handler.GET!(makeContext({ url })) as {
+      data: { cityId: number; cityLabel: string };
+    };
+    assertEquals(result.data.cityId, testStreet.testCity.id);
+    // Le `city` de l'URL n'est plus lu : le libellé vient bien de la base,
+    // pas de l'ancien paramètre.
+    assertEquals(
+      result.data.cityLabel,
+      `${testStreet.testCity.name} (${testStreet.testCity.department})`,
+    );
+  } finally {
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("GET /rejoindre : cityId inexistant en base → pas de pré-remplissage, pas de plantage", async () => {
+  const url = `http://localhost/rejoindre?cityId=999999999&street=${
+    encodeURIComponent("Rue des Lilas")
+  }`;
+  const result = await handler.GET!(makeContext({ url })) as {
+    data: { cityId: number | null; cityLabel: string };
+  };
+  assertEquals(result.data.cityId, null);
+  assertEquals(result.data.cityLabel, "");
 });

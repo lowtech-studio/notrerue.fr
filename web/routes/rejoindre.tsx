@@ -17,7 +17,6 @@ import {
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 
 const MAX_STREET_LENGTH = 80;
-const MAX_CITY_LABEL_LENGTH = 120;
 
 interface RejoindreData {
   error: string | null;
@@ -72,27 +71,40 @@ export const handler = define.handlers({
   async GET(ctx) {
     if (ctx.state.user) return ctx.redirect("/");
 
-    // Pré-remplissage depuis la page d'accueil (« Rejoindre ma rue » sur une
-    // rue déjà repérée) : cityId/city/street portés dans l'URL.
+    // Pré-remplissage depuis la page d'accueil ou le lien de partage
+    // d'/inviter (« Rejoindre ma rue » sur une rue déjà repérée) :
+    // cityId/street portés dans l'URL. Le libellé ville affiché est
+    // reconstruit ci-dessous depuis la base plutôt que porté par un
+    // paramètre `city` séparé — plus court à saisir/imprimer (cf. revue :
+    // raccourcir le lien de partage), et un `city` d'un ancien lien déjà
+    // distribué reste sans effet (simplement ignoré) plutôt que de casser.
     const cityIdRaw = Number(ctx.url.searchParams.get("cityId"));
     const cityId = Number.isInteger(cityIdRaw) && cityIdRaw > 0
       ? cityIdRaw
       : null;
-    const cityLabel = (ctx.url.searchParams.get("city") ?? "").trim().slice(
-      0,
-      MAX_CITY_LABEL_LENGTH,
-    );
     const streetName = (ctx.url.searchParams.get("street") ?? "").trim()
       .slice(0, MAX_STREET_LENGTH);
+
+    const selectedCity = cityId ? await findCityById(cityId) : null;
+    const cityLabel = selectedCity
+      ? `${selectedCity.name} (${selectedCity.department})`
+      : "";
 
     return {
       data: {
         ...EMPTY_FORM,
         error: null,
-        cityId,
+        // `cityId` retombe à `null` si l'identifiant ne correspond à aucune
+        // ville réelle (lien forgé/périmé) : le formulaire se comporte
+        // alors comme sans pré-remplissage plutôt que de pointer vers une
+        // ville inexistante.
+        cityId: selectedCity ? cityId : null,
         cityLabel,
         streetName,
-        willBeAmbassador: await resolveWillBeAmbassador(cityId, streetName),
+        willBeAmbassador: await resolveWillBeAmbassador(
+          selectedCity ? cityId : null,
+          streetName,
+        ),
       },
     };
   },

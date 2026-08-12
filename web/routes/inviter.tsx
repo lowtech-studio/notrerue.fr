@@ -40,10 +40,17 @@ async function loadInviterCore(
   origin: string,
 ): Promise<InviterCore> {
   const status = await getStreetHousesStatus(user.street.id);
-  const joinUrl = `${origin}/rejoindre` +
-    `?cityId=${user.street.city.id}` +
-    `&city=${encodeURIComponent(user.street.city.name)}` +
-    `&street=${encodeURIComponent(user.street.name)}`;
+  // Pas de paramètre `city` séparé : /rejoindre reconstruit le libellé
+  // ville depuis `cityId` (base de données), donc inutile ici — lien plus
+  // court à recopier depuis un flyer imprimé (cf. revue). `URLSearchParams`
+  // encode aussi les espaces en `+` plutôt qu'en `%20`, plus court que
+  // l'`encodeURIComponent` manuel précédent, sans rien changer au décodage
+  // côté serveur (`URLSearchParams`/`ctx.url.searchParams` des deux côtés).
+  const joinParams = new URLSearchParams({
+    cityId: String(user.street.city.id),
+    street: user.street.name,
+  });
+  const joinUrl = `${origin}/rejoindre?${joinParams}`;
 
   const message = `Salut ! Je m'inscris sur NotreRue.fr pour qu'on ` +
     `s'entraide entre voisins de la ${user.street.name} ` +
