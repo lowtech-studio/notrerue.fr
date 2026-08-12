@@ -59,7 +59,10 @@ export async function registerInhabitant(
       .for("update");
 
     const [{ value: existingHouses }] = await tx.select({ value: count() })
-      .from(house).where(eq(house.streetId, input.streetId));
+      .from(house).where(and(
+        eq(house.streetId, input.streetId),
+        isNull(house.deletedAt),
+      ));
     const isAmbassador = existingHouses === 0;
 
     const [createdHouse] = await tx.insert(house).values({
@@ -217,6 +220,29 @@ export async function findSessionUserById(
       },
     },
     houseNumber: found.house.number,
+  };
+}
+
+/**
+ * Login + rue d'un compte, actif ou supprimé — utilisé pour afficher une
+ * conversation existante avec un compte depuis supprimé (cf.
+ * routes/messages.tsx) sans la faire disparaître pour l'autre participant.
+ * Contrairement à `findSessionUserById` (qui filtre les comptes supprimés,
+ * pensé pour une session active), le login retourné ici peut être le
+ * pseudonyme anonymisé posé par `deleteUserAccount` — c'est le but.
+ */
+export async function findUserLoginForDisplay(
+  id: number,
+): Promise<{ login: string; streetId: number; isDeleted: boolean } | null> {
+  const found = await db.query.user.findFirst({
+    where: eq(user.id, id),
+    with: { house: { with: { street: true } } },
+  });
+  if (!found) return null;
+  return {
+    login: found.login,
+    streetId: found.house.street.id,
+    isDeleted: found.deletedAt !== null,
   };
 }
 

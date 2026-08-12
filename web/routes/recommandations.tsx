@@ -53,6 +53,10 @@ interface RecoData {
   backPath: string;
   postError: string | null;
   postPublished: boolean;
+  /** `?edit_error=1` posé par /modifier (correction bloquée par la modération). */
+  editError: boolean;
+  /** `?reponse_error=1` posé par /reponses (réponse bloquée par la modération). */
+  reponseError: boolean;
   /** Valeur re-soumise telle quelle si la publication échoue. */
   postContent: string;
   postDuration: PostDuration;
@@ -111,6 +115,8 @@ export const handler = define.handlers({
         backPath: ctx.url.pathname + ctx.url.search,
         postError: null,
         postPublished: ctx.url.searchParams.get("published") === "1",
+        editError: ctx.url.searchParams.get("edit_error") === "1",
+        reponseError: ctx.url.searchParams.get("reponse_error") === "1",
         postContent: "",
         // Une recommandation n'a pas de date de péremption naturelle (un bon
         // dentiste le reste), contrairement à « une perceuse ce week-end » :
@@ -175,6 +181,8 @@ export const handler = define.handlers({
         backPath: "/recommandations",
         postError: error,
         postPublished: false,
+        editError: false,
+        reponseError: false,
         postDuration,
         postDurationMonths,
         postContent: content,
@@ -203,6 +211,8 @@ export default define.page<typeof handler>(
       backPath,
       postError,
       postPublished,
+      editError,
+      reponseError,
       postContent,
       postDuration,
       postDurationMonths,
@@ -227,6 +237,18 @@ export default define.page<typeof handler>(
               <p class="hero__confirmation">Votre demande a été publiée !</p>
             )}
             {postError && <p class="form-error" role="alert">{postError}</p>}
+            {editError && (
+              <p class="form-error" role="alert">
+                Votre correction n'a pas été enregistrée : merci de reformuler,
+                ce message contient des termes non autorisés.
+              </p>
+            )}
+            {reponseError && (
+              <p class="form-error" role="alert">
+                Votre réponse n'a pas été enregistrée : merci de reformuler, ce
+                message contient des termes non autorisés.
+              </p>
+            )}
 
             {
               /* Avant de publier : retrouver une recommandation déjà donnée

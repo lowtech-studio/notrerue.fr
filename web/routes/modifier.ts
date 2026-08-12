@@ -6,19 +6,7 @@ import {
   updatePostContent,
 } from "../db/posts.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
-
-/**
- * Chemin de retour : seuls /fil et /recommandations affichent des demandes
- * éditables, donc seuls ces deux préfixes sont acceptés — un `back` forgé
- * pointant ailleurs (voire vers un autre domaine, `//evil.example`) retombe
- * sur la page où vit réellement la demande plutôt que d'être suivi tel
- * quel (open redirect).
- */
-function resolveBack(raw: string, fallback: string): string {
-  return raw.startsWith("/fil") || raw.startsWith("/recommandations")
-    ? raw
-    : fallback;
-}
+import { resolvePostBackPath, withQueryParam } from "../utils/validation.ts";
 
 /**
  * Corrige le contenu d'une demande ou d'une recommandation (cf. backlog
@@ -43,20 +31,27 @@ export const handler = define.handlers({
     // Pas encore de `summary` ici pour calculer le fallback : à défaut, /fil
     // (le cas le plus courant) — remplacé ci-dessous dès que possible.
     if (!Number.isInteger(postId) || postId <= 0 || !content) {
-      return ctx.redirect(resolveBack(rawBack, "/fil"));
+      return ctx.redirect(resolvePostBackPath(rawBack, "/fil"));
     }
 
     // Revalidé ici plutôt que de faire confiance à l'UI (qui ne montre ce
     // formulaire que sur ses propres demandes) : un postId forgé ne doit
     // rien modifier chez un autre habitant (cf. /taps, même précaution).
     const summary = await getPostSummary(postId);
-    const back = resolveBack(rawBack, postListPath(summary?.type ?? "cherche"));
+    const back = resolvePostBackPath(
+      rawBack,
+      postListPath(summary?.type ?? "cherche"),
+    );
 
     if (!summary || summary.authorId !== user.id) {
       return ctx.redirect(back);
     }
     if (containsBlockedContent(content)) {
-      return ctx.redirect(back);
+      // `edit_error=1` plutôt qu'une redirection silencieuse : sans lui,
+      // l'utilisateur croit sa correction enregistrée alors qu'elle est
+      // ignorée (cf. revue). Lu par /fil et /recommandations pour afficher
+      // un message d'erreur.
+      return ctx.redirect(withQueryParam(back, "edit_error", "1"));
     }
 
     await updatePostContent(postId, user.id, content);

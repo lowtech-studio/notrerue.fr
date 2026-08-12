@@ -2,6 +2,8 @@ import { define } from "../utils.ts";
 import { getPostSummary, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { createComment, MAX_COMMENT_CONTENT_LENGTH } from "../db/comments.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
+import { getStreetHousesStatus } from "../db/streets.ts";
+import { withQueryParam } from "../utils/validation.ts";
 
 /**
  * Publie une réponse publique à une demande de recommandation et revient à
@@ -16,6 +18,13 @@ export const handler = define.handlers({
   async POST(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.redirect("/connexion");
+
+    // Même porte que /recommandations (cf. backlog « une seule action
+    // possible tant que la rue n'est pas allumée ») : sans ce contrôle, un
+    // postId de recommandation forgé et deviné (ids séquentiels) permettait
+    // de publier une réponse publique depuis une rue encore endormie.
+    const streetStatus = await getStreetHousesStatus(user.street.id);
+    if (!streetStatus.isAwake) return ctx.redirect("/");
 
     const form = await ctx.req.formData();
     const postId = Number(form.get("postId"));
@@ -40,7 +49,10 @@ export const handler = define.handlers({
       return ctx.redirect(back);
     }
     if (containsBlockedContent(content)) {
-      return ctx.redirect(back);
+      // `reponse_error=1` plutôt qu'une redirection silencieuse : sans lui,
+      // la réponse tapée disparaît sans aucune explication (cf. revue). Lu
+      // par /recommandations pour afficher un message d'erreur.
+      return ctx.redirect(withQueryParam(back, "reponse_error", "1"));
     }
 
     // On ne répond qu'à une demande de recommandation visible par

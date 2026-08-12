@@ -32,7 +32,7 @@ export type FilPostType = Exclude<PostType, "recommandation">;
  */
 export const MAX_POST_CONTENT_LENGTH = 240;
 
-/** Recherche libre sur /recommandations (cf. backlog « retrouver les recommandations déjà données ») — large, une longue phrase collée reste inoffensive vu le `ilike` en base. */
+/** Recherche libre sur /fil et /recommandations, et bornage des champs `q` repris tels quels par /taps et /reponses (cf. backlog « retrouver les recommandations déjà données ») — large, une longue phrase collée reste inoffensive vu le `ilike` en base. */
 export const MAX_SEARCH_LENGTH = 100;
 
 /** Vrai si `value` est bien l'une des quatre valeurs de l'enum `post_type`. */
@@ -159,6 +159,18 @@ export async function softDeletePost(
     )
     .returning({ id: post.id });
   return updated.length > 0;
+}
+
+/**
+ * Supprime (soft delete) toutes les demandes/recommandations encore actives
+ * d'un habitant — utilisé par la suppression de compte (cf.
+ * db/account.ts#deleteUserAccount), pas de vérification d'appartenance ici
+ * puisque déjà filtré par `userId`.
+ */
+export async function softDeleteUserPosts(userId: number): Promise<void> {
+  await db.update(post)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(post.userId, userId), isNull(post.deletedAt)));
 }
 
 /** Page où se lit une demande selon son type — /recommandations pour les recommandations, /fil pour les trois autres (cf. schema.ts). */

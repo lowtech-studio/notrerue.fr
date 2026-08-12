@@ -1,4 +1,8 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import {
+  assertEquals,
+  assertNotEquals,
+  assertStringIncludes,
+} from "@std/assert";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "fresh";
 import type { SessionUser, State } from "../utils.ts";
@@ -6,6 +10,7 @@ import { db } from "../db/client.ts";
 import { house, message, post, user } from "../db/schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
+import { deleteUserAccount } from "../db/account.ts";
 import { createPost } from "../db/posts.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
 import { handler } from "./messages.tsx";
@@ -465,6 +470,48 @@ Deno.test("GET /messages : auteur écrit à un voisin qui a tapé sa demande →
       ),
     ) as { data: { postContext: { content: string } | null } };
     assertEquals(result.data.postContext?.content, alicePost.content);
+  } finally {
+    await cleanupAwakeStreet(setup);
+  }
+});
+
+Deno.test("GET /messages?with=... : interlocuteur ayant depuis supprimé son compte → conversation toujours consultable, sous son pseudonyme anonymisé", async () => {
+  const setup = await createAwakeStreetWithTwoUsers("messages-11");
+
+  try {
+    const sent = await handler.POST!(
+      makeContext("http://localhost/messages", {
+        user: setup.bobSession,
+        form: (() => {
+          const form = new FormData();
+          form.set("to", String(setup.alice.id));
+          form.set("content", "Bonjour Alice !");
+          return form;
+        })(),
+      }),
+    ) as Response;
+    assertEquals(sent.status, 302);
+
+    await deleteUserAccount(setup.bob.id);
+
+    const result = await handler.GET!(
+      makeContext(
+        `http://localhost/messages?with=${setup.bob.id}`,
+        { user: setup.aliceSession },
+      ),
+    ) as {
+      data: {
+        view: string;
+        otherUserLogin?: string;
+        otherUserDeleted?: boolean;
+      };
+    };
+    assertEquals(result.data.view, "thread");
+    assertNotEquals(result.data.otherUserLogin, setup.bob.login);
+    // Le formulaire de composition doit être masqué : le POST est de toute
+    // façon rejeté côté serveur, un message tapé ici serait perdu en
+    // silence (cf. revue).
+    assertEquals(result.data.otherUserDeleted, true);
   } finally {
     await cleanupAwakeStreet(setup);
   }

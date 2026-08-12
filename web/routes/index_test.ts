@@ -32,6 +32,7 @@ Deno.test("Page d'accueil : sans paramètre → aucun statut", async () => {
       cityLabel: "",
       status: null,
       ownStreetStatus: null,
+      accountDeleted: false,
     },
   });
 });
@@ -47,8 +48,16 @@ Deno.test("Page d'accueil : lien hérité /?rue=... (sans ville) → rue affich�
       cityLabel: "",
       status: null,
       ownStreetStatus: null,
+      accountDeleted: false,
     },
   });
+});
+
+Deno.test("Page d'accueil : ?compte_supprime=1 → bandeau de confirmation", async () => {
+  const result = await handler.GET!(
+    makeContext("http://localhost/?compte_supprime=1"),
+  ) as { data: { accountDeleted: boolean } };
+  assertEquals(result.data.accountDeleted, true);
 });
 
 Deno.test("Page d'accueil : rue jamais rejointe → statut « ambassadeur possible »", async () => {

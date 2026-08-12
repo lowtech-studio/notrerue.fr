@@ -170,8 +170,15 @@ Deno.test("POST /modifier : contenu vide ou message agressif → ignoré, rien m
     const blockedForm = new FormData();
     blockedForm.set("postId", String(setup.post.id));
     blockedForm.set("content", "Bande de connard, dégagez de ma rue");
-    await handler.POST!(
+    blockedForm.set("back", "/fil?page=2");
+    const blockedResponse = await handler.POST!(
       makeContext({ user: setup.authorSession, form: blockedForm }),
+    ) as Response;
+    // `edit_error=1` plutôt qu'une redirection silencieuse : sans lui,
+    // l'utilisateur croit sa correction enregistrée (cf. revue).
+    assertEquals(
+      blockedResponse.headers.get("location"),
+      "/fil?page=2&edit_error=1",
     );
 
     const [reloaded] = await db.select().from(post).where(

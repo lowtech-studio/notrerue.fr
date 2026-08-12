@@ -30,6 +30,17 @@ export async function createComment(
   return created;
 }
 
+/**
+ * Supprime (soft delete) toutes les réponses encore actives d'un habitant —
+ * utilisé par la suppression de compte (cf.
+ * db/account.ts#deleteUserAccount).
+ */
+export async function softDeleteUserComments(userId: number): Promise<void> {
+  await db.update(comment)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(comment.userId, userId), isNull(comment.deletedAt)));
+}
+
 export interface PostComment {
   id: number;
   content: string;

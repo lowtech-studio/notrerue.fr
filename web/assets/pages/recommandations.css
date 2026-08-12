@@ -156,9 +156,26 @@
   margin: 0 0 12px;
 }
 
+/* Masquage accessible plutôt que `display: none` (cf. fil.css, même
+   régression trouvée en revue) : la case reste dans le flux et atteignable
+   au clavier, seulement hors écran. */
 .reco-post__edit-toggle,
 .reco-post__delete-toggle {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.reco-post__edit-toggle:focus-visible + .reco-post__owner-link,
+.reco-post__delete-toggle:focus-visible + .reco-post__owner-link {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
 }
 
 /* Pilule discrète, même gabarit que .fil-post__owner-link sur /fil. */

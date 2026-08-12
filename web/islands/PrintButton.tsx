@@ -25,7 +25,20 @@ export default function PrintButton(
       type="button"
       class={className}
       onClick={() => {
-        if (target) document.body.dataset.printTarget = target;
+        if (!target) {
+          globalThis.print();
+          return;
+        }
+        document.body.dataset.printTarget = target;
+        // Nettoyé après l'impression (fermeture de la boîte de dialogue,
+        // succès ou annulation) : sans ça, `data-print-target` restait posé
+        // et un Ctrl+P direct ultérieur n'imprimait plus que cette dernière
+        // feuille choisie (cf. revue).
+        const clearTarget = () => {
+          delete document.body.dataset.printTarget;
+          globalThis.removeEventListener("afterprint", clearTarget);
+        };
+        globalThis.addEventListener("afterprint", clearTarget);
         globalThis.print();
       }}
     >

@@ -160,6 +160,31 @@ export default define.page<typeof handler>(function Profil({ data, state }) {
               <button type="submit" class="button">Enregistrer</button>
             </form>
           </div>
+
+          {
+            /* Suppression de compte (cf. backlog « rester maître de mes
+              données ») — repliée derrière un <details> pour ne pas être le
+              premier bouton visible de la page, avec une confirmation
+              explicite (même logique que "Supprimer" sur /fil et
+              /recommandations). */
+          }
+          <div class="lookup-card profil-danger-zone">
+            <details>
+              <summary class="profil-danger-zone__summary">
+                Supprimer mon compte
+              </summary>
+              <p class="profil-danger-zone__warning">
+                Votre foyer et toutes vos publications (demandes,
+                recommandations, réponses) seront supprimés. Cette action est
+                irréversible.
+              </p>
+              <form method="POST" action="/supprimer-compte">
+                <button type="submit" class="button button--secondary">
+                  Oui, supprimer définitivement mon compte
+                </button>
+              </form>
+            </details>
+          </div>
         </section>
       </main>
     </>

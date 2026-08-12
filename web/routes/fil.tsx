@@ -102,6 +102,8 @@ interface FilData {
   backPath: string;
   postError: string | null;
   postPublished: boolean;
+  /** `?edit_error=1` posé par /modifier quand la correction est bloquée par la modération (cf. revue : sinon perdue en silence). */
+  editError: boolean;
   /** Valeurs re-soumises telles quelles si la publication échoue. */
   postType: FilPostType;
   postContent: string;
@@ -168,6 +170,7 @@ export const handler = define.handlers({
         backPath: ctx.url.pathname + ctx.url.search,
         postError: null,
         postPublished: ctx.url.searchParams.get("published") === "1",
+        editError: ctx.url.searchParams.get("edit_error") === "1",
         postType: "cherche",
         postContent: "",
         postDuration: "week",
@@ -234,6 +237,7 @@ export const handler = define.handlers({
         backPath: "/fil",
         postError: error,
         postPublished: false,
+        editError: false,
         postDuration,
         postDurationMonths,
         postType,
@@ -277,6 +281,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     backPath,
     postError,
     postPublished,
+    editError,
     postType,
     postContent,
     postDuration,
@@ -300,6 +305,12 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
             <p class="hero__confirmation">Votre demande a été publiée !</p>
           )}
           {postError && <p class="form-error" role="alert">{postError}</p>}
+          {editError && (
+            <p class="form-error" role="alert">
+              Votre correction n'a pas été enregistrée : merci de reformuler, ce
+              message contient des termes non autorisés.
+            </p>
+          )}
 
           {
             /* Avant de publier : retrouver une demande déjà passée sur le

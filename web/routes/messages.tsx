@@ -12,7 +12,7 @@ import {
   sendMessage,
   type ThreadMessage,
 } from "../db/messages.ts";
-import { findSessionUserById } from "../db/users.ts";
+import { findSessionUserById, findUserLoginForDisplay } from "../db/users.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
 
@@ -28,6 +28,7 @@ type MessagesData =
     view: "thread";
     otherUserId: number;
     otherUserLogin: string;
+    otherUserDeleted: boolean;
     messages: ThreadMessage[];
     postContext: PostContext | null;
     composeError: string | null;
@@ -76,8 +77,12 @@ export const handler = define.handlers({
       return { data: { view: "inbox", conversations } };
     }
 
-    const otherUser = await findSessionUserById(otherUserId);
-    if (!otherUser || otherUser.street.id !== user.street.id) {
+    // `findUserLoginForDisplay` plutôt que `findSessionUserById` : une
+    // conversation déjà existante avec un habitant qui a depuis supprimé
+    // son compte doit rester consultable (sous son pseudonyme anonymisé),
+    // pas disparaître pour l'autre participant (cf. deleteUserAccount).
+    const otherUser = await findUserLoginForDisplay(otherUserId);
+    if (!otherUser || otherUser.streetId !== user.street.id) {
       return ctx.redirect("/messages");
     }
 
@@ -94,6 +99,7 @@ export const handler = define.handlers({
         view: "thread",
         otherUserId,
         otherUserLogin: otherUser.login,
+        otherUserDeleted: otherUser.isDeleted,
         messages,
         postContext,
         composeError: null,
@@ -164,6 +170,10 @@ export const handler = define.handlers({
         view: "thread",
         otherUserId,
         otherUserLogin: otherUser.login,
+        // `otherUser` vient de `findSessionUserById`, qui filtre déjà les
+        // comptes supprimés (sinon la redirection plus haut aurait eu lieu) :
+        // toujours actif ici.
+        otherUserDeleted: false,
         messages,
         postContext,
         composeError: error,
@@ -298,37 +308,49 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
                   </p>
                 )}
 
-                <div class="message-compose">
-                  <form method="POST" class="message-compose__form">
-                    <input
-                      type="hidden"
-                      name="to"
-                      value={messagesData.otherUserId}
-                    />
-                    {messagesData.postContext && (
-                      <input
-                        type="hidden"
-                        name="postId"
-                        value={messagesData.postContext.id}
-                      />
-                    )}
-                    <textarea
-                      name="content"
-                      class="message-compose__input"
-                      placeholder="Votre message..."
-                      maxlength={MAX_MESSAGE_CONTENT_LENGTH}
-                      required
-                    >
-                      {messagesData.composeContent}
-                    </textarea>
-                    <button
-                      type="submit"
-                      class="button message-compose__submit"
-                    >
-                      Envoyer
-                    </button>
-                  </form>
-                </div>
+                {messagesData.otherUserDeleted
+                  ? (
+                    // Le POST est de toute façon rejeté côté serveur
+                    // (`findSessionUserById` filtre les comptes supprimés) :
+                    // pas de formulaire pour éviter qu'un message tapé ici
+                    // soit perdu silencieusement (cf. revue).
+                    <p class="empty-state">
+                      Ce compte a été supprimé, vous ne pouvez plus lui écrire.
+                    </p>
+                  )
+                  : (
+                    <div class="message-compose">
+                      <form method="POST" class="message-compose__form">
+                        <input
+                          type="hidden"
+                          name="to"
+                          value={messagesData.otherUserId}
+                        />
+                        {messagesData.postContext && (
+                          <input
+                            type="hidden"
+                            name="postId"
+                            value={messagesData.postContext.id}
+                          />
+                        )}
+                        <textarea
+                          name="content"
+                          class="message-compose__input"
+                          placeholder="Votre message..."
+                          maxlength={MAX_MESSAGE_CONTENT_LENGTH}
+                          required
+                        >
+                          {messagesData.composeContent}
+                        </textarea>
+                        <button
+                          type="submit"
+                          class="button message-compose__submit"
+                        >
+                          Envoyer
+                        </button>
+                      </form>
+                    </div>
+                  )}
               </>
             )}
         </section>

@@ -24,7 +24,6 @@ services:
       - EMAIL_FROM=${EMAIL_FROM}
     restart: unless-stopped
 
-
   db:
     image: postgres:latest
     container_name: notre_rue_db

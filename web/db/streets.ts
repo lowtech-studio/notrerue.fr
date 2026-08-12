@@ -1,4 +1,4 @@
-import { and, count, eq, ilike } from "drizzle-orm";
+import { and, count, eq, ilike, isNull } from "drizzle-orm";
 import { db } from "./client.ts";
 import { house, street } from "./schema.ts";
 import { escapeLikePattern } from "../utils/validation.ts";
@@ -28,7 +28,7 @@ async function findStreet(
 
 async function countHouses(streetId: number): Promise<number> {
   const [{ value }] = await db.select({ value: count() }).from(house).where(
-    eq(house.streetId, streetId),
+    and(eq(house.streetId, streetId), isNull(house.deletedAt)),
   );
   return value;
 }

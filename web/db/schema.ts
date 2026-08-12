@@ -63,6 +63,12 @@ export const house = pgTable("house", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
   streetId: integer("street_id").notNull().references(() => street.id),
+  // Posé quand son dernier habitant supprime son compte (cf.
+  // db/account.ts#deleteUserAccount) : exclu du décompte des foyers d'une
+  // rue (getStreetHousesStatus), donc un départ peut faire redescendre une
+  // rue sous le seuil d'éveil — conséquence assumée d'un vrai départ, pas un
+  // bug.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const user = pgTable("user", {

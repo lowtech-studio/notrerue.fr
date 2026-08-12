@@ -16,3 +16,34 @@
   color: var(--color-ink-muted);
   background: var(--color-paper-warm);
 }
+
+/* Suppression de compte : carte à part, en bas de page — jamais confondue
+   avec le formulaire d'édition au-dessus. */
+.profil-danger-zone {
+  margin-bottom: 0;
+  border-color: var(--color-border);
+}
+
+.profil-danger-zone__summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-brand-hover);
+  text-decoration: underline;
+}
+
+.profil-danger-zone__summary::-webkit-details-marker {
+  display: none;
+}
+
+.profil-danger-zone__summary:hover {
+  color: var(--color-brand);
+}
+
+.profil-danger-zone__warning {
+  margin: 16px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+}

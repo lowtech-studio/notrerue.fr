@@ -332,9 +332,30 @@
   margin-left: auto;
 }
 
+/* Masquage accessible plutôt que `display: none` (qui retirait la case de
+   l'ordre de tabulation et rendait Modifier/Supprimer inatteignables au
+   clavier — régression trouvée en revue par rapport aux `<details>` natifs
+   qu'elle remplaçait) : la case reste dans le flux, seulement hors écran.
+   Le `<label for>` associé reste le déclencheur visuel/cliquable ; c'est la
+   case qui reçoit le focus clavier (Tab + Espace pour basculer), d'où le
+   `:focus-visible` sur le label voisin ci-dessous. */
 .fil-post__edit-toggle,
 .fil-post__delete-toggle {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.fil-post__edit-toggle:focus-visible + .fil-post__owner-link,
+.fil-post__delete-toggle:focus-visible + .fil-post__owner-link {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
 }
 
 /* Pilule discrète, même gabarit que .fil-post__tappers-link — plus

@@ -52,6 +52,46 @@ Deno.test("registerInhabitant : le premier habitant d'une rue devient ambassadeu
   }
 });
 
+Deno.test("registerInhabitant : les foyers soft-supprimés ne comptent pas dans le nombre de foyers existants", async () => {
+  const testStreet = await createTestStreet("users-1c");
+
+  let userAId: number | undefined;
+  let houseAId: number | undefined;
+  let deletedHouseId: number | undefined;
+
+  try {
+    // Foyer soft-supprimé déjà présent sur la rue : ne doit pas compter,
+    // comme pour `countHouses` (db/streets.ts) — sinon le prochain inscrit
+    // perd à tort son statut d'ambassadeur (cf. review 2026-08-11, BLOQUANT).
+    const [deletedHouse] = await db.insert(house).values({
+      streetId: testStreet.testStreet.id,
+      deletedAt: new Date(),
+    }).returning();
+    deletedHouseId = deletedHouse.id;
+
+    const first = await registerInhabitant({
+      login: `login-a-${crypto.randomUUID()}`,
+      email: `ambassador-c-${crypto.randomUUID()}@example.invalid`,
+      houseNumber: null,
+      streetId: testStreet.testStreet.id,
+    });
+    userAId = first.user.id;
+    houseAId = first.user.houseId;
+    assert(first.user.isAmbassador);
+    // Le foyer soft-supprimé ne doit pas non plus faire croire à la rue
+    // qu'elle atteint le seuil d'éveil (existingHouses + 1 = 2, loin de
+    // STREET_AWAKENING_THRESHOLD = 4 dans cet environnement de test).
+    assertFalse(first.streetJustAwakened);
+  } finally {
+    if (userAId) await db.delete(user).where(eq(user.id, userAId));
+    if (houseAId) await db.delete(house).where(eq(house.id, houseAId));
+    if (deletedHouseId) {
+      await db.delete(house).where(eq(house.id, deletedHouseId));
+    }
+    await cleanupTestStreet(testStreet);
+  }
+});
+
 Deno.test("registerInhabitant : e-mail déjà pris → le foyer créé pour cette tentative est annulé (pas de foyer fantôme)", async () => {
   const testStreet = await createTestStreet("users-1b");
   const email = `taken-${crypto.randomUUID()}@example.invalid`;

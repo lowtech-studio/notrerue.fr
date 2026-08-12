@@ -21,6 +21,8 @@ interface HomeData {
   status: StreetAwakeningStatus | null;
   /** Statut de la rue de l'habitant connecté, `null` si non connecté. */
   ownStreetStatus: { housesCount: number; isAwake: boolean } | null;
+  /** Redirigé ici après /supprimer-compte (cf. routes/profil.tsx) — l'utilisateur vient d'être déconnecté, donc affiché seulement côté non connecté. */
+  accountDeleted: boolean;
 }
 
 export const handler = define.handlers({
@@ -48,12 +50,23 @@ export const handler = define.handlers({
       ? await getStreetHousesStatus(ctx.state.user.street.id)
       : null;
 
-    return { data: { street, cityId, cityLabel, status, ownStreetStatus } };
+    const accountDeleted = ctx.url.searchParams.get("compte_supprime") === "1";
+
+    return {
+      data: {
+        street,
+        cityId,
+        cityLabel,
+        status,
+        ownStreetStatus,
+        accountDeleted,
+      },
+    };
   },
 });
 
 export default define.page<typeof handler>(function Home({ data, state }) {
-  const { street, cityId, cityLabel, status, ownStreetStatus } =
+  const { street, cityId, cityLabel, status, ownStreetStatus, accountDeleted } =
     data as HomeData;
   const { user } = state;
 
@@ -88,6 +101,12 @@ export default define.page<typeof handler>(function Home({ data, state }) {
 
             {!user && (
               <>
+                {accountDeleted && (
+                  <p class="hero__confirmation">
+                    Votre compte, votre foyer et vos publications ont été
+                    supprimés.
+                  </p>
+                )}
                 <h1 class="hero__title">
                   Partagez, échangez et connectez-vous avec vos voisins!
                 </h1>
