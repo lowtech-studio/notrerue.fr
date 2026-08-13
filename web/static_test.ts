@@ -5,7 +5,12 @@ import {
   assertStringIncludes,
 } from "@std/assert";
 
-const STATIC_DIR = import.meta.dirname!;
+// `static/` est servi tel quel par Fresh (cf. AGENTS.md : "Assets publics
+// servis tels quels") : un fichier de test qui y vivait littéralement
+// (`static/pwa_test.ts`) finissait donc dans le même dossier que ce qu'il
+// est censé simplement vérifier depuis l'extérieur — déplacé ici, à côté du
+// dossier plutôt que dedans.
+const STATIC_DIR = `${import.meta.dirname}/static`;
 
 function readStatic(name: string): Promise<string> {
   return Deno.readTextFile(`${STATIC_DIR}/${name}`);

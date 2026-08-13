@@ -1,9 +1,22 @@
 import { App, csp, staticFiles } from "fresh";
 import { type State } from "./utils.ts";
 import { buildCspOptions } from "./utils/csp.ts";
+import { buildStaticCacheControl } from "./utils/static_cache.ts";
 
 export const app = new App<State>();
 
+// Enregistré avant `staticFiles()` : sur le chemin retour (une fois la
+// réponse de `staticFiles()` obtenue via `ctx.next()`), on peut encore
+// ajuster ses en-têtes — même mécanique que `applySecurityHeaders` dans
+// routes/_middleware.ts. `staticFiles()` répond directement sans jamais
+// appeler `ctx.next()` pour un fichier trouvé : un middleware posé après lui
+// ne verrait donc jamais passer ces requêtes (cf. utils/static_cache.ts).
+app.use(async (ctx) => {
+  const res = await ctx.next();
+  const cacheControl = buildStaticCacheControl(ctx.url.pathname);
+  if (cacheControl) res.headers.set("Cache-Control", cacheControl);
+  return res;
+});
 app.use(staticFiles());
 
 // CSP stricte (cf. AGENTS.md « Cyber sécurité », ANSSI-PA-009 R13-R16, R20) —

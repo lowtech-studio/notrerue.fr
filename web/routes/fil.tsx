@@ -341,8 +341,9 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
       <main>
         <section class="container hero hero--single page-wide">
           <h1 class="hero__title">Le fil de ma rue</h1>
-          <p class="hero__subtitle">
-            {housesCount} foyers · du plus récent au plus ancien
+          <p class="hero__subtitle fil-hero__subtitle">
+            <strong>{housesCount} foyers</strong>{" "}
+            · du plus récent au plus ancien
           </p>
 
           {postPublished && (

@@ -68,7 +68,13 @@ export const house = pgTable("house", {
   // rue sous le seuil d'éveil — conséquence assumée d'un vrai départ, pas un
   // bug.
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  // Postgres n'indexe jamais une colonne de clé étrangère automatiquement :
+  // sans cet index, toute requête passant par la rue (getStreetHousesStatus,
+  // listStreetPosts...) scannerait `house` en entier (cf. AGENTS.md
+  // « éviter les N+1 et optimiser avec des index adaptés »).
+  index("house_street_id_idx").on(table.streetId),
+]);
 
 export const user = pgTable("user", {
   id: serial("id").primaryKey(),
@@ -94,7 +100,11 @@ export const user = pgTable("user", {
   houseId: integer("house_id").notNull().references(() => house.id),
   notificationType: jsonb("notification_type"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  // Foyer → habitants, joint sur quasi toutes les pages (fil, messages,
+  // suppression de compte...) — même raison que `house_street_id_idx`.
+  index("user_house_id_idx").on(table.houseId),
+]);
 
 // Sollicitation légère envoyée à un voisin, pouvant donner naissance à un Post.
 export const tap = pgTable("tap", {
@@ -111,6 +121,11 @@ export const tap = pgTable("tap", {
   // pour la même paire (cf. revue).
   uniqueIndex("tap_user_post_active_unique").on(table.userId, table.postId)
     .where(sql`${table.deletedAt} IS NULL`),
+  // L'index unique ci-dessus est sur `(user_id, post_id)` : inutilisable par
+  // une requête filtrant sur `post_id` seul (règle du préfixe gauche), or
+  // c'est exactement `countTapsByPost`/`listTappers` (cf. db/taps.ts, appelé
+  // à chaque affichage du fil) — d'où cet index dédié.
+  index("tap_post_id_idx").on(table.postId),
 ]);
 
 export const post = pgTable("post", {
@@ -131,7 +146,11 @@ export const post = pgTable("post", {
   // avant l'ajout de cette colonne — elles restent visibles indéfiniment
   // plutôt que de disparaître rétroactivement.
   expiresAt: timestamp("expires_at", { withTimezone: true }),
-});
+}, (table) => [
+  // Propriétaire d'une demande : filtré à chaque modification/suppression
+  // (`updatePostContent`, `softDeletePost`) et joint par `listStreetPosts`.
+  index("post_user_id_idx").on(table.userId),
+]);
 
 export const comment = pgTable("comment", {
   id: serial("id").primaryKey(),
@@ -141,7 +160,12 @@ export const comment = pgTable("comment", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   userId: integer("user_id").notNull().references(() => user.id),
   postId: integer("post_id").notNull().references(() => post.id),
-});
+}, (table) => [
+  // `listCommentsByPost` (`inArray(comment.postId, ...)`) tourne à chaque
+  // affichage du fil ; `softDeleteUserComments` filtre sur l'auteur.
+  index("comment_post_id_idx").on(table.postId),
+  index("comment_user_id_idx").on(table.userId),
+]);
 
 export const message = pgTable("message", {
   id: serial("id").primaryKey(),
@@ -159,7 +183,19 @@ export const message = pgTable("message", {
   // "vu" façon messagerie, cf. backlog V0.1 « ne pas répondre sans que mon
   // silence soit visible »).
   readAt: timestamp("read_at", { withTimezone: true }),
-});
+}, (table) => [
+  index("message_user_from_id_idx").on(table.userFromId),
+  index("message_user_to_id_idx").on(table.userToId),
+  // Index partiel dédié à `hasUnreadMessages` (cf. db/messages.ts) : appelé
+  // par `routes/_middleware.ts` sur *chaque* requête d'un habitant connecté
+  // (pastille sur l'enveloppe) — le chemin le plus chaud de toute
+  // l'application. Ne couvre que les messages non lus/non supprimés, donc
+  // reste petit même quand `message` grossit (l'immense majorité des lignes
+  // finit lue) : moins d'I/O disque à chaque requête, précieux sur un
+  // Raspberry Pi.
+  index("message_unread_idx").on(table.userToId)
+    .where(sql`${table.readAt} IS NULL AND ${table.deletedAt} IS NULL`),
+]);
 
 export const cityRelations = relations(city, ({ many }) => ({
   streets: many(street),

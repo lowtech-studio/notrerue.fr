@@ -235,10 +235,6 @@ button.site-header__link {
   font-family: inherit;
 }
 
-.site-header__form {
-  margin: 0;
-}
-
 /* "Mes messages", à côté de l'avatar de compte : icône seule (enveloppe),
    même gabarit rond que .account-menu__avatar pour rester aligné avec lui. */
 .site-header__icon-link {
