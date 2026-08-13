@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import { db } from "./client.ts";
 import { house, user, vouch } from "./schema.ts";
 import { registerInhabitant } from "./users.ts";
-import { listPendingNeighbors, vouchForNeighbor } from "./vouches.ts";
+import {
+  listPendingNeighbors,
+  listVerifiedNeighbors,
+  vouchForNeighbor,
+} from "./vouches.ts";
 import { cleanupTestStreet, createTestStreet } from "./test_helpers.ts";
 
 async function setupStreetWithAmbassador(label: string) {
@@ -83,6 +87,41 @@ Deno.test("listPendingNeighbors : habitants actifs non vérifiés de la rue, plu
     assertEquals(pending.some((p) => p.id === otherStreetUser.id), false);
   } finally {
     await teardown(testStreet, [ambassador.id, pendingA.id, pendingB.id]);
+    await db.delete(user).where(eq(user.id, otherStreetUser.id));
+    await db.delete(house).where(
+      eq(house.streetId, otherStreet.testStreet.id),
+    );
+    await cleanupTestStreet(otherStreet);
+  }
+});
+
+Deno.test("listVerifiedNeighbors : habitants actifs déjà vérifiés de la rue, isolé par rue (cf. retour utilisateur : identifier qui approcher)", async () => {
+  const { testStreet, ambassador } = await setupStreetWithAmbassador(
+    "vouches-9",
+  );
+  const { user: pending } = await registerInhabitant({
+    login: `pending-${crypto.randomUUID()}`,
+    email: `vouches-p9-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const otherStreet = await createTestStreet("vouches-9b");
+  const { user: otherStreetUser } = await registerInhabitant({
+    login: `other-${crypto.randomUUID()}`,
+    email: `vouches-other9-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: otherStreet.testStreet.id,
+  });
+
+  try {
+    const verified = await listVerifiedNeighbors(testStreet.testStreet.id);
+    assertEquals(verified.map((n) => n.id), [ambassador.id]);
+    assertEquals(verified[0].email, ambassador.email);
+    // Le compte en attente (pas encore vérifié) et un habitant d'une autre rue n'apparaissent pas.
+    assertEquals(verified.some((n) => n.id === pending.id), false);
+    assertEquals(verified.some((n) => n.id === otherStreetUser.id), false);
+  } finally {
+    await teardown(testStreet, [ambassador.id, pending.id]);
     await db.delete(user).where(eq(user.id, otherStreetUser.id));
     await db.delete(house).where(
       eq(house.streetId, otherStreet.testStreet.id),

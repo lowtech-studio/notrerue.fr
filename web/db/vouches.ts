@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "./client.ts";
 import { house, user, vouch } from "./schema.ts";
 
@@ -31,6 +31,41 @@ export async function listPendingNeighbors(
       isNull(user.verifiedAt),
     ))
     .orderBy(user.createdAt);
+  return rows;
+}
+
+export interface VerifiedNeighbor {
+  id: number;
+  login: string;
+  email: string;
+}
+
+/**
+ * Habitants actifs déjà vérifiés de `streetId` (cf. `user.verifiedAt`) —
+ * les seuls capables de vouch pour un nouvel arrivant. Utilisé pour :
+ * 1) montrer à un compte en attente qui approcher sur sa rue (cf. retour
+ *    utilisateur « comment identifier un voisin... pour demander une
+ *    validation ? ») ;
+ * 2) notifier ces voisins par e-mail dès qu'un nouvel arrivant s'inscrit
+ *    (cf. routes/rejoindre.tsx) — sans ça, seul un passage sur la page
+ *    d'accueil le leur révèle.
+ */
+export async function listVerifiedNeighbors(
+  streetId: number,
+): Promise<VerifiedNeighbor[]> {
+  const rows = await db.select({
+    id: user.id,
+    login: user.login,
+    email: user.email,
+  })
+    .from(user)
+    .innerJoin(house, eq(user.houseId, house.id))
+    .where(and(
+      eq(house.streetId, streetId),
+      isNull(user.deletedAt),
+      isNotNull(user.verifiedAt),
+    ))
+    .orderBy(user.login);
   return rows;
 }
 

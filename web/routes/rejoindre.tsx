@@ -5,8 +5,10 @@ import { findCityById } from "../db/cities.ts";
 import { isUniqueViolation } from "../db/errors.ts";
 import { findOrCreateStreet, getStreetAwakeningStatus } from "../db/streets.ts";
 import { findStreetUsers, registerInhabitant } from "../db/users.ts";
+import { listVerifiedNeighbors } from "../db/vouches.ts";
 import {
   sendLoginCodeEmail,
+  sendPendingNeighborEmail,
   sendStreetAwakeningEmail,
 } from "../email/brevo.ts";
 import {
@@ -193,12 +195,13 @@ export const handler = define.handlers({
 
     try {
       const street = await findOrCreateStreet(streetName, selectedCity.id);
-      const { code, streetJustAwakened } = await registerInhabitant({
-        login,
-        email,
-        houseNumber: houseNumber || null,
-        streetId: street.id,
-      });
+      const { user: newInhabitant, code, streetJustAwakened } =
+        await registerInhabitant({
+          login,
+          email,
+          houseNumber: houseNumber || null,
+          streetId: street.id,
+        });
       await sendLoginCodeEmail(
         email,
         code,
@@ -228,6 +231,35 @@ export const handler = define.handlers({
           if (result.status === "rejected") {
             console.error(
               "Échec de la notification d'éveil de rue :",
+              result.reason,
+            );
+          }
+        }
+      }
+
+      // L'ambassadeur est vérifié dès l'inscription (cf.
+      // db/users.ts#registerInhabitant) : rien à valider, personne à
+      // notifier. Pour les suivants, prévenir les voisins déjà vérifiés
+      // qu'un nouvel arrivant attend d'être validé — sans ça, ni eux ni le
+      // nouvel arrivant ne sauraient qui solliciter (cf. retour
+      // utilisateur, db/vouches.ts).
+      if (!newInhabitant.isAmbassador) {
+        const verifiedNeighbors = await listVerifiedNeighbors(street.id);
+        const results = await Promise.allSettled(
+          verifiedNeighbors.map((neighbor) =>
+            sendPendingNeighborEmail({
+              to: neighbor.email,
+              recipientLogin: neighbor.login,
+              newcomerLogin: newInhabitant.login,
+              streetName: street.name,
+              homeUrl: ctx.url.origin,
+            })
+          ),
+        );
+        for (const result of results) {
+          if (result.status === "rejected") {
+            console.error(
+              "Échec de la notification de nouveau voisin à valider :",
               result.reason,
             );
           }

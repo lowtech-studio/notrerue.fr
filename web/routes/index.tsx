@@ -9,7 +9,12 @@ import {
   STREET_AWAKENING_THRESHOLD,
   type StreetAwakeningStatus,
 } from "../db/streets.ts";
-import { listPendingNeighbors, type PendingNeighbor } from "../db/vouches.ts";
+import {
+  listPendingNeighbors,
+  listVerifiedNeighbors,
+  type PendingNeighbor,
+  type VerifiedNeighbor,
+} from "../db/vouches.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 import { pluralizeCount } from "../utils/pluralize.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
@@ -33,6 +38,14 @@ interface HomeData {
    * vérifié (il ne peut vouch pour personne tant que ce n'est pas le cas).
    */
   pendingNeighbors: PendingNeighbor[];
+  /**
+   * Voisins de la même rue déjà vérifiés (cf. db/vouches.ts) — affichés à un
+   * compte lui-même en attente pour qu'il sache qui solliciter (cf. retour
+   * utilisateur « comment identifier un voisin... pour demander une
+   * validation ? ») : vide si non connecté ou si l'habitant connecté est
+   * déjà vérifié (il n'en a pas besoin).
+   */
+  verifiedNeighbors: VerifiedNeighbor[];
 }
 
 export const handler = define.handlers({
@@ -66,6 +79,12 @@ export const handler = define.handlers({
     const pendingNeighbors = ctx.state.user && isUserVerified(ctx.state.user)
       ? await listPendingNeighbors(ctx.state.user.street.id)
       : [];
+    // À l'inverse : un compte en attente a besoin de savoir qui, sur sa rue,
+    // peut le valider (cf. retour utilisateur) — un habitant déjà vérifié
+    // n'en a pas besoin.
+    const verifiedNeighbors = ctx.state.user && !isUserVerified(ctx.state.user)
+      ? await listVerifiedNeighbors(ctx.state.user.street.id)
+      : [];
 
     const accountDeleted = ctx.url.searchParams.get("compte_supprime") === "1";
 
@@ -78,6 +97,7 @@ export const handler = define.handlers({
         ownStreetStatus,
         accountDeleted,
         pendingNeighbors,
+        verifiedNeighbors,
       },
     };
   },
@@ -92,6 +112,7 @@ export default define.page<typeof handler>(function Home({ data, state }) {
     ownStreetStatus,
     accountDeleted,
     pendingNeighbors,
+    verifiedNeighbors,
   } = data as HomeData;
   const { user } = state;
 
@@ -163,6 +184,34 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                         quelqu'un — vous pouvez déjà consulter le fil en
                         attendant.
                       </p>
+                      {verifiedNeighbors.length > 0
+                        ? (
+                          <>
+                            <p class="street-status__subtitle">
+                              Voisins déjà inscrits et vérifiés sur{" "}
+                              {user.street.name}{" "}
+                              — demandez à l'un d'eux de vous valider (en
+                              personne, ou en lui montrant cette page) :
+                            </p>
+                            <ul class="verified-neighbors">
+                              {verifiedNeighbors.map((neighbor) => (
+                                <li
+                                  key={neighbor.id}
+                                  class="verified-neighbors__item"
+                                >
+                                  {neighbor.login}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )
+                        : (
+                          <p class="street-status__subtitle">
+                            Personne n'est encore vérifié sur votre rue pour
+                            l'instant — dès qu'un voisin le sera, il pourra vous
+                            valider.
+                          </p>
+                        )}
                     </div>
                   )}
 

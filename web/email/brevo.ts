@@ -140,6 +140,56 @@ export function buildStreetAwakeningEmail(
   };
 }
 
+export interface PendingNeighborEmailInput {
+  to: string;
+  recipientLogin: string;
+  newcomerLogin: string;
+  streetName: string;
+  /** Vers la page d'accueil, où se trouve le bouton de validation en un clic (cf. routes/index.tsx). */
+  homeUrl: string;
+}
+
+/**
+ * Construction pure du payload — testable sans réseau. Prévient un habitant
+ * déjà vérifié qu'un nouvel arrivant vient de s'inscrire sur sa rue et
+ * attend d'être validé (cf. db/vouches.ts, backlog « prouver que les
+ * voisins habitent bien dans la même rue ») — sans cet e-mail, seul un
+ * passage sur la page d'accueil le lui révèle, et le nouvel arrivant n'a
+ * alors aucun moyen de savoir qui solliciter (cf. retour utilisateur).
+ * Envoyée à tous les voisins déjà vérifiés de la rue, pas seulement à
+ * l'ambassadeur.
+ */
+export function buildPendingNeighborEmail(
+  input: PendingNeighborEmailInput,
+  from: string,
+): BrevoEmailPayload {
+  const { to, recipientLogin, newcomerLogin, streetName, homeUrl } = input;
+  const login = escapeHtml(recipientLogin);
+  const newcomer = escapeHtml(newcomerLogin);
+  const street = escapeHtml(streetName);
+
+  const body = emailParagraph(`Bonjour ${login},`) +
+    emailParagraph(
+      `<strong>${newcomer}</strong> vient de s'inscrire sur ${street} et ` +
+        `attend d'être validé·e par un voisin.`,
+    ) +
+    emailParagraph(
+      "Si vous le/la connaissez, confirmez-le en un clic depuis la page d'accueil.",
+      true,
+    ) +
+    emailButton(homeUrl, "Valider ce voisin");
+
+  return {
+    sender: { email: from, name: "NotreRue.fr" },
+    to: [{ email: to }],
+    subject: `${newcomerLogin} a rejoint ${streetName} et attend d'être validé`,
+    htmlContent: renderEmailLayout(
+      body,
+      `${newcomer} vient de s'inscrire sur ${street} et attend d'être validé·e.`,
+    ),
+  };
+}
+
 export interface TapNotificationEmailInput {
   to: string;
   recipientLogin: string;
@@ -338,6 +388,13 @@ export async function sendStreetAwakeningEmail(
   input: StreetAwakeningEmailInput,
 ): Promise<void> {
   await sendEmail(buildStreetAwakeningEmail(input, getSenderEmail()));
+}
+
+/** Notification à un voisin déjà vérifié : un nouvel arrivant attend d'être validé (cf. db/vouches.ts). */
+export async function sendPendingNeighborEmail(
+  input: PendingNeighborEmailInput,
+): Promise<void> {
+  await sendEmail(buildPendingNeighborEmail(input, getSenderEmail()));
 }
 
 /** Notification à l'auteur d'une demande : un voisin y a répondu (tap). */

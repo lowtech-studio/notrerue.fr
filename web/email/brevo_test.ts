@@ -3,6 +3,7 @@ import {
   buildInviteEmail,
   buildLoginCodeEmail,
   buildMessageNotificationEmail,
+  buildPendingNeighborEmail,
   buildReplyNotificationEmail,
   buildStreetAwakeningEmail,
   buildTapNotificationEmail,
@@ -65,6 +66,16 @@ Deno.test("les trois e-mails portent l'en-tête commun (logo + nom du site)", ()
         recipientLogin: "camille",
         senderLogin: "quentin",
         threadUrl: "https://notrerue.fr/messages?with=2",
+      },
+      "no-reply@notrerue.fr",
+    ),
+    buildPendingNeighborEmail(
+      {
+        to: "camille@exemple.fr",
+        recipientLogin: "camille",
+        newcomerLogin: "julien",
+        streetName: "Rue des Lilas",
+        homeUrl: "https://notrerue.fr/",
       },
       "no-reply@notrerue.fr",
     ),
@@ -190,6 +201,52 @@ Deno.test("buildStreetAwakeningEmail : échappe le HTML dans le login/rue/ville 
       recipientLogin: `<img src=x onerror=alert(1)>`,
       streetName: `Rue "des" Lilas`,
       cityName: "Nantes",
+      homeUrl: "https://notrerue.fr/",
+    },
+    "no-reply@notrerue.fr",
+  );
+
+  assertEquals(payload.htmlContent.includes("<img"), false);
+  assertEquals(
+    payload.htmlContent.includes("&lt;img src=x onerror=alert(1)&gt;"),
+    true,
+  );
+  assertEquals(payload.htmlContent.includes("Rue &quot;des&quot; Lilas"), true);
+});
+
+Deno.test("buildPendingNeighborEmail : forme du payload", () => {
+  const payload = buildPendingNeighborEmail(
+    {
+      to: "camille@exemple.fr",
+      recipientLogin: "camille",
+      newcomerLogin: "julien",
+      streetName: "Rue des Lilas",
+      homeUrl: "https://notrerue.fr/",
+    },
+    "no-reply@notrerue.fr",
+  );
+
+  assertEquals(payload.sender, {
+    email: "no-reply@notrerue.fr",
+    name: "NotreRue.fr",
+  });
+  assertEquals(payload.to, [{ email: "camille@exemple.fr" }]);
+  assertEquals(
+    payload.subject,
+    "julien a rejoint Rue des Lilas et attend d'être validé",
+  );
+  assertEquals(payload.htmlContent.includes("julien"), true);
+  assertEquals(payload.htmlContent.includes("Rue des Lilas"), true);
+  assertEquals(payload.htmlContent.includes("https://notrerue.fr/"), true);
+});
+
+Deno.test("buildPendingNeighborEmail : échappe le HTML dans les logins/rue avant interpolation", () => {
+  const payload = buildPendingNeighborEmail(
+    {
+      to: "camille@exemple.fr",
+      recipientLogin: "camille",
+      newcomerLogin: `<img src=x onerror=alert(1)>`,
+      streetName: `Rue "des" Lilas`,
       homeUrl: "https://notrerue.fr/",
     },
     "no-reply@notrerue.fr",

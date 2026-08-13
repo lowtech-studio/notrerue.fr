@@ -90,6 +90,28 @@
   font-size: 14px;
 }
 
+/* Voisins déjà vérifiés de la rue, montrés à un compte lui-même en attente
+   (cf. retour utilisateur « comment identifier un voisin ») — simples
+   pastilles à lire, rien à cliquer ici (contrairement à `.pending-neighbors`
+   ci-dessus, dont chaque ligne porte un bouton). */
+.verified-neighbors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.verified-neighbors__item {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--color-paper-warm);
+  color: var(--color-brand);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 /* Mur d'aperçus : capture d'écran du fil de rue, en dessous du hero pour ne
    pas concurrencer le titre et le formulaire « trouver ma rue ». Disposition
    en colonnes CSS façon mur de photos — pas de carrousel ni de JS

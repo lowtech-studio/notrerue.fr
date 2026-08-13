@@ -34,6 +34,7 @@ Deno.test("Page d'accueil : sans paramètre → aucun statut", async () => {
       ownStreetStatus: null,
       accountDeleted: false,
       pendingNeighbors: [],
+      verifiedNeighbors: [],
     },
   });
 });
@@ -51,6 +52,7 @@ Deno.test("Page d'accueil : lien hérité /?rue=... (sans ville) → rue affich�
       ownStreetStatus: null,
       accountDeleted: false,
       pendingNeighbors: [],
+      verifiedNeighbors: [],
     },
   });
 });
@@ -206,7 +208,7 @@ Deno.test("Page d'accueil : habitant vérifié → voisins non vérifiés de sa 
   }
 });
 
-Deno.test("Page d'accueil : habitant non vérifié → aucun voisin remonté (il ne peut vouch pour personne)", async () => {
+Deno.test("Page d'accueil : habitant non vérifié → aucun voisin non-vérifié remonté (il ne peut vouch pour personne), mais les voisins déjà vérifiés le sont (cf. retour utilisateur : qui solliciter)", async () => {
   const testStreet = await createTestStreet("index-5");
   const { user: ambassador } = await registerInhabitant({
     login: `amb-${crypto.randomUUID()}`,
@@ -236,11 +238,53 @@ Deno.test("Page d'accueil : habitant non vérifié → aucun voisin remonté (il
   try {
     const result = await handler.GET!(
       makeContext("http://localhost/", { user: pendingSession }),
-    ) as { data: { pendingNeighbors: unknown[] } };
+    ) as {
+      data: {
+        pendingNeighbors: unknown[];
+        verifiedNeighbors: { id: number; login: string }[];
+      };
+    };
     assertEquals(result.data.pendingNeighbors, []);
+    assertEquals(
+      result.data.verifiedNeighbors.map((n) => n.id),
+      [ambassador.id],
+    );
   } finally {
     await db.delete(user).where(eq(user.id, ambassador.id));
     await db.delete(user).where(eq(user.id, pending.id));
+    await db.delete(house).where(eq(house.streetId, testStreet.testStreet.id));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("Page d'accueil : habitant déjà vérifié → verifiedNeighbors vide (il n'en a pas besoin)", async () => {
+  const testStreet = await createTestStreet("index-6");
+  const { user: ambassador } = await registerInhabitant({
+    login: `amb-${crypto.randomUUID()}`,
+    email: `index-amb3-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const ambassadorSession: SessionUser = {
+    id: ambassador.id,
+    login: ambassador.login,
+    email: ambassador.email,
+    isAmbassador: ambassador.isAmbassador,
+    isVerified: true,
+    street: {
+      id: testStreet.testStreet.id,
+      name: testStreet.testStreet.name,
+      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
+    },
+  };
+
+  try {
+    const result = await handler.GET!(
+      makeContext("http://localhost/", { user: ambassadorSession }),
+    ) as { data: { verifiedNeighbors: unknown[] } };
+    assertEquals(result.data.verifiedNeighbors, []);
+  } finally {
+    await db.delete(user).where(eq(user.id, ambassador.id));
     await db.delete(house).where(eq(house.streetId, testStreet.testStreet.id));
     await cleanupTestStreet(testStreet);
   }
