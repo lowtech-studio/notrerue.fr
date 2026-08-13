@@ -60,10 +60,64 @@ a {
   --color-paper-dark: #efe7d8;
   --color-success: #2f6b3a;
   --color-success-bg: #eef6ee;
+  --color-danger: #c0392b;
+  --color-danger-hover: #a52a1e;
 
   --radius-md: 10px;
   --radius-lg: 16px;
   --container-width: 1040px;
+}
+
+/* Mode sombre : suit la préférence système (`prefers-color-scheme`) par
+   défaut, ou le choix explicite posé par le bouton du menu de compte
+   (`[data-theme]` sur <html>, cf. routes/_app.tsx et routes/theme.ts) — un
+   choix clair l'emporte toujours sur la préférence système, dans les deux
+   sens (`:not([data-theme="light"])` ci-dessous laisse la main à
+   `[data-theme="dark"]` plus bas s'il est posé, et empêche l'inverse
+   d'appliquer le sombre si `[data-theme="light"]` est posé sur un système
+   sombre). Ne redéfinit que les jetons de couleur, jamais une règle de
+   composant directement ici : tout le CSS du site est déjà écrit en
+   `var(--color-*)` (vérifié), donc chaque composant hérite du bon jeu de
+   couleurs sans rien dupliquer.
+   `--color-ink-dark`/`--color-paper-dark`/`--color-accent` ne sont volontairement
+   pas redéfinis : `.trust-card` (accueil) est une carte sombre fixe sur fond
+   clair par choix (mise en avant), pas un élément qui doit suivre le thème
+   général — cf. assets/pages/index.css. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-paper: #1c1814;
+    --color-paper-warm: #26201a;
+    --color-ink: #f0e9dc;
+    --color-ink-soft: #cdc0ac;
+    --color-ink-muted: #a4967f;
+    --color-border: #3a3126;
+    --color-border-strong: #4a4030;
+    --color-brand: #e08a52;
+    --color-brand-hover: #ef9d6c;
+    --color-success: #7fbb85;
+    --color-success-bg: #1f2e20;
+    --color-danger: #e2574c;
+    --color-danger-hover: #ec8079;
+  }
+}
+
+/* Choix explicite « Mode sombre » (cf. plus haut) : mêmes valeurs, mais
+   appliquées quelle que soit la préférence système — l'emporte y compris
+   sur un système resté en clair. */
+:root[data-theme="dark"] {
+  --color-paper: #1c1814;
+  --color-paper-warm: #26201a;
+  --color-ink: #f0e9dc;
+  --color-ink-soft: #cdc0ac;
+  --color-ink-muted: #a4967f;
+  --color-border: #3a3126;
+  --color-border-strong: #4a4030;
+  --color-brand: #e08a52;
+  --color-brand-hover: #ef9d6c;
+  --color-success: #7fbb85;
+  --color-success-bg: #1f2e20;
+  --color-danger: #e2574c;
+  --color-danger-hover: #ec8079;
 }
 
 html {
@@ -188,6 +242,7 @@ button.site-header__link {
 /* "Mes messages", à côté de l'avatar de compte : icône seule (enveloppe),
    même gabarit rond que .account-menu__avatar pour rester aligné avec lui. */
 .site-header__icon-link {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -206,6 +261,20 @@ button.site-header__link {
 .site-header__icon-link-icon {
   width: 20px;
   height: 20px;
+}
+
+/* Pastille "nouveau message" (cf. backlog) — un liseré de la couleur de
+   page fait office de découpe autour du point, pour qu'il se détache de
+   l'icône même quand les deux couleurs sont proches. */
+.site-header__icon-link-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  border: 2px solid var(--color-paper);
 }
 
 /* Menu de compte (avatar + panneau) : <details> natif, même logique sans JS
@@ -506,6 +575,18 @@ button.site-header__link {
   background: var(--color-paper-warm);
 }
 
+/* Action irréversible (ex. supprimer son compte, cf. /profil) : rouge plein,
+   texte blanc — volontairement plus alarmant que `.button--secondary`, pour
+   qu'un clic ne soit jamais accidentel. */
+.button--danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.button--danger:hover {
+  background: var(--color-danger-hover);
+}
+
 .link-button {
   padding: 0;
   border: none;
@@ -551,6 +632,34 @@ button.site-header__link {
 .form-field--checkbox .lookup-card__label {
   margin: 0;
   font-weight: 400;
+}
+
+/* Enveloppe de l'island CharacterCounter : transparente à la mise en page
+   (le formulaire parent style directement le champ enfant, pas cette div)
+   — classe plutôt que `style="display:contents"` inline pour rester
+   compatible avec une CSP stricte sans `unsafe-inline` sur `style-src` en
+   production (cf. main.ts, revue). */
+.character-counter-field {
+  display: contents;
+}
+
+/* Enveloppe de l'island PostTypePlaceholder : même raison que
+   `.character-counter-field` juste au-dessus (transparente à la mise en
+   page, classe plutôt que `style` inline pour la CSP). */
+.post-type-placeholder-field {
+  display: contents;
+}
+
+/* Compteur "N/max" posé par l'island CharacterCounter (cf. backlog) —
+   discret, aligné à droite sous le champ plutôt qu'à côté du libellé pour
+   ne pas déséquilibrer .form-field. Chiffres alignés (tabular-nums) pour
+   que le compteur ne "saute" pas visuellement à chaque frappe. */
+.character-counter {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--color-ink-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .form-error {

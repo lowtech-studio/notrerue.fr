@@ -25,18 +25,16 @@ export function escapeLikePattern(raw: string): string {
 }
 
 /**
- * Chemin de retour (champ caché `back`) : seuls /fil et /recommandations
- * affichent des demandes éditables/supprimables, donc seuls ces deux
- * préfixes sont acceptés — un `back` forgé pointant ailleurs (voire vers un
- * autre domaine, `//evil.example`) retombe sur `fallback` plutôt que d'être
- * suivi tel quel (open redirect). Partagé entre /modifier et /supprimer,
- * seules routes à accepter un `back` en clair (cf. revue : code de sécurité,
- * pas de duplication assumée ici contrairement au CSS).
+ * Chemin de retour (champ caché `back`) : seul /fil affiche des demandes
+ * éditables/supprimables, donc seul ce préfixe est accepté — un `back`
+ * forgé pointant ailleurs (voire vers un autre domaine, `//evil.example`)
+ * retombe sur `fallback` plutôt que d'être suivi tel quel (open redirect).
+ * Partagé entre /modifier et /supprimer, seules routes à accepter un `back`
+ * en clair (cf. revue : code de sécurité, pas de duplication assumée ici
+ * contrairement au CSS).
  */
 export function resolvePostBackPath(raw: string, fallback: string): string {
-  return raw.startsWith("/fil") || raw.startsWith("/recommandations")
-    ? raw
-    : fallback;
+  return raw.startsWith("/fil") ? raw : fallback;
 }
 
 /**
@@ -44,7 +42,7 @@ export function resolvePostBackPath(raw: string, fallback: string): string {
  * (`/fil?type=cherche`…), en préservant les paramètres déjà présents.
  * Utilisé pour faire remonter un état (ex. `edit_error=1`) à travers une
  * redirection sans passer par une session/un flash — cohérent avec
- * `?published=1` déjà utilisé par /fil et /recommandations.
+ * `?published=1` déjà utilisé par /fil.
  */
 export function withQueryParam(
   path: string,

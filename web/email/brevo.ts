@@ -1,5 +1,6 @@
 import { escape as escapeHtml } from "@std/html/entities";
 import { emailButton, emailParagraph, renderEmailLayout } from "./layout.ts";
+import { type PostType, TAP_LABELS } from "../db/posts.ts";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
@@ -139,6 +140,145 @@ export function buildStreetAwakeningEmail(
   };
 }
 
+export interface TapNotificationEmailInput {
+  to: string;
+  recipientLogin: string;
+  tapperLogin: string;
+  postType: PostType;
+  postContent: string;
+  /** Vers la conversation privée avec le tapeur, pour s'organiser directement. */
+  threadUrl: string;
+}
+
+/**
+ * Construction pure du payload — testable sans réseau. Prévient l'auteur
+ * d'une demande qu'un voisin y a répondu en un clic (cf. backlog « être
+ * notifié immédiatement quand quelqu'un répond à ma demande »). Jamais
+ * envoyée pour un retrait de tap, ni à soi-même (cf. appelants).
+ */
+export function buildTapNotificationEmail(
+  input: TapNotificationEmailInput,
+  from: string,
+): BrevoEmailPayload {
+  const { to, recipientLogin, tapperLogin, postType, postContent, threadUrl } =
+    input;
+  const login = escapeHtml(recipientLogin);
+  const tapper = escapeHtml(tapperLogin);
+  const content = escapeHtml(postContent);
+  const action = TAP_LABELS[postType];
+
+  const body = emailParagraph(`Bonne nouvelle, ${login} !`) +
+    emailParagraph(
+      `<strong>${tapper}</strong> a répondu « ${action} » à votre demande : ` +
+        `« ${content} »`,
+    ) +
+    emailParagraph("Écrivez-lui pour vous organiser.", true) +
+    emailButton(threadUrl, `Répondre à ${tapper}`);
+
+  return {
+    sender: { email: from, name: "NotreRue.fr" },
+    to: [{ email: to }],
+    subject: `${tapperLogin} a répondu à votre demande sur NotreRue.fr`,
+    htmlContent: renderEmailLayout(
+      body,
+      `${tapper} a répondu « ${action} » à votre demande.`,
+    ),
+  };
+}
+
+export interface ReplyNotificationEmailInput {
+  to: string;
+  recipientLogin: string;
+  replierLogin: string;
+  postContent: string;
+  replyContent: string;
+  threadUrl: string;
+}
+
+/**
+ * Construction pure du payload — testable sans réseau. Prévient l'auteur
+ * d'une demande qu'un voisin y a répondu publiquement (cf. backlog, même
+ * logique que le tap mais pour /reponses — le commentaire s'ajoute au tap,
+ * il ne le remplace pas, cf. schema.ts).
+ */
+export function buildReplyNotificationEmail(
+  input: ReplyNotificationEmailInput,
+  from: string,
+): BrevoEmailPayload {
+  const {
+    to,
+    recipientLogin,
+    replierLogin,
+    postContent,
+    replyContent,
+    threadUrl,
+  } = input;
+  const login = escapeHtml(recipientLogin);
+  const replier = escapeHtml(replierLogin);
+  const post = escapeHtml(postContent);
+  const reply = escapeHtml(replyContent);
+
+  const body = emailParagraph(`Bonne nouvelle, ${login} !`) +
+    emailParagraph(
+      `<strong>${replier}</strong> a répondu à votre demande ` +
+        `« ${post} » :`,
+    ) +
+    emailParagraph(`« ${reply} »`, true) +
+    emailButton(threadUrl, "Voir la réponse");
+
+  return {
+    sender: { email: from, name: "NotreRue.fr" },
+    to: [{ email: to }],
+    subject: `${replierLogin} a répondu à votre demande sur NotreRue.fr`,
+    htmlContent: renderEmailLayout(
+      body,
+      `${replier} a répondu à votre demande.`,
+    ),
+  };
+}
+
+export interface MessageNotificationEmailInput {
+  to: string;
+  recipientLogin: string;
+  senderLogin: string;
+  threadUrl: string;
+}
+
+/**
+ * Construction pure du payload — testable sans réseau. Prévient qu'un
+ * message privé vient d'arriver. Le contenu du message n'est volontairement
+ * pas repris dans l'e-mail (donnée privée transitant par un tiers, Brevo,
+ * sans nécessité — seul le fait qu'un message existe l'est).
+ */
+export function buildMessageNotificationEmail(
+  input: MessageNotificationEmailInput,
+  from: string,
+): BrevoEmailPayload {
+  const { to, recipientLogin, senderLogin, threadUrl } = input;
+  const login = escapeHtml(recipientLogin);
+  const sender = escapeHtml(senderLogin);
+
+  const body = emailParagraph(`Bonjour ${login},`) +
+    emailParagraph(
+      `<strong>${sender}</strong> vous a envoyé un message privé sur NotreRue.fr.`,
+    ) +
+    emailParagraph(
+      "Le contenu n'est pas repris dans cet e-mail : consultez-le directement sur le site.",
+      true,
+    ) +
+    emailButton(threadUrl, `Lire le message de ${sender}`);
+
+  return {
+    sender: { email: from, name: "NotreRue.fr" },
+    to: [{ email: to }],
+    subject: `Nouveau message de ${senderLogin} sur NotreRue.fr`,
+    htmlContent: renderEmailLayout(
+      body,
+      `${sender} vous a envoyé un message privé.`,
+    ),
+  };
+}
+
 function getApiKey(): string {
   const key = Deno.env.get("BREVO_API_KEY");
   if (!key) {
@@ -198,4 +338,25 @@ export async function sendStreetAwakeningEmail(
   input: StreetAwakeningEmailInput,
 ): Promise<void> {
   await sendEmail(buildStreetAwakeningEmail(input, getSenderEmail()));
+}
+
+/** Notification à l'auteur d'une demande : un voisin y a répondu (tap). */
+export async function sendTapNotificationEmail(
+  input: TapNotificationEmailInput,
+): Promise<void> {
+  await sendEmail(buildTapNotificationEmail(input, getSenderEmail()));
+}
+
+/** Notification à l'auteur d'une demande : un voisin y a répondu publiquement (commentaire). */
+export async function sendReplyNotificationEmail(
+  input: ReplyNotificationEmailInput,
+): Promise<void> {
+  await sendEmail(buildReplyNotificationEmail(input, getSenderEmail()));
+}
+
+/** Notification au destinataire d'un nouveau message privé. */
+export async function sendMessageNotificationEmail(
+  input: MessageNotificationEmailInput,
+): Promise<void> {
+  await sendEmail(buildMessageNotificationEmail(input, getSenderEmail()));
 }

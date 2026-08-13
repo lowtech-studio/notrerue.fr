@@ -14,10 +14,10 @@ export interface CreateCommentInput {
 }
 
 /**
- * Enregistre une réponse publique à une demande (aujourd'hui : uniquement
- * les demandes de recommandation, cf. routes/reponses.ts) — aucune
- * vérification d'appartenance ni de modération ici, faites par l'appelant
- * avant insertion (même partage des responsabilités que `createPost`).
+ * Enregistre une réponse publique à une demande, quel que soit son type (cf.
+ * routes/reponses.ts) — aucune vérification d'appartenance ni de modération
+ * ici, faites par l'appelant avant insertion (même partage des
+ * responsabilités que `createPost`).
  */
 export async function createComment(
   input: CreateCommentInput,

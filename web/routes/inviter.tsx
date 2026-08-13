@@ -14,6 +14,7 @@ import {
 import { sendInviteEmail } from "../email/brevo.ts";
 import { MAX_EMAIL_LENGTH } from "../utils/validation.ts";
 import { createCooldown } from "../utils/rate_limit.ts";
+import { pluralizeCount } from "../utils/pluralize.ts";
 import PrintButton from "../islands/PrintButton.tsx";
 
 /** Délai minimal entre deux invitations envoyées par un même habitant (anti-spam). */
@@ -143,17 +144,21 @@ export const handler = define.handlers({
 function buildSubtitle(streetName: string, status: StreetHousesStatus) {
   const { housesCount, remaining, isAwake } = status;
   if (isAwake) {
-    return `${housesCount} foyers sont déjà inscrits sur la ${streetName}. ` +
-      "Continuez à inviter pour que l'entraide reste vivante.";
+    return `${
+      pluralizeCount(
+        housesCount,
+        "foyer est déjà inscrit",
+        "foyers sont déjà inscrits",
+      )
+    } sur la ${streetName}. Continuez à inviter pour que l'entraide reste vivante.`;
   }
   if (remaining === 1) {
     return `Il manque un seul foyer pour que la ${streetName} s'allume. ` +
       "Tant qu'elle dort, la seule chose à faire ici : inviter.";
   }
-  const houseWord = housesCount > 1 ? "foyers inscrits" : "foyer inscrit";
-  return `${housesCount} ${houseWord} sur ${STREET_AWAKENING_THRESHOLD} ` +
-    `sur la ${streetName}. Tant qu'elle dort, la seule chose à faire ici : ` +
-    "inviter.";
+  return `${pluralizeCount(housesCount, "foyer inscrit", "foyers inscrits")} ` +
+    `sur ${STREET_AWAKENING_THRESHOLD} sur la ${streetName}. Tant qu'elle ` +
+    "dort, la seule chose à faire ici : inviter.";
 }
 
 export default define.page<typeof handler>(function Inviter({ data, state }) {
@@ -175,7 +180,12 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
         <title>Inviter mes voisins — NotreRue.fr</title>
       </Head>
       <div class="no-print">
-        <Header user={state.user} isStreetAwake={state.isStreetAwake} />
+        <Header
+          user={state.user}
+          isStreetAwake={state.isStreetAwake}
+          theme={state.theme}
+          hasUnreadMessages={state.hasUnreadMessages}
+        />
       </div>
       <main>
         <section class="container hero hero--single page-wide">
@@ -251,11 +261,13 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
             </div>
           </div>
 
+          {
+            /* Jamais affichées à l'écran (cf. retour utilisateur : ne
+              montrer que les 4 boutons) — seuls les boutons "Imprimer"
+              plus haut les révèlent, via `@media print` (cf.
+              assets/pages/inviter.css). */
+          }
           <div class="kit-sheet">
-            <p class="kit-sheet__eyebrow no-print">
-              Kit papier — 3 invitations sur une page A4, à découper sur les
-              pointillés et déposer dans les boîtes aux lettres
-            </p>
             <div class="kit-sheet__grid">
               {[0, 1, 2].map((i) => (
                 <div class="invite-flyer" key={i}>
@@ -282,9 +294,6 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
           </div>
 
           <div class="sticker-sheet">
-            <p class="sticker-sheet__eyebrow no-print">
-              Autocollant boîte aux lettres — à découper sur les pointillés
-            </p>
             <div class="sticker">
               <QrCode value={joinUrl} cellSize={5} class="sticker__qr" />
               <p class="sticker__text">

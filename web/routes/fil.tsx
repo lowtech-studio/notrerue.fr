@@ -7,17 +7,23 @@ import { getStreetHousesStatus } from "../db/streets.ts";
 import {
   computeExpiresAt,
   createPost,
-  type FilPostType,
-  isFilPostType,
   isPostDuration,
+  isPostType,
   listStreetPosts,
   MAX_POST_CONTENT_LENGTH,
   MAX_POST_DURATION_MONTHS,
   MAX_SEARCH_LENGTH,
   MIN_POST_DURATION_MONTHS,
   type PostDuration,
+  type PostType,
   type StreetPost,
+  TAP_LABELS,
 } from "../db/posts.ts";
+import {
+  listCommentsByPost,
+  MAX_COMMENT_CONTENT_LENGTH,
+  type PostComment,
+} from "../db/comments.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import {
   countTapsByPost,
@@ -26,13 +32,27 @@ import {
   type Tapper,
 } from "../db/taps.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
+import CharacterCounter from "../islands/CharacterCounter.tsx";
+import PostTypePlaceholder from "../islands/PostTypePlaceholder.tsx";
 
-const POST_TYPE_LABELS: Record<FilPostType, string> = {
+const POST_TYPE_LABELS: Record<PostType, string> = {
   cherche: "Je cherche",
   propose: "Je propose",
   informe: "J'informe",
 };
-const POST_TYPES = Object.keys(POST_TYPE_LABELS) as FilPostType[];
+const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
+
+/** Exemple affiché en placeholder du champ de saisie, adapté au type
+ * sélectionné (cf. backlog « donner de meilleures idées ») — "cherche" porte
+ * deux exemples : un objet à emprunter et une recommandation de confiance
+ * (artisan, dentiste...), l'ancien type "recommandation" fusionné dans
+ * "cherche" (cf. revue « simplifier la navigation »). */
+const POST_CONTENT_PLACEHOLDERS: Record<PostType, string> = {
+  cherche:
+    "Une phrase, c'est tout : « Je cherche une perceuse ce week-end » ou « Un plombier fiable pour une fuite ? »",
+  propose: "Une phrase, c'est tout : « Je prête ma tondeuse ce week-end »",
+  informe: "Une phrase, c'est tout : « Coupure d'eau prévue mardi matin »",
+};
 
 /** Libellés des durées fixes — "months" a son propre rendu (select du nombre de mois). */
 const POST_DURATION_LABELS: Record<"today" | "week", string> = {
@@ -43,13 +63,6 @@ const POST_DURATION_MONTHS_OPTIONS = Array.from(
   { length: MAX_POST_DURATION_MONTHS - MIN_POST_DURATION_MONTHS + 1 },
   (_, i) => MIN_POST_DURATION_MONTHS + i,
 );
-
-/** Libellé du bouton de réponse en un clic, selon le type de la demande (cf. backlog). */
-const TAP_LABELS: Record<FilPostType, string> = {
-  cherche: "J'ai",
-  propose: "Intéressé",
-  informe: "👍",
-};
 
 /** Noms de tapeurs affichés directement sur la vignette avant de replier le
  * reste dans un <details> — au-delà, une demande très répondue déborderait
@@ -64,10 +77,16 @@ interface FilPost extends StreetPost {
    * tapeur pour s'organiser »), vide sinon : pas besoin d'exposer qui a
    * répondu chez les autres. */
   tappers: Tapper[];
+  /** Réponses publiques déjà données (cf. db/comments.ts) — toujours
+   * visibles, quel que soit l'auteur : contrairement aux tapeurs, l'intérêt
+   * d'une réponse publique est justement de rester visible au prochain
+   * habitant qui pose la même question (cf. backlog « retrouver les
+   * réponses déjà données »). */
+  comments: PostComment[];
 }
 
-/** Complète chaque demande avec son nombre de taps, si `viewerId` a déjà tapé, et qui a tapé sur ses propres demandes. */
-async function attachTapInfo(
+/** Complète chaque demande avec son nombre de taps, si `viewerId` a déjà tapé, qui a tapé sur ses propres demandes, et ses réponses publiques déjà données. */
+async function attachPostExtras(
   posts: StreetPost[],
   viewerId: number,
 ): Promise<FilPost[]> {
@@ -75,16 +94,18 @@ async function attachTapInfo(
   const ownPostIds = posts.filter((p) => p.authorId === viewerId).map((p) =>
     p.id
   );
-  const [counts, tapped, tappersByPost] = await Promise.all([
+  const [counts, tapped, tappersByPost, commentsByPost] = await Promise.all([
     countTapsByPost(postIds),
     findTappedPostIds(viewerId, postIds),
     listTappers(ownPostIds),
+    listCommentsByPost(postIds),
   ]);
   return posts.map((p) => ({
     ...p,
     tapCount: counts.get(p.id) ?? 0,
     viewerHasTapped: tapped.has(p.id),
     tappers: tappersByPost.get(p.id) ?? [],
+    comments: commentsByPost.get(p.id) ?? [],
   }));
 }
 
@@ -92,23 +113,26 @@ interface FilData {
   streetName: string;
   housesCount: number;
   posts: FilPost[];
-  page: number;
-  totalPages: number;
-  totalCount: number;
+  /** Onglet actif (`null` = "Tout"). */
+  activeType: PostType | null;
   /** Recherche active (URL `?q=`), `null` si aucune. */
   search: string | null;
-  activeType: FilPostType | null;
   /** URL courante (chemin + query) : filtre/page/recherche à restaurer après /modifier ou /supprimer. */
   backPath: string;
   postError: string | null;
   postPublished: boolean;
   /** `?edit_error=1` posé par /modifier quand la correction est bloquée par la modération (cf. revue : sinon perdue en silence). */
   editError: boolean;
-  /** Valeurs re-soumises telles quelles si la publication échoue. */
-  postType: FilPostType;
+  /** `?reponse_error=1` posé par /reponses (réponse bloquée par la modération). */
+  reponseError: boolean;
+  /** Valeur re-soumise telle quelle si la publication échoue. */
   postContent: string;
+  postType: PostType;
   postDuration: PostDuration;
   postDurationMonths: number;
+  page: number;
+  totalPages: number;
+  totalCount: number;
 }
 
 function parsePage(raw: string | null): number {
@@ -116,8 +140,8 @@ function parsePage(raw: string | null): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function parseType(raw: string | null): FilPostType | null {
-  return raw && isFilPostType(raw) ? raw : null;
+function parseActiveType(raw: string | null): PostType | null {
+  return raw && isPostType(raw) ? raw : null;
 }
 
 function parseSearch(raw: string | null): string | null {
@@ -125,10 +149,14 @@ function parseSearch(raw: string | null): string | null {
   return trimmed || null;
 }
 
-/** Nombre de mois saisi pour la durée "months" ; borné à l'affichage (le clampage définitif est dans `computeExpiresAt`). */
-function parseDurationMonths(raw: FormDataEntryValue | null): number {
+/** Nombre de mois saisi pour la durée "months" ; borné à l'affichage (le
+ * clampage définitif est dans `computeExpiresAt`). */
+function parseDurationMonths(
+  raw: FormDataEntryValue | null,
+  fallback: number,
+): number {
   const parsed = Number(raw);
-  if (!Number.isInteger(parsed)) return MIN_POST_DURATION_MONTHS;
+  if (!Number.isInteger(parsed)) return fallback;
   return Math.min(
     Math.max(parsed, MIN_POST_DURATION_MONTHS),
     MAX_POST_DURATION_MONTHS,
@@ -146,36 +174,43 @@ export const handler = define.handlers({
     // être publiée avant l'éveil, POST /fil applique la même règle).
     if (!streetStatus.isAwake) return ctx.redirect("/");
 
-    const activeType = parseType(ctx.url.searchParams.get("type"));
+    const activeType = parseActiveType(ctx.url.searchParams.get("type"));
     const search = parseSearch(ctx.url.searchParams.get("q"));
-    const { posts: rawPosts, totalPages, totalCount, page } =
+    const page = parsePage(ctx.url.searchParams.get("page"));
+    const backPath = ctx.url.pathname + ctx.url.search;
+    const postPublished = ctx.url.searchParams.get("published") === "1";
+    const editError = ctx.url.searchParams.get("edit_error") === "1";
+    const reponseError = ctx.url.searchParams.get("reponse_error") === "1";
+
+    const { posts: rawPosts, totalPages, totalCount, page: resolvedPage } =
       await listStreetPosts({
         streetId: user.street.id,
         type: activeType ?? undefined,
-        page: parsePage(ctx.url.searchParams.get("page")),
+        page,
         search: search ?? undefined,
       });
-    const posts = await attachTapInfo(rawPosts, user.id);
+    const posts = await attachPostExtras(rawPosts, user.id);
 
     return {
       data: {
         streetName: user.street.name,
         housesCount: streetStatus.housesCount,
         posts,
-        page,
+        page: resolvedPage,
         totalPages,
         totalCount,
         search,
         activeType,
-        backPath: ctx.url.pathname + ctx.url.search,
+        backPath,
         postError: null,
-        postPublished: ctx.url.searchParams.get("published") === "1",
-        editError: ctx.url.searchParams.get("edit_error") === "1",
+        postPublished,
+        editError,
+        reponseError,
         postType: "cherche",
         postContent: "",
         postDuration: "week",
         postDurationMonths: MIN_POST_DURATION_MONTHS,
-      },
+      } satisfies FilData,
     };
   },
 
@@ -188,21 +223,23 @@ export const handler = define.handlers({
 
     const form = await ctx.req.formData();
     const rawType = String(form.get("type") ?? "");
-    const postType: FilPostType = isFilPostType(rawType) ? rawType : "cherche";
     const rawDuration = String(form.get("duration") ?? "");
-    const postDuration: PostDuration = isPostDuration(rawDuration)
-      ? rawDuration
-      : "week";
-    const postDurationMonths = parseDurationMonths(
-      form.get("durationMonths"),
-    );
     const content = String(form.get("content") ?? "").trim().slice(
       0,
       MAX_POST_CONTENT_LENGTH,
     );
 
+    const postType: PostType = isPostType(rawType) ? rawType : "cherche";
+    const postDuration: PostDuration = isPostDuration(rawDuration)
+      ? rawDuration
+      : "week";
+    const postDurationMonths = parseDurationMonths(
+      form.get("durationMonths"),
+      MIN_POST_DURATION_MONTHS,
+    );
+
     if (
-      isFilPostType(rawType) && isPostDuration(rawDuration) && content &&
+      isPostType(rawType) && isPostDuration(rawDuration) && content &&
       !containsBlockedContent(content)
     ) {
       const expiresAt = computeExpiresAt(postDuration, postDurationMonths);
@@ -213,7 +250,7 @@ export const handler = define.handlers({
     // Erreur : on réaffiche le fil (première page, sans filtre) avec le
     // message d'erreur et le brouillon tapé, plutôt qu'une redirection —
     // même logique que /rejoindre et /inviter.
-    const error = !isFilPostType(rawType) || !isPostDuration(rawDuration) ||
+    const error = !isPostType(rawType) || !isPostDuration(rawDuration) ||
         !content
       ? "Merci de choisir un type, une durée et d'écrire votre demande."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
@@ -222,7 +259,7 @@ export const handler = define.handlers({
         streetId: user.street.id,
         page: 1,
       });
-    const posts = await attachTapInfo(rawPosts, user.id);
+    const posts = await attachPostExtras(rawPosts, user.id);
 
     return {
       data: {
@@ -238,16 +275,17 @@ export const handler = define.handlers({
         postError: error,
         postPublished: false,
         editError: false,
+        reponseError: false,
         postDuration,
         postDurationMonths,
         postType,
         postContent: content,
-      },
+      } satisfies FilData,
     };
   },
 });
 
-function filterHref(type: FilPostType | null, search: string | null): string {
+function filterHref(type: PostType | null, search: string | null): string {
   const params = new URLSearchParams();
   if (type) params.set("type", type);
   if (search) params.set("q", search);
@@ -256,7 +294,7 @@ function filterHref(type: FilPostType | null, search: string | null): string {
 }
 
 function pageHref(
-  activeType: FilPostType | null,
+  activeType: PostType | null,
   search: string | null,
   page: number,
 ): string {
@@ -273,19 +311,20 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     streetName,
     housesCount,
     posts,
-    page,
-    totalPages,
-    totalCount,
-    search,
     activeType,
+    search,
     backPath,
     postError,
     postPublished,
     editError,
-    postType,
+    reponseError,
     postContent,
+    postType,
     postDuration,
     postDurationMonths,
+    page,
+    totalPages,
+    totalCount,
   } = data as FilData;
 
   return (
@@ -293,7 +332,12 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
       <Head>
         <title>Le fil de {streetName} — NotreRue.fr</title>
       </Head>
-      <Header user={state.user} isStreetAwake={state.isStreetAwake} />
+      <Header
+        user={state.user}
+        isStreetAwake={state.isStreetAwake}
+        theme={state.theme}
+        hasUnreadMessages={state.hasUnreadMessages}
+      />
       <main>
         <section class="container hero hero--single page-wide">
           <h1 class="hero__title">Le fil de ma rue</h1>
@@ -311,17 +355,22 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
               message contient des termes non autorisés.
             </p>
           )}
+          {reponseError && (
+            <p class="form-error" role="alert">
+              Votre réponse n'a pas été enregistrée : merci de reformuler, ce
+              message contient des termes non autorisés.
+            </p>
+          )}
 
           {
-            /* Avant de publier : retrouver une demande déjà passée sur le
-              fil, même principe que sur /recommandations. */
+            /* Avant de publier : retrouver une demande déjà passée. */
           }
           <form method="GET" class="fil-search">
             <input
               type="search"
               name="q"
               class="lookup-form__input"
-              placeholder="Rechercher (ex : perceuse, tondeuse…)"
+              placeholder="Rechercher (ex : perceuse, plombier…)"
               maxlength={MAX_SEARCH_LENGTH}
               value={search ?? ""}
               autocomplete="off"
@@ -346,78 +395,84 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
           )}
 
           <div class="compose-post">
-            <h2 class="compose-post__title">Quoi de neuf sur votre rue ?</h2>
+            <h2 class="compose-post__title">
+              Quoi de neuf sur votre rue ?
+            </h2>
             <form method="POST" class="compose-post__form">
-              <div
-                class="compose-post__types"
-                role="radiogroup"
-                aria-label="Type de publication"
-              >
-                {POST_TYPES.map((value) => (
-                  <label key={value} class="compose-post__type">
-                    <input
-                      type="radio"
-                      name="type"
-                      value={value}
-                      checked={postType === value}
-                    />
-                    {POST_TYPE_LABELS[value]}
-                  </label>
-                ))}
-              </div>
+              <PostTypePlaceholder placeholders={POST_CONTENT_PLACEHOLDERS}>
+                <div
+                  class="compose-post__types"
+                  role="radiogroup"
+                  aria-label="Type de publication"
+                >
+                  {POST_TYPES.map((value) => (
+                    <label key={value} class="compose-post__type">
+                      <input
+                        type="radio"
+                        name="type"
+                        value={value}
+                        checked={postType === value}
+                      />
+                      {POST_TYPE_LABELS[value]}
+                    </label>
+                  ))}
+                </div>
 
-              <div
-                class="compose-post__types"
-                role="radiogroup"
-                aria-label="Durée de validité de la demande"
-              >
-                {(["today", "week"] as const).map((value) => (
-                  <label key={value} class="compose-post__type">
+                <div
+                  class="compose-post__types"
+                  role="radiogroup"
+                  aria-label="Durée de validité de la demande"
+                >
+                  {(["today", "week"] as const).map((value) => (
+                    <label key={value} class="compose-post__type">
+                      <input
+                        type="radio"
+                        name="duration"
+                        value={value}
+                        checked={postDuration === value}
+                      />
+                      {POST_DURATION_LABELS[value]}
+                    </label>
+                  ))}
+                  <label class="compose-post__type">
                     <input
                       type="radio"
                       name="duration"
-                      value={value}
-                      checked={postDuration === value}
+                      value="months"
+                      checked={postDuration === "months"}
                     />
-                    {POST_DURATION_LABELS[value]}
+                    <select
+                      name="durationMonths"
+                      class="compose-post__duration-select"
+                      aria-label="Nombre de mois"
+                    >
+                      {POST_DURATION_MONTHS_OPTIONS.map((months) => (
+                        <option
+                          key={months}
+                          value={months}
+                          selected={months === postDurationMonths}
+                        >
+                          {months}
+                        </option>
+                      ))}
+                    </select>{" "}
+                    mois
                   </label>
-                ))}
-                <label class="compose-post__type">
-                  <input
-                    type="radio"
-                    name="duration"
-                    value="months"
-                    checked={postDuration === "months"}
-                  />
-                  <select
-                    name="durationMonths"
-                    class="compose-post__duration-select"
-                    aria-label="Nombre de mois"
-                  >
-                    {POST_DURATION_MONTHS_OPTIONS.map((months) => (
-                      <option
-                        key={months}
-                        value={months}
-                        selected={months === postDurationMonths}
-                      >
-                        {months}
-                      </option>
-                    ))}
-                  </select>{" "}
-                  mois
-                </label>
-              </div>
+                </div>
 
-              <input
-                type="text"
-                name="content"
-                class="lookup-form__input"
-                placeholder="Une phrase, c'est tout : « Je cherche une perceuse ce week-end »"
-                maxlength={MAX_POST_CONTENT_LENGTH}
-                value={postContent}
-                autocomplete="off"
-                required
-              />
+                <CharacterCounter max={MAX_POST_CONTENT_LENGTH}>
+                  <input
+                    type="text"
+                    name="content"
+                    class="lookup-form__input"
+                    placeholder={POST_CONTENT_PLACEHOLDERS[postType]}
+                    maxlength={MAX_POST_CONTENT_LENGTH}
+                    value={postContent}
+                    autocomplete="off"
+                    required
+                  />
+                </CharacterCounter>
+              </PostTypePlaceholder>
 
               <button type="submit" class="button">Publier</button>
             </form>
@@ -480,16 +535,21 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   >
                     <input type="hidden" name="postId" value={item.id} />
                     <input type="hidden" name="back" value={backPath} />
-                    <input
-                      type="text"
-                      name="content"
-                      class="lookup-form__input"
-                      maxlength={MAX_POST_CONTENT_LENGTH}
-                      value={item.content}
-                      autocomplete="off"
-                      required
-                    />
-                    <button type="submit" class="button button--secondary">
+                    <CharacterCounter max={MAX_POST_CONTENT_LENGTH}>
+                      <input
+                        type="text"
+                        name="content"
+                        class="lookup-form__input"
+                        maxlength={MAX_POST_CONTENT_LENGTH}
+                        value={item.content}
+                        autocomplete="off"
+                        required
+                      />
+                    </CharacterCounter>
+                    <button
+                      type="submit"
+                      class="button button--secondary"
+                    >
                       Enregistrer
                     </button>
                   </form>
@@ -501,7 +561,11 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   {state.user && item.authorId !== state.user.id && (
                     <div class="fil-post__actions">
                       <form method="POST" action="/taps">
-                        <input type="hidden" name="postId" value={item.id} />
+                        <input
+                          type="hidden"
+                          name="postId"
+                          value={item.id}
+                        />
                         {activeType && (
                           <input
                             type="hidden"
@@ -541,20 +605,22 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                       {item.tappers.length > 0 && (
                         <div class="fil-post__tappers">
                           <span class="fil-post__tappers-label">
-                            {item.tappers.length} {TAP_LABELS[item.type]} :
+                            {item.tappers.length} {TAP_LABELS[item.type]}
+                            :
                           </span>
-                          {item.tappers.slice(0, TAPPERS_VISIBLE_LIMIT).map((
-                            tapper,
-                          ) => (
-                            <a
-                              key={tapper.id}
-                              href={`/messages?with=${tapper.id}&postId=${item.id}`}
-                              class="fil-post__tappers-link"
-                            >
-                              <MailIcon class="fil-post__mail-icon" />
-                              {tapper.login}
-                            </a>
-                          ))}
+                          {item.tappers.slice(0, TAPPERS_VISIBLE_LIMIT)
+                            .map((
+                              tapper,
+                            ) => (
+                              <a
+                                key={tapper.id}
+                                href={`/messages?with=${tapper.id}&postId=${item.id}`}
+                                class="fil-post__tappers-link"
+                              >
+                                <MailIcon class="fil-post__mail-icon" />
+                                {tapper.login}
+                              </a>
+                            ))}
                           {item.tappers.length > TAPPERS_VISIBLE_LIMIT && (
                             <details class="fil-post__tappers-more">
                               <summary class="fil-post__tappers-link">
@@ -562,20 +628,21 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                                   TAPPERS_VISIBLE_LIMIT} autres
                               </summary>
                               <div class="fil-post__tappers-more-list">
-                                {item.tappers.slice(TAPPERS_VISIBLE_LIMIT).map(
-                                  (
-                                    tapper,
-                                  ) => (
-                                    <a
-                                      key={tapper.id}
-                                      href={`/messages?with=${tapper.id}&postId=${item.id}`}
-                                      class="fil-post__tappers-link"
-                                    >
-                                      <MailIcon class="fil-post__mail-icon" />
-                                      {tapper.login}
-                                    </a>
-                                  ),
-                                )}
+                                {item.tappers.slice(TAPPERS_VISIBLE_LIMIT)
+                                  .map(
+                                    (
+                                      tapper,
+                                    ) => (
+                                      <a
+                                        key={tapper.id}
+                                        href={`/messages?with=${tapper.id}&postId=${item.id}`}
+                                        class="fil-post__tappers-link"
+                                      >
+                                        <MailIcon class="fil-post__mail-icon" />
+                                        {tapper.login}
+                                      </a>
+                                    ),
+                                  )}
                               </div>
                             </details>
                           )}
@@ -634,8 +701,67 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                     <p class="fil-post__delete-confirm">
                       Confirmer la suppression de cette demande ?
                     </p>
-                    <button type="submit" class="button button--secondary">
+                    <button
+                      type="submit"
+                      class="button button--secondary"
+                    >
                       Oui, supprimer
+                    </button>
+                  </form>
+                )}
+
+                {
+                  /* Réponses publiques (cf. db/comments.ts) : en plus du tap,
+                    pas à sa place — restent visibles au prochain habitant qui
+                    pose la même question (cf. backlog « retrouver les
+                    réponses déjà données », ex-onglet Recommandations
+                    fusionné ici). */
+                }
+                {item.comments.length > 0 && (
+                  <ul class="fil-post__replies">
+                    {item.comments.map((reply) => (
+                      <li key={reply.id} class="fil-post__reply">
+                        <span class="fil-post__reply-author">
+                          {reply.authorLogin}
+                        </span>
+                        <span class="fil-post__reply-content">
+                          {reply.content}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {state.user && (
+                  <form
+                    method="POST"
+                    action="/reponses"
+                    class="fil-post__reply-form"
+                  >
+                    <input type="hidden" name="postId" value={item.id} />
+                    {activeType && (
+                      <input type="hidden" name="type" value={activeType} />
+                    )}
+                    {page > 1 && (
+                      <input type="hidden" name="page" value={page} />
+                    )}
+                    {search && <input type="hidden" name="q" value={search} />}
+                    <CharacterCounter max={MAX_COMMENT_CONTENT_LENGTH}>
+                      <input
+                        type="text"
+                        name="content"
+                        class="fil-post__reply-input"
+                        placeholder="Répondre ici, publiquement"
+                        maxlength={MAX_COMMENT_CONTENT_LENGTH}
+                        autocomplete="off"
+                        required
+                      />
+                    </CharacterCounter>
+                    <button
+                      type="submit"
+                      class="button button--secondary fil-post__reply-submit"
+                    >
+                      Répondre
                     </button>
                   </form>
                 )}

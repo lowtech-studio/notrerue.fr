@@ -13,16 +13,15 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-// "recommandation" : demande visible à l'échelle de la ville plutôt que de
-// la seule rue de l'auteur (cf. backlog « recommandation locale... afin
-// d'obtenir une réponse de confiance plutôt qu'un avis Google » — une seule
-// rue est un bassin trop petit pour connaître un bon artisan). Répondue par
-// des `comment` publics (contrairement aux trois autres types, qui se
-// répondent par tap + message privé) : la réponse elle-même doit rester
-// visible aux prochains habitants qui posent la même question.
+// Trois types de demande, tous à l'échelle de la rue de l'auteur. Il y a eu
+// un quatrième type, "recommandation" (portée ville, répondu par `comment`
+// public plutôt que tap + message privé) — supprimé (cf. revue « simplifier
+// la navigation ») : "cherche" en tient désormais lieu, chaque demande
+// pouvant recevoir des `comment` publics en plus des taps (cf. table
+// `comment` plus bas, sans restriction de type).
 export const postType = pgEnum(
   "post_type",
-  ["cherche", "propose", "informe", "recommandation"],
+  ["cherche", "propose", "informe"],
 );
 
 export const city = pgTable("city", {
@@ -153,6 +152,13 @@ export const message = pgTable("message", {
   userFromId: integer("user_from_id").notNull().references(() => user.id),
   userToId: integer("user_to_id").notNull().references(() => user.id),
   postId: integer("post_id").references(() => post.id),
+  // Marqué à l'ouverture de la conversation par le destinataire (cf.
+  // backlog « pastille sur l'enveloppe du menu ») — `null` tant que non lu.
+  // N'a de sens que côté destinataire : jamais posé pour l'expéditeur, qui
+  // n'a pas besoin de savoir quand son propre message a été lu (pas de
+  // "vu" façon messagerie, cf. backlog V0.1 « ne pas répondre sans que mon
+  // silence soit visible »).
+  readAt: timestamp("read_at", { withTimezone: true }),
 });
 
 export const cityRelations = relations(city, ({ many }) => ({

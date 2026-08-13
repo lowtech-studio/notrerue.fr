@@ -65,14 +65,15 @@
 - [*] à l'inscription préciser qu'il faut avoir plus de 15 ans (seuil du
       consentement numérique en France ; à afficher, à contrôler à
       l'inscription).
-- [ ] Refactoriser le code pour améliorer la maintenance, la performance, l'eco
+- [*] Refactoriser le code pour améliorer la maintenance, la performance, l'eco
       conception et la cybersécurité
+- [*] En tant qu'habitant connecté, je veux voir une pastille à coté de l'enveloppe du menu en haut à droite me mentionnant que j'ai reçu un nouveau essage, quand tout les messages sont lus la pastille disparait
+- [ ] En tant qu'habitant connecté, afficher en rouge le bouton supprimer mon compte avec le texte en blanc  dans la page /profil
+- [ ] En tant qu'habitant connecté, dans la page fil je veux que le placeholder du champs content pour publier une demande s'adapate quand je change de type pour donner de meilleures idées, dans je cherche ajoute aussi un exemple de recommandations...
+- [ ] change le style du texte 4 foyers en dessous de "Le fil de ma rue" pour qu'on le voit un poil mieux fait moi une proposition
 
 ## V0.1
 
-- [ ] En tant que demandeur, je veux être notifié immédiatement quand quelqu'un
-      répond à ma demande, car c'est la seule notification qui mérite
-      d'interrompre.
 - [ ] En tant qu'habitant surchargé, je veux mettre ma rue en pause pour 15 ou
       30 jours, sans que cela se voie, afin de ne pas subir la pression sociale
       de mes voisins.

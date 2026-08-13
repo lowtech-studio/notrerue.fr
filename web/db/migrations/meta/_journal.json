@@ -57,6 +57,20 @@
       "when": 1786484629976,
       "tag": "0007_tearful_punisher",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786636989629,
+      "tag": "0008_free_sway",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786638827572,
+      "tag": "0009_milky_killer_shrike",
+      "breakpoints": true
     }
   ]
 }

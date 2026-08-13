@@ -3,10 +3,11 @@ import { eq } from "drizzle-orm";
 import type { Context } from "fresh";
 import type { SessionUser, State } from "../utils.ts";
 import { db } from "../db/client.ts";
-import { house, post, tap, user } from "../db/schema.ts";
+import { comment, house, post, tap, user } from "../db/schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
 import { toggleTap } from "../db/taps.ts";
+import { createComment } from "../db/comments.ts";
 import { createPost, MIN_POST_DURATION_MONTHS } from "../db/posts.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
 import { handler } from "./fil.tsx";
@@ -542,6 +543,42 @@ Deno.test("GET /fil : ?q=... filtre la liste et remonte le nombre de résultats"
     assertEquals(result.data.totalCount, 1);
     assertEquals(result.data.search, "perceuse");
   } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("GET /fil : les réponses publiques déjà données sont attachées à chaque demande, quel que soit son type", async () => {
+  const awake = await createAwakeStreetWithUser("fil-16");
+  let sought: { id: number } | undefined;
+
+  try {
+    sought = await createPost({
+      userId: awake.created.id,
+      type: "cherche",
+      content: "Un bon plombier ?",
+    });
+    await createComment({
+      userId: awake.created.id,
+      postId: sought.id,
+      content: "Dupont Plomberie, très sérieux",
+    });
+
+    const result = await handler.GET!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser }),
+    ) as {
+      data: {
+        posts: { id: number; comments: { content: string }[] }[];
+      };
+    };
+
+    assertEquals(
+      result.data.posts.find((p) => p.id === sought!.id)?.comments.map((c) =>
+        c.content
+      ),
+      ["Dupont Plomberie, très sérieux"],
+    );
+  } finally {
+    if (sought) await db.delete(comment).where(eq(comment.postId, sought.id));
     await cleanupAwakeStreet(awake);
   }
 });

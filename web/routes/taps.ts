@@ -1,6 +1,8 @@
 import { define } from "../utils.ts";
 import { getPostSummary, isPostType, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { toggleTap } from "../db/taps.ts";
+import { findSessionUserById } from "../db/users.ts";
+import { sendTapNotificationEmail } from "../email/brevo.ts";
 
 /**
  * Bascule un tap sur une demande (« J'ai » / « Intéressé » / 👍 selon le
@@ -45,7 +47,30 @@ export const handler = define.handlers({
       return ctx.redirect(backToFil);
     }
 
-    await toggleTap(user.id, postId);
+    const tapped = await toggleTap(user.id, postId);
+
+    // Notifie l'auteur seulement à la création du tap (pas au retrait) —
+    // cf. backlog « être notifié immédiatement quand quelqu'un répond à ma
+    // demande ». Tolérant à l'échec : le tap est déjà acquis en base, un
+    // souci d'e-mail ne doit pas remonter comme une erreur à l'utilisateur.
+    if (tapped) {
+      const author = await findSessionUserById(summary.authorId);
+      if (author) {
+        try {
+          await sendTapNotificationEmail({
+            to: author.email,
+            recipientLogin: author.login,
+            tapperLogin: user.login,
+            postType: summary.type,
+            postContent: summary.content,
+            threadUrl:
+              `${ctx.url.origin}/messages?with=${user.id}&postId=${postId}`,
+          });
+        } catch (error) {
+          console.error("Échec de la notification de tap :", error);
+        }
+      }
+    }
 
     return ctx.redirect(backToFil);
   },

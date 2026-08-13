@@ -43,31 +43,21 @@
   background: var(--color-paper);
 }
 
-/* Kit papier (3 invitations) et autocollant : aperçus à l'écran, pensés pour
-   être imprimés et découpés. `.no-print` masque tout ce qui n'est pas la
-   feuille imprimée elle-même (cf. règle @media print plus bas), et
-   `body[data-print-target]` (posé par PrintButton) choisit laquelle des deux
-   feuilles sort de l'imprimante. */
+/* Kit papier (3 invitations) et autocollant : jamais affichés à l'écran (cf.
+   retour utilisateur « ne voir que les 4 boutons ») — seuls les deux
+   boutons « Imprimer » les révèlent, via `@media print` (règle plus bas) et
+   `body[data-print-target]` (posé par PrintButton) qui choisit laquelle des
+   deux feuilles sort de l'imprimante. `.no-print` masque en plus, à
+   l'impression, tout ce qui n'est pas la feuille elle-même. */
 .kit-sheet,
 .sticker-sheet {
-  display: grid;
+  display: none;
   justify-items: center;
   gap: 16px;
   padding: 24px;
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-lg);
   background: var(--color-paper);
-}
-
-.kit-sheet__eyebrow,
-.sticker-sheet__eyebrow {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-  text-align: center;
 }
 
 .kit-sheet__grid {
@@ -208,8 +198,13 @@
     max-width: none;
   }
 
+  /* Masquées à l'écran par défaut (cf. règle hors @media plus haut) : à
+     l'impression, seul moment où elles ont une raison d'apparaître, on les
+     révèle ici avant que les règles de mise en page ci-dessous ne
+     s'appliquent. */
   .kit-sheet,
   .sticker-sheet {
+    display: grid;
     border: none;
     border-radius: 0;
     padding: 0;

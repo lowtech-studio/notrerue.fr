@@ -8,6 +8,7 @@ import {
   type ConversationSummary,
   getConversation,
   listConversations,
+  markConversationRead,
   MAX_MESSAGE_CONTENT_LENGTH,
   sendMessage,
   type ThreadMessage,
@@ -15,6 +16,8 @@ import {
 import { findSessionUserById, findUserLoginForDisplay } from "../db/users.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
+import { sendMessageNotificationEmail } from "../email/brevo.ts";
+import CharacterCounter from "../islands/CharacterCounter.tsx";
 
 /** Contexte affiché en tête de conversation quand elle démarre depuis une demande (cf. backlog « bouton via une demande »). */
 interface PostContext {
@@ -93,6 +96,10 @@ export const handler = define.handlers({
       otherUserId,
     );
     const messages = await getConversation(user.id, otherUserId);
+    // Ouvrir la conversation vaut lecture — cf. backlog « pastille sur
+    // l'enveloppe du menu » : elle ne doit disparaître que lorsque les
+    // messages sont vraiment lus, pas juste listés dans l'inbox.
+    await markConversationRead(user.id, otherUserId);
 
     return {
       data: {
@@ -149,6 +156,19 @@ export const handler = define.handlers({
         postId: postContext?.id ?? null,
         content,
       });
+      // Tolérant à l'échec : le message est déjà enregistré, un souci
+      // d'e-mail ne doit pas remonter comme une erreur à l'utilisateur (cf.
+      // backlog notification). `otherUser` déjà validé actif ci-dessus.
+      try {
+        await sendMessageNotificationEmail({
+          to: otherUser.email,
+          recipientLogin: otherUser.login,
+          senderLogin: user.login,
+          threadUrl: `${ctx.url.origin}/messages?with=${user.id}`,
+        });
+      } catch (error) {
+        console.error("Échec de la notification de message :", error);
+      }
       const redirectParams = new URLSearchParams({
         with: String(otherUserId),
       });
@@ -195,7 +215,12 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
       <Head>
         <title>Mes messages — NotreRue.fr</title>
       </Head>
-      <Header user={state.user} isStreetAwake={state.isStreetAwake} />
+      <Header
+        user={state.user}
+        isStreetAwake={state.isStreetAwake}
+        theme={state.theme}
+        hasUnreadMessages={state.hasUnreadMessages}
+      />
       <main>
         <section class="container hero hero--single page-wide">
           {messagesData.view === "inbox"
@@ -333,15 +358,17 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
                             value={messagesData.postContext.id}
                           />
                         )}
-                        <textarea
-                          name="content"
-                          class="message-compose__input"
-                          placeholder="Votre message..."
-                          maxlength={MAX_MESSAGE_CONTENT_LENGTH}
-                          required
-                        >
-                          {messagesData.composeContent}
-                        </textarea>
+                        <CharacterCounter max={MAX_MESSAGE_CONTENT_LENGTH}>
+                          <textarea
+                            name="content"
+                            class="message-compose__input"
+                            placeholder="Votre message..."
+                            maxlength={MAX_MESSAGE_CONTENT_LENGTH}
+                            required
+                          >
+                            {messagesData.composeContent}
+                          </textarea>
+                        </CharacterCounter>
                         <button
                           type="submit"
                           class="button message-compose__submit"

@@ -10,6 +10,7 @@ import {
   type StreetAwakeningStatus,
 } from "../db/streets.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
+import { pluralizeCount } from "../utils/pluralize.ts";
 
 const MAX_STREET_LENGTH = 80;
 const MAX_CITY_LABEL_LENGTH = 120;
@@ -80,7 +81,12 @@ export default define.page<typeof handler>(function Home({ data, state }) {
       <Head>
         <title>NotreRue.fr — Créer du lien entre voisins</title>
       </Head>
-      <Header user={user} isStreetAwake={state.isStreetAwake} />
+      <Header
+        user={user}
+        isStreetAwake={state.isStreetAwake}
+        theme={state.theme}
+        hasUnreadMessages={state.hasUnreadMessages}
+      />
       <main>
         <section class="container hero" id="trouver-ma-rue">
           <div>
@@ -136,8 +142,11 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                         threshold={STREET_AWAKENING_THRESHOLD}
                       />
                       <p class="street-status__count">
-                        {ownStreetStatus.housesCount} foyers inscrits sur{" "}
-                        {STREET_AWAKENING_THRESHOLD}
+                        {pluralizeCount(
+                          ownStreetStatus.housesCount,
+                          "foyer inscrit",
+                          "foyers inscrits",
+                        )} sur {STREET_AWAKENING_THRESHOLD}
                       </p>
                       <a href="/inviter" class="button">
                         Inviter mes voisins
@@ -151,7 +160,11 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                         Votre rue est allumée !
                       </h2>
                       <p class="street-status__headline">
-                        {ownStreetStatus.housesCount} foyers vous ont rejoint.
+                        {pluralizeCount(
+                          ownStreetStatus.housesCount,
+                          "foyer vous a",
+                          "foyers vous ont",
+                        )} rejoint.
                       </p>
                       <p class="street-status__subtitle">
                         Direction le fil pour voir les demandes de vos voisins
@@ -313,20 +326,38 @@ function StreetStatusCard(
 
   const subtitle = isAmbassadorSlot
     ? `Vous êtes le premier. Une rue s'ouvre à partir d'un seul habitant, ` +
-      `et s'allume à ${STREET_AWAKENING_THRESHOLD} foyers, alors inscrivez-vous et partagez à vos voisins`
+      `et s'allume à ${
+        pluralizeCount(STREET_AWAKENING_THRESHOLD, "foyer", "foyers")
+      }, alors inscrivez-vous et partagez à vos voisins`
     : isAwake
-    ? `${housesCount} foyers y sont déjà inscrits. Rejoignez-les pour ` +
-      "profiter du fil de votre rue."
-    : `Elle s'allumera à ${STREET_AWAKENING_THRESHOLD} foyers inscrits. ` +
-      "D'ici là, rien à lire, rien à subir : juste à partager à vos voisins pour atteindre l'objectif.";
+    ? `${
+      pluralizeCount(
+        housesCount,
+        "foyer y est déjà inscrit",
+        "foyers y sont déjà inscrits",
+      )
+    }. Rejoignez-les pour profiter du fil de votre rue.`
+    : `Elle s'allumera à ${
+      pluralizeCount(
+        STREET_AWAKENING_THRESHOLD,
+        "foyer inscrit",
+        "foyers inscrits",
+      )
+    }. D'ici là, rien à lire, rien à subir : juste à partager à vos voisins pour atteindre l'objectif.`;
 
   const countLabel = isAmbassadorSlot
     ? "0 foyer inscrit"
     : isAwake
-    ? `${housesCount} foyers inscrits — seuil atteint`
+    ? `${
+      pluralizeCount(housesCount, "foyer inscrit", "foyers inscrits")
+    } — seuil atteint`
     : remaining === 1
-    ? `${housesCount} foyers inscrits sur ${STREET_AWAKENING_THRESHOLD} — il manque un foyer`
-    : `${housesCount} foyers inscrits sur ${STREET_AWAKENING_THRESHOLD} — il en manque ${remaining}`;
+    ? `${
+      pluralizeCount(housesCount, "foyer inscrit", "foyers inscrits")
+    } sur ${STREET_AWAKENING_THRESHOLD} — il manque un foyer`
+    : `${
+      pluralizeCount(housesCount, "foyer inscrit", "foyers inscrits")
+    } sur ${STREET_AWAKENING_THRESHOLD} — il en manque ${remaining}`;
 
   const joinLabel = isAmbassadorSlot
     ? "Devenir ambassadeur de cette rue"

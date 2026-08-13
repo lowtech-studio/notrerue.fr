@@ -1,5 +1,7 @@
 import type { SessionUser } from "../utils.ts";
-import { LogoutIcon, MailIcon, UserIcon } from "./icons.tsx";
+import { LogoutIcon, MailIcon, ThemeIcon, UserIcon } from "./icons.tsx";
+import type { Theme } from "../utils/theme.ts";
+import { nextThemeLabel } from "../utils/theme.ts";
 
 /** Deux premières lettres du login, en majuscules — pour l'avatar du menu de compte ci-dessous. */
 function initials(login: string): string {
@@ -14,9 +16,16 @@ interface HeaderProps {
    * nulle part (cf. revue). `undefined`/`null` masque les deux liens.
    */
   isStreetAwake?: boolean | null;
+  /** `null`/`undefined` = suit la préférence système (cf. utils/theme.ts). */
+  theme?: Theme | null;
+  /** Pastille sur l'enveloppe (cf. backlog) — sans effet si `isStreetAwake` est faux (lien déjà masqué). */
+  hasUnreadMessages?: boolean;
 }
 
-export function Header({ user, isStreetAwake }: HeaderProps = {}) {
+export function Header(
+  { user, isStreetAwake, theme = null, hasUnreadMessages = false }:
+    HeaderProps = {},
+) {
   return (
     <header class="site-header">
       <div class="container site-header__bar">
@@ -34,14 +43,9 @@ export function Header({ user, isStreetAwake }: HeaderProps = {}) {
           ? (
             <nav class="site-header__nav">
               {isStreetAwake && (
-                <>
-                  <a href="/fil" class="site-header__link">
-                    Le fil de ma rue
-                  </a>
-                  <a href="/recommandations" class="site-header__link">
-                    Recommandations
-                  </a>
-                </>
+                <a href="/fil" class="site-header__link">
+                  Le fil de ma rue
+                </a>
               )}
               {
                 /* Toujours accessible, rue endormie ou allumée : la seule
@@ -63,9 +67,24 @@ export function Header({ user, isStreetAwake }: HeaderProps = {}) {
                 <a
                   href="/messages"
                   class="site-header__icon-link"
-                  aria-label="Mes messages"
+                  aria-label={hasUnreadMessages
+                    ? "Mes messages (nouveaux messages non lus)"
+                    : "Mes messages"}
                 >
                   <MailIcon class="site-header__icon-link-icon" />
+                  {
+                    /* Pastille "nouveau message" (cf. backlog) : disparaît
+                      dès l'ouverture de la conversation concernée, pas au
+                      simple survol de l'inbox (cf. db/messages.ts,
+                      markConversationRead). Décorative — l'information est
+                      déjà portée par le `aria-label` ci-dessus. */
+                  }
+                  {hasUnreadMessages && (
+                    <span
+                      class="site-header__icon-link-badge"
+                      aria-hidden="true"
+                    />
+                  )}
                 </a>
               )}
 
@@ -97,6 +116,21 @@ export function Header({ user, isStreetAwake }: HeaderProps = {}) {
                       <span class="account-menu__email">{user.email}</span>
                     </span>
                   </div>
+
+                  {
+                    /* Un seul bouton POST couvre les trois états (système →
+                      sombre → clair → système...) : cf. utils/theme.ts,
+                      pas d'île ni de JS pour ça (règle Fresh n°1). Pas de
+                      classe `.account-menu__form` ici : son
+                      margin/border-top est pensé comme séparateur avant
+                      "Déconnexion" plus bas, pas pour cet item-ci. */
+                  }
+                  <form method="POST" action="/theme">
+                    <button type="submit" class="account-menu__item">
+                      <ThemeIcon class="account-menu__item-icon" />
+                      {nextThemeLabel(theme)}
+                    </button>
+                  </form>
 
                   <a href="/profil" class="account-menu__item">
                     <UserIcon class="account-menu__item-icon" />

@@ -39,7 +39,7 @@ Deno.test("deleteUserAccount : compte, foyer et publications soft-supprimés", a
   });
   const otherPost = await createPost({
     userId: setup.user.id,
-    type: "recommandation",
+    type: "cherche",
     content: "Un plombier fiable ?",
   });
   const createdComment = await createComment({

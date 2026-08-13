@@ -21,10 +21,7 @@ function makeContext(
   } as unknown as Context<State>;
 }
 
-async function setupPost(
-  label: string,
-  type: "cherche" | "recommandation" = "cherche",
-) {
+async function setupPost(label: string) {
   const testStreet = await createTestStreet(label);
   const { user: author } = await registerInhabitant({
     login: `login-${crypto.randomUUID()}`,
@@ -34,7 +31,7 @@ async function setupPost(
   });
   const createdPost = await createPost({
     userId: author.id,
-    type,
+    type: "cherche",
     content: "Je cherche une perceuse",
   });
   const { user: other } = await registerInhabitant({
@@ -135,8 +132,8 @@ Deno.test("POST /supprimer : demande d'un autre utilisateur → ignoré, rien su
   }
 });
 
-Deno.test("POST /supprimer : recommandation → fallback /recommandations si back absent/invalide", async () => {
-  const setup = await setupPost("supprimer-3", "recommandation");
+Deno.test("POST /supprimer : back absent/invalide (open redirect) → fallback vers /fil", async () => {
+  const setup = await setupPost("supprimer-3");
 
   try {
     const form = new FormData();
@@ -147,7 +144,7 @@ Deno.test("POST /supprimer : recommandation → fallback /recommandations si bac
       makeContext({ user: setup.authorSession, form }),
     ) as Response;
     assertEquals(response.status, 302);
-    assertEquals(response.headers.get("location"), "/recommandations");
+    assertEquals(response.headers.get("location"), "/fil");
   } finally {
     await teardown(setup);
   }

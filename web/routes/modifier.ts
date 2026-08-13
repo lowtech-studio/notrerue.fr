@@ -2,18 +2,17 @@ import { define } from "../utils.ts";
 import {
   getPostSummary,
   MAX_POST_CONTENT_LENGTH,
-  postListPath,
   updatePostContent,
 } from "../db/posts.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import { resolvePostBackPath, withQueryParam } from "../utils/validation.ts";
 
 /**
- * Corrige le contenu d'une demande ou d'une recommandation (cf. backlog
- * « corriger des erreurs de saisie ») et revient à sa page d'origine, filtre
- * et page préservés via le champ cachée `back` plutôt qu'une redirection en
- * clair (même logique que /taps et /reponses). Le type et la durée ne se
- * modifient pas ici — seul le texte, la coquille à corriger.
+ * Corrige le contenu d'une demande (cf. backlog « corriger des erreurs de
+ * saisie ») et revient à sa page d'origine, filtre et page préservés via le
+ * champ cachée `back` plutôt qu'une redirection en clair (même logique que
+ * /taps et /reponses). Le type et la durée ne se modifient pas ici — seul le
+ * texte, la coquille à corriger.
  */
 export const handler = define.handlers({
   async POST(ctx) {
@@ -38,10 +37,7 @@ export const handler = define.handlers({
     // formulaire que sur ses propres demandes) : un postId forgé ne doit
     // rien modifier chez un autre habitant (cf. /taps, même précaution).
     const summary = await getPostSummary(postId);
-    const back = resolvePostBackPath(
-      rawBack,
-      postListPath(summary?.type ?? "cherche"),
-    );
+    const back = resolvePostBackPath(rawBack, "/fil");
 
     if (!summary || summary.authorId !== user.id) {
       return ctx.redirect(back);
@@ -49,7 +45,7 @@ export const handler = define.handlers({
     if (containsBlockedContent(content)) {
       // `edit_error=1` plutôt qu'une redirection silencieuse : sans lui,
       // l'utilisateur croit sa correction enregistrée alors qu'elle est
-      // ignorée (cf. revue). Lu par /fil et /recommandations pour afficher
+      // ignorée (cf. revue). Lu par /fil (les deux onglets) pour afficher
       // un message d'erreur.
       return ctx.redirect(withQueryParam(back, "edit_error", "1"));
     }

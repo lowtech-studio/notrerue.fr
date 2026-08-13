@@ -102,7 +102,12 @@ export default define.page<typeof handler>(function Profil({ data, state }) {
       <Head>
         <title>Mon profil — NotreRue.fr</title>
       </Head>
-      <Header user={state.user} isStreetAwake={state.isStreetAwake} />
+      <Header
+        user={state.user}
+        isStreetAwake={state.isStreetAwake}
+        theme={state.theme}
+        hasUnreadMessages={state.hasUnreadMessages}
+      />
       <main>
         <section class="container hero hero--single">
           <div class="lookup-card">
@@ -165,8 +170,7 @@ export default define.page<typeof handler>(function Profil({ data, state }) {
             /* Suppression de compte (cf. backlog « rester maître de mes
               données ») — repliée derrière un <details> pour ne pas être le
               premier bouton visible de la page, avec une confirmation
-              explicite (même logique que "Supprimer" sur /fil et
-              /recommandations). */
+              explicite (même logique que "Supprimer" sur /fil). */
           }
           <div class="lookup-card profil-danger-zone">
             <details>
@@ -174,12 +178,11 @@ export default define.page<typeof handler>(function Profil({ data, state }) {
                 Supprimer mon compte
               </summary>
               <p class="profil-danger-zone__warning">
-                Votre foyer et toutes vos publications (demandes,
-                recommandations, réponses) seront supprimés. Cette action est
-                irréversible.
+                Votre foyer et toutes vos publications (demandes, réponses)
+                seront supprimés. Cette action est irréversible.
               </p>
               <form method="POST" action="/supprimer-compte">
-                <button type="submit" class="button button--secondary">
+                <button type="submit" class="button button--danger">
                   Oui, supprimer définitivement mon compte
                 </button>
               </form>

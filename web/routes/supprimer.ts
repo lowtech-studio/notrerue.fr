@@ -1,15 +1,14 @@
 import { define } from "../utils.ts";
-import { getPostSummary, postListPath, softDeletePost } from "../db/posts.ts";
+import { getPostSummary, softDeletePost } from "../db/posts.ts";
 import { resolvePostBackPath } from "../utils/validation.ts";
 
 /**
- * Supprime (soft delete) une demande ou une recommandation et revient à sa
- * page d'origine (cf. backlog « corriger des erreurs de saisie » — supprimer
- * en est l'autre moitié). Un clic suffit pour supprimer, mais l'action n'est
- * proposée qu'après un premier clic sur « Supprimer » qui déplie une
- * confirmation (cf. routes/fil.tsx et routes/recommandations.tsx, bascule
- * case à cocher + `:has()`, sans JS) — pas un simple bouton qu'un clic
- * accidentel déclenche.
+ * Supprime (soft delete) une demande et revient à sa page d'origine (cf.
+ * backlog « corriger des erreurs de saisie » — supprimer en est l'autre
+ * moitié). Un clic suffit pour supprimer, mais l'action n'est proposée
+ * qu'après un premier clic sur « Supprimer » qui déplie une confirmation
+ * (cf. routes/fil.tsx, bascule case à cocher + `:has()`, sans JS) — pas un
+ * simple bouton qu'un clic accidentel déclenche.
  */
 export const handler = define.handlers({
   async POST(ctx) {
@@ -26,10 +25,7 @@ export const handler = define.handlers({
     const summary = Number.isInteger(postId) && postId > 0
       ? await getPostSummary(postId)
       : null;
-    const back = resolvePostBackPath(
-      rawBack,
-      postListPath(summary?.type ?? "cherche"),
-    );
+    const back = resolvePostBackPath(rawBack, "/fil");
 
     if (!summary || summary.authorId !== user.id) {
       return ctx.redirect(back);

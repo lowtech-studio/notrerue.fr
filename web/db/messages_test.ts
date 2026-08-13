@@ -2,7 +2,13 @@ import { assertEquals } from "@std/assert";
 import { eq } from "drizzle-orm";
 import { db } from "./client.ts";
 import { house, message, user } from "./schema.ts";
-import { getConversation, listConversations, sendMessage } from "./messages.ts";
+import {
+  getConversation,
+  hasUnreadMessages,
+  listConversations,
+  markConversationRead,
+  sendMessage,
+} from "./messages.ts";
 import { registerInhabitant } from "./users.ts";
 import { cleanupTestStreet, createTestStreet } from "./test_helpers.ts";
 
@@ -150,5 +156,60 @@ Deno.test("listConversations : aucun message → liste vide", async () => {
     assertEquals(await listConversations(setup.alice.id), []);
   } finally {
     await teardown(setup);
+  }
+});
+
+Deno.test("hasUnreadMessages : vrai dès réception, faux avant tout message et une fois lu", async () => {
+  const setup = await setupPair("messages-5");
+
+  try {
+    assertEquals(await hasUnreadMessages(setup.bob.id), false);
+
+    await sendMessage({
+      fromUserId: setup.alice.id,
+      toUserId: setup.bob.id,
+      content: "Votre perceuse est-elle dispo ?",
+    });
+    assertEquals(await hasUnreadMessages(setup.bob.id), true);
+    // L'expéditeur n'a rien à lire — ce n'est pas un "vu" pour Alice.
+    assertEquals(await hasUnreadMessages(setup.alice.id), false);
+
+    await markConversationRead(setup.bob.id, setup.alice.id);
+    assertEquals(await hasUnreadMessages(setup.bob.id), false);
+  } finally {
+    await teardown(setup);
+  }
+});
+
+Deno.test("markConversationRead : ne marque que les messages reçus de cet interlocuteur précis", async () => {
+  const setup = await setupPair("messages-6");
+  const { user: carla } = await registerInhabitant({
+    login: `carla-${crypto.randomUUID()}`,
+    email: `messages-c3-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: setup.testStreet.testStreet.id,
+  });
+
+  try {
+    await sendMessage({
+      fromUserId: setup.alice.id,
+      toUserId: setup.bob.id,
+      content: "De la part d'Alice",
+    });
+    await sendMessage({
+      fromUserId: carla.id,
+      toUserId: setup.bob.id,
+      content: "De la part de Carla",
+    });
+
+    // Ouvrir la conversation avec Alice ne doit pas marquer celle avec
+    // Carla comme lue.
+    await markConversationRead(setup.bob.id, setup.alice.id);
+    assertEquals(await hasUnreadMessages(setup.bob.id), true);
+
+    await markConversationRead(setup.bob.id, carla.id);
+    assertEquals(await hasUnreadMessages(setup.bob.id), false);
+  } finally {
+    await teardown(setup, [carla]);
   }
 });

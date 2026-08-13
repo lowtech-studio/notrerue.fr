@@ -12,6 +12,7 @@ import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
 import { deleteUserAccount } from "../db/account.ts";
 import { createPost } from "../db/posts.ts";
+import { hasUnreadMessages } from "../db/messages.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
 import { handler } from "./messages.tsx";
 
@@ -210,6 +211,37 @@ Deno.test("POST puis GET /messages : message envoyé → conversation visible de
       "Bonjour Bob, votre perceuse est-elle libre ?",
     );
     assertEquals(inboxAsBob.data.conversations[0].lastMessageFromViewer, false);
+  } finally {
+    await cleanupAwakeStreet(setup);
+  }
+});
+
+Deno.test("GET /messages?with=... : ouvrir la conversation marque les messages reçus comme lus (cf. pastille du menu)", async () => {
+  const setup = await createAwakeStreetWithTwoUsers("messages-3b");
+
+  try {
+    const form = new FormData();
+    form.set("to", String(setup.bob.id));
+    form.set("content", "Bonjour Bob, votre perceuse est-elle libre ?");
+    await handler.POST!(
+      makeContext("http://localhost/messages", {
+        user: setup.aliceSession,
+        form,
+      }),
+    );
+
+    assertEquals(await hasUnreadMessages(setup.bob.id), true);
+
+    await handler.GET!(
+      makeContext(`http://localhost/messages?with=${setup.alice.id}`, {
+        user: setup.bobSession,
+      }),
+    );
+
+    assertEquals(await hasUnreadMessages(setup.bob.id), false);
+    // La lecture ne concerne que le destinataire : rien à marquer pour
+    // Alice, qui n'a rien reçu.
+    assertEquals(await hasUnreadMessages(setup.alice.id), false);
   } finally {
     await cleanupAwakeStreet(setup);
   }

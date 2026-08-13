@@ -90,6 +90,27 @@ export function LogoutIcon({ class: className }: IconProps) {
   );
 }
 
+/** Cercle mi-plein, pour le bouton d'apparence (mode sombre/clair) du menu de compte — icône fixe, le libellé change selon l'état (cf. Header.tsx). */
+export function ThemeIcon({ class: className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      class={className}
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /** Imprimante, pour le bouton « Imprimer le kit papier ». */
 export function PrinterIcon({ class: className }: IconProps) {
   return (

@@ -3,9 +3,9 @@ import { eq } from "drizzle-orm";
 import type { Context } from "fresh";
 import type { SessionUser, State } from "../utils.ts";
 import { db } from "../db/client.ts";
-import { comment, house, post, street, user } from "../db/schema.ts";
+import { comment, house, post, user } from "../db/schema.ts";
 import { listCommentsByPost } from "../db/comments.ts";
-import { createPost } from "../db/posts.ts";
+import { createPost, type PostType } from "../db/posts.ts";
 import { registerInhabitant } from "../db/users.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
@@ -23,7 +23,7 @@ function makeContext(
   } as unknown as Context<State>;
 }
 
-/** Amène une rue de test au seuil d'éveil (cf. recommandations_test.ts). */
+/** Amène une rue de test au seuil d'éveil. */
 async function awakenStreet(streetId: number): Promise<void> {
   if (STREET_AWAKENING_THRESHOLD > 1) {
     await db.insert(house).values(
@@ -35,8 +35,8 @@ async function awakenStreet(streetId: number): Promise<void> {
   }
 }
 
-/** Demande de recommandation + son auteur, sur une rue/ville de test allumée. */
-async function setupRecommendation(label: string) {
+/** Une demande + son auteur, sur une rue de test allumée. */
+async function setupPost(label: string, type: PostType = "cherche") {
   const testStreet = await createTestStreet(label);
   await awakenStreet(testStreet.testStreet.id);
   const { user: author } = await registerInhabitant({
@@ -47,7 +47,7 @@ async function setupRecommendation(label: string) {
   });
   const createdPost = await createPost({
     userId: author.id,
-    type: "recommandation",
+    type,
     content: "Un plombier fiable ?",
   });
   const authorSession: SessionUser = {
@@ -64,9 +64,7 @@ async function setupRecommendation(label: string) {
   return { testStreet, author, authorSession, post: createdPost };
 }
 
-async function teardown(
-  setup: Awaited<ReturnType<typeof setupRecommendation>>,
-) {
+async function teardown(setup: Awaited<ReturnType<typeof setupPost>>) {
   await db.delete(comment).where(eq(comment.postId, setup.post.id));
   await db.delete(post).where(eq(post.id, setup.post.id));
   await db.delete(user).where(eq(user.id, setup.author.id));
@@ -85,35 +83,27 @@ Deno.test("POST /reponses : non connecté → redirigé vers /connexion", async 
   assertEquals(response.headers.get("location"), "/connexion");
 });
 
-Deno.test("POST /reponses : réponse valide d'un voisin d'une autre rue de la même ville → enregistrée, page préservée", async () => {
-  const setup = await setupRecommendation("reponses-1");
-  const [otherStreetSameCity] = await db.insert(street).values({
-    name: `Autre rue ${crypto.randomUUID()}`,
-    cityId: setup.testStreet.testCity.id,
-  }).returning();
-  await awakenStreet(otherStreetSameCity.id);
+Deno.test("POST /reponses : réponse valide d'un voisin de la même rue → enregistrée, filtre/page préservés", async () => {
+  const setup = await setupPost("reponses-1");
   const { user: responder } = await registerInhabitant({
     login: `login-r-${crypto.randomUUID()}`,
     email: `reponses-r-${crypto.randomUUID()}@example.invalid`,
     houseNumber: null,
-    streetId: otherStreetSameCity.id,
+    streetId: setup.testStreet.testStreet.id,
   });
   const responderSession: SessionUser = {
     id: responder.id,
     login: responder.login,
     email: responder.email,
     isAmbassador: responder.isAmbassador,
-    street: {
-      id: otherStreetSameCity.id,
-      name: otherStreetSameCity.name,
-      city: setup.authorSession.street.city,
-    },
+    street: setup.authorSession.street,
   };
 
   try {
     const form = new FormData();
     form.set("postId", String(setup.post.id));
     form.set("content", "Dupont Plomberie, très bien");
+    form.set("type", "cherche");
     form.set("page", "2");
 
     const response = await handler.POST!(
@@ -122,7 +112,7 @@ Deno.test("POST /reponses : réponse valide d'un voisin d'une autre rue de la m�
     assertEquals(response.status, 302);
     assertEquals(
       response.headers.get("location"),
-      "/recommandations?page=2",
+      "/fil?type=cherche&page=2",
     );
 
     const commentsByPost = await listCommentsByPost([setup.post.id]);
@@ -131,37 +121,35 @@ Deno.test("POST /reponses : réponse valide d'un voisin d'une autre rue de la m�
       ["Dupont Plomberie, très bien"],
     );
   } finally {
-    // Ordre imposé par les FK : le commentaire du répondeur avant son
-    // compte (`comment_user_id_user_id_fk`), sa rue avant `teardown(setup)`
-    // qui supprime la ville partagée par les deux rues
-    // (`street_city_id_city_id_fk`).
-    await db.delete(comment).where(eq(comment.postId, setup.post.id));
+    // Le commentaire du répondeur avant son compte (FK
+    // `comment_user_id_user_id_fk`) : `teardown(setup)` supprime déjà les
+    // commentaires de la demande, mais avant de supprimer `responder` ici.
+    await db.delete(comment).where(eq(comment.userId, responder.id));
     await db.delete(user).where(eq(user.id, responder.id));
-    await db.delete(house).where(eq(house.streetId, otherStreetSameCity.id));
-    await db.delete(street).where(eq(street.id, otherStreetSameCity.id));
+    await db.delete(house).where(eq(house.id, responder.houseId));
     await teardown(setup);
   }
 });
 
-Deno.test("POST /reponses : demande d'une autre ville → ignoré, rien enregistré", async () => {
-  const setup = await setupRecommendation("reponses-2");
-  const otherCity = await createTestStreet("reponses-2b");
-  await awakenStreet(otherCity.testStreet.id);
-  const { user: otherCityUser } = await registerInhabitant({
+Deno.test("POST /reponses : demande d'une autre rue → ignoré, rien enregistré", async () => {
+  const setup = await setupPost("reponses-2");
+  const otherStreet = await createTestStreet("reponses-2b");
+  await awakenStreet(otherStreet.testStreet.id);
+  const { user: otherStreetUser } = await registerInhabitant({
     login: `login-other-${crypto.randomUUID()}`,
     email: `reponses-other-${crypto.randomUUID()}@example.invalid`,
     houseNumber: null,
-    streetId: otherCity.testStreet.id,
+    streetId: otherStreet.testStreet.id,
   });
-  const otherCitySession: SessionUser = {
-    id: otherCityUser.id,
-    login: otherCityUser.login,
-    email: otherCityUser.email,
-    isAmbassador: otherCityUser.isAmbassador,
+  const otherStreetSession: SessionUser = {
+    id: otherStreetUser.id,
+    login: otherStreetUser.login,
+    email: otherStreetUser.email,
+    isAmbassador: otherStreetUser.isAmbassador,
     street: {
-      id: otherCity.testStreet.id,
-      name: otherCity.testStreet.name,
-      city: { id: otherCity.testCity.id, name: otherCity.testCity.name },
+      id: otherStreet.testStreet.id,
+      name: otherStreet.testStreet.name,
+      city: { id: otherStreet.testCity.id, name: otherStreet.testCity.name },
     },
   };
 
@@ -171,70 +159,46 @@ Deno.test("POST /reponses : demande d'une autre ville → ignoré, rien enregist
     form.set("content", "Une réponse qui ne devrait pas passer");
 
     const response = await handler.POST!(
-      makeContext({ user: otherCitySession, form }),
+      makeContext({ user: otherStreetSession, form }),
     ) as Response;
     assertEquals(response.status, 302);
-    assertEquals(response.headers.get("location"), "/recommandations");
+    assertEquals(response.headers.get("location"), "/fil");
 
     const commentsByPost = await listCommentsByPost([setup.post.id]);
     assertEquals(commentsByPost.get(setup.post.id), undefined);
   } finally {
-    await db.delete(user).where(eq(user.id, otherCityUser.id));
-    await db.delete(house).where(eq(house.streetId, otherCity.testStreet.id));
-    await cleanupTestStreet(otherCity);
+    await db.delete(user).where(eq(user.id, otherStreetUser.id));
+    await db.delete(house).where(eq(house.streetId, otherStreet.testStreet.id));
+    await cleanupTestStreet(otherStreet);
     await teardown(setup);
   }
 });
 
-Deno.test("POST /reponses : demande d'un type autre que recommandation → ignoré, rien enregistré", async () => {
-  const testStreet = await createTestStreet("reponses-3");
-  await awakenStreet(testStreet.testStreet.id);
-  const { user: author } = await registerInhabitant({
-    login: `login-${crypto.randomUUID()}`,
-    email: `reponses-${crypto.randomUUID()}@example.invalid`,
-    houseNumber: null,
-    streetId: testStreet.testStreet.id,
-  });
-  const filPost = await createPost({
-    userId: author.id,
-    type: "cherche",
-    content: "Je cherche une perceuse",
-  });
-  const authorSession: SessionUser = {
-    id: author.id,
-    login: author.login,
-    email: author.email,
-    isAmbassador: author.isAmbassador,
-    street: {
-      id: testStreet.testStreet.id,
-      name: testStreet.testStreet.name,
-      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
-    },
-  };
+Deno.test("POST /reponses : fonctionne pour les trois types de demande, pas seulement 'cherche'", async () => {
+  const setup = await setupPost("reponses-2c", "propose");
 
   try {
     const form = new FormData();
-    form.set("postId", String(filPost.id));
-    form.set("content", "Une réponse qui ne devrait pas passer");
+    form.set("postId", String(setup.post.id));
+    form.set("content", "Toujours dispo ?");
 
     const response = await handler.POST!(
-      makeContext({ user: authorSession, form }),
+      makeContext({ user: setup.authorSession, form }),
     ) as Response;
     assertEquals(response.status, 302);
-    assertEquals(response.headers.get("location"), "/recommandations");
 
-    const commentsByPost = await listCommentsByPost([filPost.id]);
-    assertEquals(commentsByPost.get(filPost.id), undefined);
+    const commentsByPost = await listCommentsByPost([setup.post.id]);
+    assertEquals(
+      commentsByPost.get(setup.post.id)?.map((c) => c.content),
+      ["Toujours dispo ?"],
+    );
   } finally {
-    await db.delete(post).where(eq(post.id, filPost.id));
-    await db.delete(user).where(eq(user.id, author.id));
-    await db.delete(house).where(eq(house.streetId, testStreet.testStreet.id));
-    await cleanupTestStreet(testStreet);
+    await teardown(setup);
   }
 });
 
 Deno.test("POST /reponses : rue de l'utilisateur endormie → redirigé vers /, rien enregistré", async () => {
-  const setup = await setupRecommendation("reponses-3b");
+  const setup = await setupPost("reponses-3b");
   const sleepingStreet = await createTestStreet("reponses-3b-sleeping");
   const { user: sleepingUser } = await registerInhabitant({
     login: `login-sleeping-${crypto.randomUUID()}`,
@@ -279,7 +243,7 @@ Deno.test("POST /reponses : rue de l'utilisateur endormie → redirigé vers /, 
 });
 
 Deno.test("POST /reponses : réponse agressive → bloquée, redirection signale l'erreur (reponse_error=1)", async () => {
-  const setup = await setupRecommendation("reponses-3c");
+  const setup = await setupPost("reponses-3c");
 
   try {
     const form = new FormData();
@@ -292,11 +256,10 @@ Deno.test("POST /reponses : réponse agressive → bloquée, redirection signale
     ) as Response;
     assertEquals(response.status, 302);
     // Sans ce signal, la réponse tapée disparaît sans aucune explication
-    // (cf. revue) — lu par /recommandations pour afficher un message
-    // d'erreur.
+    // (cf. revue) — lu par /fil pour afficher un message d'erreur.
     assertEquals(
       response.headers.get("location"),
-      "/recommandations?page=2&reponse_error=1",
+      "/fil?page=2&reponse_error=1",
     );
 
     const commentsByPost = await listCommentsByPost([setup.post.id]);
@@ -307,7 +270,7 @@ Deno.test("POST /reponses : réponse agressive → bloquée, redirection signale
 });
 
 Deno.test("POST /reponses : contenu vide ou postId invalide → ignoré sans planter", async () => {
-  const setup = await setupRecommendation("reponses-4");
+  const setup = await setupPost("reponses-4");
 
   try {
     const form = new FormData();
@@ -318,7 +281,7 @@ Deno.test("POST /reponses : contenu vide ou postId invalide → ignoré sans pla
       makeContext({ user: setup.authorSession, form }),
     ) as Response;
     assertEquals(response.status, 302);
-    assertEquals(response.headers.get("location"), "/recommandations");
+    assertEquals(response.headers.get("location"), "/fil");
 
     const commentsByPost = await listCommentsByPost([setup.post.id]);
     assertEquals(commentsByPost.get(setup.post.id), undefined);
@@ -328,7 +291,7 @@ Deno.test("POST /reponses : contenu vide ou postId invalide → ignoré sans pla
 });
 
 Deno.test("POST /reponses : recherche active (?q=) préservée dans la redirection", async () => {
-  const setup = await setupRecommendation("reponses-5");
+  const setup = await setupPost("reponses-5");
 
   try {
     const form = new FormData();
@@ -342,7 +305,7 @@ Deno.test("POST /reponses : recherche active (?q=) préservée dans la redirecti
     assertEquals(response.status, 302);
     assertEquals(
       response.headers.get("location"),
-      "/recommandations?q=plombier",
+      "/fil?q=plombier",
     );
   } finally {
     await teardown(setup);

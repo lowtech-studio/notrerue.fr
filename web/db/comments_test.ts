@@ -17,7 +17,7 @@ async function setupPost(label: string) {
   });
   const createdPost = await createPost({
     userId: author.id,
-    type: "recommandation",
+    type: "cherche",
     content: "Un plombier fiable ?",
   });
   return { testStreet, author, post: createdPost };

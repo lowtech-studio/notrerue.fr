@@ -132,3 +132,40 @@ export async function getConversation(
     fromViewer: row.userFromId === userId,
   }));
 }
+
+/**
+ * Marque comme lus les messages reçus par `userId` depuis `otherUserId` —
+ * appelé à l'ouverture de la conversation (cf. routes/messages.tsx),
+ * jamais depuis la seule liste des conversations (cf. backlog « pastille
+ * sur l'enveloppe » : elle ne disparaît qu'une fois le message vraiment
+ * lu). N'affecte jamais les messages envoyés par `userId` lui-même — pas
+ * de "vu" côté expéditeur (cf. schema.ts).
+ */
+export async function markConversationRead(
+  userId: number,
+  otherUserId: number,
+): Promise<void> {
+  await db.update(message)
+    .set({ readAt: new Date() })
+    .where(and(
+      eq(message.userToId, userId),
+      eq(message.userFromId, otherUserId),
+      isNull(message.readAt),
+    ));
+}
+
+/**
+ * Vrai si `userId` a au moins un message reçu non lu — pour la pastille sur
+ * l'enveloppe du menu (cf. Header.tsx, backlog). `deletedAt` exclu par
+ * cohérence avec le reste du module, bien qu'aujourd'hui jamais posé.
+ */
+export async function hasUnreadMessages(userId: number): Promise<boolean> {
+  const [row] = await db.select({ id: message.id }).from(message)
+    .where(and(
+      eq(message.userToId, userId),
+      isNull(message.readAt),
+      isNull(message.deletedAt),
+    ))
+    .limit(1);
+  return row !== undefined;
+}

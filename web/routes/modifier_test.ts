@@ -21,10 +21,7 @@ function makeContext(
   } as unknown as Context<State>;
 }
 
-async function setupPost(
-  label: string,
-  type: "cherche" | "recommandation" = "cherche",
-) {
+async function setupPost(label: string) {
   const testStreet = await createTestStreet(label);
   const { user: author } = await registerInhabitant({
     login: `login-${crypto.randomUUID()}`,
@@ -34,7 +31,7 @@ async function setupPost(
   });
   const createdPost = await createPost({
     userId: author.id,
-    type,
+    type: "cherche",
     content: "Je cherche une perceuse",
   });
   const { user: other } = await registerInhabitant({
@@ -137,20 +134,20 @@ Deno.test("POST /modifier : demande d'un autre utilisateur → ignoré, rien mod
   }
 });
 
-Deno.test("POST /modifier : recommandation → fallback /recommandations si back absent/invalide", async () => {
-  const setup = await setupPost("modifier-3", "recommandation");
+Deno.test("POST /modifier : back absent/invalide (open redirect) → fallback vers /fil", async () => {
+  const setup = await setupPost("modifier-3");
 
   try {
     const form = new FormData();
     form.set("postId", String(setup.post.id));
-    form.set("content", "Un plombier fiable, corrigé");
+    form.set("content", "Perceuse, corrigé");
     form.set("back", "https://evil.example/phishing");
 
     const response = await handler.POST!(
       makeContext({ user: setup.authorSession, form }),
     ) as Response;
     assertEquals(response.status, 302);
-    assertEquals(response.headers.get("location"), "/recommandations");
+    assertEquals(response.headers.get("location"), "/fil");
   } finally {
     await teardown(setup);
   }
