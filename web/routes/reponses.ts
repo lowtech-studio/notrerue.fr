@@ -1,4 +1,4 @@
-import { define } from "../utils.ts";
+import { define, isUserVerified } from "../utils.ts";
 import { getPostSummary, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { createComment, MAX_COMMENT_CONTENT_LENGTH } from "../db/comments.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
@@ -46,6 +46,13 @@ export const handler = define.handlers({
     if (rawPage) params.set("page", rawPage);
     if (rawSearch) params.set("q", rawSearch);
     const back = params.size > 0 ? `/fil?${params}` : "/fil";
+
+    // Cf. db/vouches.ts : répondre publiquement est réservé aux comptes
+    // vérifiés par un voisin — l'UI masque déjà ce formulaire, ce garde-fou
+    // couvre une page restée ouverte pendant la validation ou un POST forgé.
+    if (!isUserVerified(user)) {
+      return ctx.redirect(withQueryParam(back, "verif_error", "1"));
+    }
 
     if (!Number.isInteger(postId) || postId <= 0 || !content) {
       return ctx.redirect(back);

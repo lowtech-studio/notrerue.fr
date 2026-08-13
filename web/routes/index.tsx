@@ -1,6 +1,6 @@
 import { Head } from "fresh/runtime";
 import "../assets/pages/index.css" with { type: "css" };
-import { define } from "../utils.ts";
+import { define, isUserVerified } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { StreetProgress } from "../components/StreetProgress.tsx";
 import {
@@ -9,8 +9,10 @@ import {
   STREET_AWAKENING_THRESHOLD,
   type StreetAwakeningStatus,
 } from "../db/streets.ts";
+import { listPendingNeighbors, type PendingNeighbor } from "../db/vouches.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 import { pluralizeCount } from "../utils/pluralize.ts";
+import { formatRelativeDate } from "../utils/relative_date.ts";
 
 const MAX_STREET_LENGTH = 80;
 const MAX_CITY_LABEL_LENGTH = 120;
@@ -24,6 +26,13 @@ interface HomeData {
   ownStreetStatus: { housesCount: number; isAwake: boolean } | null;
   /** Redirigé ici après /supprimer-compte (cf. routes/profil.tsx) — l'utilisateur vient d'être déconnecté, donc affiché seulement côté non connecté. */
   accountDeleted: boolean;
+  /**
+   * Voisins de la même rue pas encore vérifiés (cf. db/vouches.ts, backlog
+   * « prouver que les voisins habitent bien dans la même rue ») — vide si
+   * non connecté ou si l'habitant connecté n'est lui-même pas encore
+   * vérifié (il ne peut vouch pour personne tant que ce n'est pas le cas).
+   */
+  pendingNeighbors: PendingNeighbor[];
 }
 
 export const handler = define.handlers({
@@ -51,6 +60,13 @@ export const handler = define.handlers({
       ? await getStreetHousesStatus(ctx.state.user.street.id)
       : null;
 
+    // Seul un habitant déjà vérifié peut vouch pour un voisin (cf.
+    // db/vouches.ts) : inutile de charger la liste sinon, il ne verrait de
+    // toute façon pas les boutons de validation.
+    const pendingNeighbors = ctx.state.user && isUserVerified(ctx.state.user)
+      ? await listPendingNeighbors(ctx.state.user.street.id)
+      : [];
+
     const accountDeleted = ctx.url.searchParams.get("compte_supprime") === "1";
 
     return {
@@ -61,14 +77,22 @@ export const handler = define.handlers({
         status,
         ownStreetStatus,
         accountDeleted,
+        pendingNeighbors,
       },
     };
   },
 });
 
 export default define.page<typeof handler>(function Home({ data, state }) {
-  const { street, cityId, cityLabel, status, ownStreetStatus, accountDeleted } =
-    data as HomeData;
+  const {
+    street,
+    cityId,
+    cityLabel,
+    status,
+    ownStreetStatus,
+    accountDeleted,
+    pendingNeighbors,
+  } = data as HomeData;
   const { user } = state;
 
   const joinHref = cityId
@@ -127,6 +151,63 @@ export default define.page<typeof handler>(function Home({ data, state }) {
             {user
               ? (
                 <>
+                  {!isUserVerified(user) && (
+                    <div class="street-status street-status--pending">
+                      <h2 class="street-status__title">
+                        Votre compte est en attente de validation
+                      </h2>
+                      <p class="street-status__subtitle">
+                        Un voisin déjà inscrit doit confirmer que vous habitez
+                        bien {user.street.name}{" "}
+                        avant que vous puissiez publier, tapper ou écrire à
+                        quelqu'un — vous pouvez déjà consulter le fil en
+                        attendant.
+                      </p>
+                    </div>
+                  )}
+
+                  {isUserVerified(user) && pendingNeighbors.length > 0 && (
+                    <div class="street-status">
+                      <h2 class="street-status__title">
+                        {pluralizeCount(
+                          pendingNeighbors.length,
+                          "voisin attend",
+                          "voisins attendent",
+                        )} d'être validé{pendingNeighbors.length > 1 ? "s" : ""}
+                      </h2>
+                      <p class="street-status__subtitle">
+                        Vous les connaissez ? Confirmez qu'ils habitent bien
+                        {" "}
+                        {user.street.name}.
+                      </p>
+                      <ul class="pending-neighbors">
+                        {pendingNeighbors.map((neighbor) => (
+                          <li key={neighbor.id} class="pending-neighbors__item">
+                            <span class="pending-neighbors__login">
+                              {neighbor.login}
+                            </span>
+                            <span class="pending-neighbors__date">
+                              inscrit {formatRelativeDate(neighbor.createdAt)}
+                            </span>
+                            <form method="POST" action="/valider-voisin">
+                              <input
+                                type="hidden"
+                                name="voucheeId"
+                                value={neighbor.id}
+                              />
+                              <button
+                                type="submit"
+                                class="button button--secondary pending-neighbors__confirm"
+                              >
+                                Je confirme, c'est mon voisin
+                              </button>
+                            </form>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {ownStreetStatus && !ownStreetStatus.isAwake && (
                     <div class="street-status">
                       <h2 class="street-status__title">

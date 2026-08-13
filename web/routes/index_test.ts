@@ -33,6 +33,7 @@ Deno.test("Page d'accueil : sans paramètre → aucun statut", async () => {
       status: null,
       ownStreetStatus: null,
       accountDeleted: false,
+      pendingNeighbors: [],
     },
   });
 });
@@ -49,6 +50,7 @@ Deno.test("Page d'accueil : lien hérité /?rue=... (sans ville) → rue affich�
       status: null,
       ownStreetStatus: null,
       accountDeleted: false,
+      pendingNeighbors: [],
     },
   });
 });
@@ -159,4 +161,87 @@ Deno.test("Page d'accueil : non connecté → ownStreetStatus toujours null", as
     makeContext("http://localhost/"),
   ) as { data: { ownStreetStatus: unknown } };
   assertEquals(result.data.ownStreetStatus, null);
+});
+
+Deno.test("Page d'accueil : habitant vérifié → voisins non vérifiés de sa rue remontés (cf. db/vouches.ts)", async () => {
+  const testStreet = await createTestStreet("index-4");
+  const { user: ambassador } = await registerInhabitant({
+    login: `amb-${crypto.randomUUID()}`,
+    email: `index-amb-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const { user: pending } = await registerInhabitant({
+    login: `pending-${crypto.randomUUID()}`,
+    email: `index-pending-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const ambassadorSession: SessionUser = {
+    id: ambassador.id,
+    login: ambassador.login,
+    email: ambassador.email,
+    isAmbassador: ambassador.isAmbassador,
+    isVerified: true,
+    street: {
+      id: testStreet.testStreet.id,
+      name: testStreet.testStreet.name,
+      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
+    },
+  };
+
+  try {
+    const result = await handler.GET!(
+      makeContext("http://localhost/", { user: ambassadorSession }),
+    ) as { data: { pendingNeighbors: { id: number; login: string }[] } };
+    assertEquals(
+      result.data.pendingNeighbors.map((n) => n.id),
+      [pending.id],
+    );
+  } finally {
+    await db.delete(user).where(eq(user.id, ambassador.id));
+    await db.delete(user).where(eq(user.id, pending.id));
+    await db.delete(house).where(eq(house.streetId, testStreet.testStreet.id));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("Page d'accueil : habitant non vérifié → aucun voisin remonté (il ne peut vouch pour personne)", async () => {
+  const testStreet = await createTestStreet("index-5");
+  const { user: ambassador } = await registerInhabitant({
+    login: `amb-${crypto.randomUUID()}`,
+    email: `index-amb2-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const { user: pending } = await registerInhabitant({
+    login: `pending-${crypto.randomUUID()}`,
+    email: `index-pending2-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const pendingSession: SessionUser = {
+    id: pending.id,
+    login: pending.login,
+    email: pending.email,
+    isAmbassador: pending.isAmbassador,
+    isVerified: false,
+    street: {
+      id: testStreet.testStreet.id,
+      name: testStreet.testStreet.name,
+      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
+    },
+  };
+
+  try {
+    const result = await handler.GET!(
+      makeContext("http://localhost/", { user: pendingSession }),
+    ) as { data: { pendingNeighbors: unknown[] } };
+    assertEquals(result.data.pendingNeighbors, []);
+  } finally {
+    await db.delete(user).where(eq(user.id, ambassador.id));
+    await db.delete(user).where(eq(user.id, pending.id));
+    await db.delete(house).where(eq(house.streetId, testStreet.testStreet.id));
+    await cleanupTestStreet(testStreet);
+  }
 });

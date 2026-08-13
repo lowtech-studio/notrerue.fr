@@ -276,6 +276,36 @@ Deno.test("POST /messages : contenu vide → erreur, rien en base", async () => 
   }
 });
 
+Deno.test("POST /messages : compte non vérifié → erreur, rien envoyé (cf. db/vouches.ts)", async () => {
+  const setup = await createAwakeStreetWithTwoUsers("messages-4b");
+  const unverifiedAlice = { ...setup.aliceSession, isVerified: false };
+
+  try {
+    const form = new FormData();
+    form.set("to", String(setup.bob.id));
+    form.set("content", "Un message qui ne devrait pas passer");
+
+    const result = await handler.POST!(
+      makeContext("http://localhost/messages", {
+        user: unverifiedAlice,
+        form,
+      }),
+    ) as { data: { composeError: string | null } };
+
+    assertEquals(
+      result.data.composeError,
+      "Votre compte doit d'abord être validé par un voisin avant de pouvoir envoyer un message.",
+    );
+
+    const rows = await db.select().from(message).where(
+      eq(message.userFromId, setup.alice.id),
+    );
+    assertEquals(rows.length, 0);
+  } finally {
+    await cleanupAwakeStreet(setup);
+  }
+});
+
 Deno.test("POST /messages : message agressif → bloqué, rien en base", async () => {
   const setup = await createAwakeStreetWithTwoUsers("messages-5");
 

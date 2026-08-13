@@ -1,8 +1,9 @@
-import { define } from "../utils.ts";
+import { define, isUserVerified } from "../utils.ts";
 import { getPostSummary, isPostType, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { toggleTap } from "../db/taps.ts";
 import { findSessionUserById } from "../db/users.ts";
 import { sendTapNotificationEmail } from "../email/brevo.ts";
+import { withQueryParam } from "../utils/validation.ts";
 
 /**
  * Bascule un tap sur une demande (« J'ai » / « Intéressé » / 👍 selon le
@@ -29,6 +30,13 @@ export const handler = define.handlers({
     if (rawPage) params.set("page", rawPage);
     if (rawSearch) params.set("q", rawSearch);
     const backToFil = params.size > 0 ? `/fil?${params}` : "/fil";
+
+    // Cf. db/vouches.ts : tapper est réservé aux comptes vérifiés par un
+    // voisin — l'UI masque déjà le bouton, ce garde-fou couvre une page
+    // restée ouverte pendant la validation ou un POST forgé.
+    if (!isUserVerified(user)) {
+      return ctx.redirect(withQueryParam(backToFil, "verif_error", "1"));
+    }
 
     if (!Number.isInteger(postId) || postId <= 0) {
       return ctx.redirect(backToFil);

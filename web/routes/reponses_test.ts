@@ -197,6 +197,28 @@ Deno.test("POST /reponses : fonctionne pour les trois types de demande, pas seul
   }
 });
 
+Deno.test("POST /reponses : compte non vérifié → redirigé avec verif_error=1, rien enregistré (cf. db/vouches.ts)", async () => {
+  const setup = await setupPost("reponses-2d");
+  const unverifiedSession = { ...setup.authorSession, isVerified: false };
+
+  try {
+    const form = new FormData();
+    form.set("postId", String(setup.post.id));
+    form.set("content", "Une réponse qui ne devrait pas passer");
+
+    const response = await handler.POST!(
+      makeContext({ user: unverifiedSession, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(response.headers.get("location"), "/fil?verif_error=1");
+
+    const commentsByPost = await listCommentsByPost([setup.post.id]);
+    assertEquals(commentsByPost.get(setup.post.id), undefined);
+  } finally {
+    await teardown(setup);
+  }
+});
+
 Deno.test("POST /reponses : rue de l'utilisateur endormie → redirigé vers /, rien enregistré", async () => {
   const setup = await setupPost("reponses-3b");
   const sleepingStreet = await createTestStreet("reponses-3b-sleeping");

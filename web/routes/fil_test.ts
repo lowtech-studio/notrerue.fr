@@ -274,6 +274,34 @@ Deno.test("POST /fil : contenu vide ou type invalide → erreur, rien en base", 
   }
 });
 
+Deno.test("POST /fil : compte non vérifié → redirigé avec verif_error=1, rien publié (cf. db/vouches.ts)", async () => {
+  const awake = await createAwakeStreetWithUser("fil-6b");
+  const unverifiedSession = { ...awake.sessionUser, isVerified: false };
+
+  try {
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("duration", "week");
+    form.set("content", "Je cherche une perceuse");
+
+    const response = await handler.POST!(
+      makeContext("http://localhost/fil", {
+        user: unverifiedSession,
+        form,
+      }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(response.headers.get("location"), "/fil?verif_error=1");
+
+    const posts = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+    assertEquals(posts.length, 0);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
 Deno.test("POST /fil : message agressif → bloqué, rien en base", async () => {
   const awake = await createAwakeStreetWithUser("fil-7");
 

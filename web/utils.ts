@@ -6,6 +6,17 @@ export interface SessionUser {
   login: string;
   email: string;
   isAmbassador: boolean;
+  /**
+   * Vrai si au moins un voisin déjà vérifié de la même rue a confirmé que ce
+   * compte y habite réellement (cf. db/vouches.ts, backlog « prouver que les
+   * voisins habitent bien dans la même rue ») — l'ambassadeur d'une rue l'est
+   * dès l'inscription. Optionnel et traité comme vrai si absent (`!== false`
+   * dans les gardes plutôt que `=== true`) pour ne pas casser les
+   * `SessionUser` construits à la main dans les tests qui ne le renseignent
+   * pas (même raison que `houseNumber` ci-dessous) — `findSessionUserById`,
+   * le seul chemin réel, le renseigne toujours explicitement.
+   */
+  isVerified?: boolean;
   street: {
     id: number;
     name: string;
@@ -49,3 +60,12 @@ export interface State {
 }
 
 export const define = createDefine<State>();
+
+/**
+ * Vrai si `user` peut publier/tapper/répondre/écrire (cf. db/vouches.ts) —
+ * `isVerified !== false` plutôt que `=== true` : voir le commentaire sur
+ * `SessionUser.isVerified` (champ optionnel, absent ⇒ traité comme vérifié).
+ */
+export function isUserVerified(user: SessionUser): boolean {
+  return user.isVerified !== false;
+}

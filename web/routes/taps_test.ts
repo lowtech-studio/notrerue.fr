@@ -178,6 +178,33 @@ Deno.test("POST /taps : sur sa propre demande → ignoré, rien tapé (cf. revue
   }
 });
 
+Deno.test("POST /taps : compte non vérifié → redirigé avec verif_error=1, rien tapé (cf. db/vouches.ts)", async () => {
+  const setup = await setupPost("taps-route-6");
+  const unverifiedViewer = { ...setup.viewerSession, isVerified: false };
+
+  try {
+    const form = new FormData();
+    form.set("postId", String(setup.post.id));
+    form.set("page", "2");
+
+    const response = await handler.POST!(
+      makeContext({ user: unverifiedViewer, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(
+      response.headers.get("location"),
+      "/fil?page=2&verif_error=1",
+    );
+
+    assertEquals(
+      await findTappedPostIds(setup.viewer.id, [setup.post.id]),
+      new Set(),
+    );
+  } finally {
+    await teardown(setup);
+  }
+});
+
 Deno.test("POST /taps : postId absent/invalide → redirigé sans planter", async () => {
   const setup = await setupPost("taps-route-3");
 

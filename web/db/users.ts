@@ -79,6 +79,11 @@ export async function registerInhabitant(
       email: input.email,
       houseId: createdHouse.id,
       isAmbassador,
+      // Cf. backlog « prouver que les voisins habitent bien dans la même
+      // rue » (db/vouches.ts) : l'ambassadeur amorce la chaîne de confiance
+      // de sa rue, vérifié dès l'inscription — les suivants doivent être
+      // vouchés par un voisin déjà vérifié.
+      verifiedAt: isAmbassador ? new Date() : null,
       loginCode,
       loginCodeExpiresAt,
       loginCodeSentAt: new Date(),
@@ -211,6 +216,7 @@ export async function findSessionUserById(
     login: found.login,
     email: found.email,
     isAmbassador: found.isAmbassador,
+    isVerified: found.verifiedAt !== null,
     street: {
       id: found.house.street.id,
       name: found.house.street.name,

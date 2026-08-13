@@ -100,10 +100,41 @@ export const user = pgTable("user", {
   houseId: integer("house_id").notNull().references(() => house.id),
   notificationType: jsonb("notification_type"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  // Preuve (légère) d'habiter réellement la rue déclarée (cf. backlog
+  // « n'avoir que des personnes qui habitent réellement la rue ») : `null`
+  // tant qu'aucun voisin déjà vérifié n'a confirmé ce compte (cf. table
+  // `vouch` plus bas) — un seul vouch suffit à valider, volontairement peu
+  // contraignant. L'ambassadeur (premier habitant d'une rue encore vide) est
+  // vérifié dès l'inscription : personne d'autre ne peut le vouch (cf.
+  // db/users.ts#registerInhabitant), il amorce la chaîne de confiance de sa
+  // rue.
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
 }, (table) => [
   // Foyer → habitants, joint sur quasi toutes les pages (fil, messages,
   // suppression de compte...) — même raison que `house_street_id_idx`.
   index("user_house_id_idx").on(table.houseId),
+]);
+
+// Un voisin déjà vérifié confirme qu'un habitant de sa rue y habite bien
+// (cf. `user.verifiedAt`, db/vouches.ts). Table séparée plutôt qu'un simple
+// compteur sur `user` : garde une trace de qui a vouché pour qui (utile en
+// cas d'abus à investiguer) et empêche un même voisin de compter plusieurs
+// fois via l'index unique ci-dessous.
+export const vouch = pgTable("vouch", {
+  id: serial("id").primaryKey(),
+  voucherId: integer("voucher_id").notNull().references(() => user.id),
+  voucheeId: integer("vouchee_id").notNull().references(() => user.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull()
+    .defaultNow(),
+}, (table) => [
+  uniqueIndex("vouch_voucher_vouchee_unique").on(
+    table.voucherId,
+    table.voucheeId,
+  ),
+  // `listPendingNeighbors`/toute future recherche « qui a vouché pour X »
+  // filtrent par vouchee, jamais par voucher seul (l'index unique ci-dessus
+  // sert déjà ce second cas via son préfixe gauche).
+  index("vouch_vouchee_id_idx").on(table.voucheeId),
 ]);
 
 // Sollicitation légère envoyée à un voisin, pouvant donner naissance à un Post.
@@ -218,6 +249,21 @@ export const userRelations = relations(user, ({ one, many }) => ({
   comments: many(comment),
   messagesSent: many(message, { relationName: "messageFrom" }),
   messagesReceived: many(message, { relationName: "messageTo" }),
+  vouchesGiven: many(vouch, { relationName: "voucher" }),
+  vouchesReceived: many(vouch, { relationName: "vouchee" }),
+}));
+
+export const vouchRelations = relations(vouch, ({ one }) => ({
+  voucher: one(user, {
+    fields: [vouch.voucherId],
+    references: [user.id],
+    relationName: "voucher",
+  }),
+  vouchee: one(user, {
+    fields: [vouch.voucheeId],
+    references: [user.id],
+    relationName: "vouchee",
+  }),
 }));
 
 export const tapRelations = relations(tap, ({ one, many }) => ({

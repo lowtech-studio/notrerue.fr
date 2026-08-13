@@ -43,6 +43,53 @@
   }
 }
 
+/* Compte pas encore validé par un voisin (cf. db/vouches.ts, backlog
+   « prouver que les voisins habitent bien dans la même rue ») : même carte
+   que `.street-status` (cf. common.css), mais bordure pointillée et fond
+   neutre plutôt que le fond chaud utilisé pour une opportunité (rue qui
+   dort/s'allume) — c'est un état d'attente, pas une action à faire. */
+.street-status--pending {
+  border-style: dashed;
+  border-color: var(--color-border-strong);
+  background: var(--color-paper);
+}
+
+/* Voisins de la même rue en attente de validation (cf. db/vouches.ts) —
+   une ligne par voisin, avec un bouton de confirmation en un clic. */
+.pending-neighbors {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.pending-neighbors__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+}
+
+.pending-neighbors__login {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.pending-neighbors__date {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin-right: auto;
+}
+
+.pending-neighbors__confirm {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
 /* Mur d'aperçus : capture d'écran du fil de rue, en dessous du hero pour ne
    pas concurrencer le titre et le formulaire « trouver ma rue ». Disposition
    en colonnes CSS façon mur de photos — pas de carrousel ni de JS

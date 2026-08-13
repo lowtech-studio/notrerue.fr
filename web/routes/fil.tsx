@@ -1,6 +1,6 @@
 import { Head } from "fresh/runtime";
 import "../assets/pages/fil.css" with { type: "css" };
-import { define } from "../utils.ts";
+import { define, isUserVerified } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { MailIcon } from "../components/icons.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
@@ -125,6 +125,11 @@ interface FilData {
   editError: boolean;
   /** `?reponse_error=1` posé par /reponses (réponse bloquée par la modération). */
   reponseError: boolean;
+  /** `?verif_error=1` : action tentée (publier/tapper/répondre) alors que le
+   * compte n'est pas encore vérifié par un voisin (cf. db/vouches.ts) — ne
+   * devrait arriver que via une page restée ouverte pendant la validation,
+   * l'UI masque déjà ces actions tant que non vérifié. */
+  verifError: boolean;
   /** Valeur re-soumise telle quelle si la publication échoue. */
   postContent: string;
   postType: PostType;
@@ -181,6 +186,7 @@ export const handler = define.handlers({
     const postPublished = ctx.url.searchParams.get("published") === "1";
     const editError = ctx.url.searchParams.get("edit_error") === "1";
     const reponseError = ctx.url.searchParams.get("reponse_error") === "1";
+    const verifError = ctx.url.searchParams.get("verif_error") === "1";
 
     const { posts: rawPosts, totalPages, totalCount, page: resolvedPage } =
       await listStreetPosts({
@@ -206,6 +212,7 @@ export const handler = define.handlers({
         postPublished,
         editError,
         reponseError,
+        verifError,
         postType: "cherche",
         postContent: "",
         postDuration: "week",
@@ -220,6 +227,10 @@ export const handler = define.handlers({
 
     const streetStatus = await getStreetHousesStatus(user.street.id);
     if (!streetStatus.isAwake) return ctx.redirect("/");
+    // Cf. db/vouches.ts : publier est réservé aux comptes vérifiés par un
+    // voisin — l'UI masque déjà le formulaire, ce garde-fou couvre une page
+    // restée ouverte pendant la validation ou un POST forgé.
+    if (!isUserVerified(user)) return ctx.redirect("/fil?verif_error=1");
 
     const form = await ctx.req.formData();
     const rawType = String(form.get("type") ?? "");
@@ -276,6 +287,7 @@ export const handler = define.handlers({
         postPublished: false,
         editError: false,
         reponseError: false,
+        verifError: false,
         postDuration,
         postDurationMonths,
         postType,
@@ -318,6 +330,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     postPublished,
     editError,
     reponseError,
+    verifError,
     postContent,
     postType,
     postDuration,
@@ -362,6 +375,21 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
               message contient des termes non autorisés.
             </p>
           )}
+          {verifError && (
+            <p class="form-error" role="alert">
+              Votre compte doit d'abord être validé par un voisin avant de
+              pouvoir publier, tapper ou répondre.
+            </p>
+          )}
+
+          {state.user && !isUserVerified(state.user) && (
+            <p class="hero__confirmation">
+              Votre compte est en attente de validation par un voisin. En
+              attendant, vous pouvez consulter le fil, mais pas encore publier,
+              tapper ni répondre — demandez à un voisin déjà inscrit de vous
+              valider depuis la page d'accueil.
+            </p>
+          )}
 
           {
             /* Avant de publier : retrouver une demande déjà passée. */
@@ -395,89 +423,91 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
             </p>
           )}
 
-          <div class="compose-post">
-            <h2 class="compose-post__title">
-              Quoi de neuf sur votre rue ?
-            </h2>
-            <form method="POST" class="compose-post__form">
-              <PostTypePlaceholder placeholders={POST_CONTENT_PLACEHOLDERS}>
-                <div
-                  class="compose-post__types"
-                  role="radiogroup"
-                  aria-label="Type de publication"
-                >
-                  {POST_TYPES.map((value) => (
-                    <label key={value} class="compose-post__type">
-                      <input
-                        type="radio"
-                        name="type"
-                        value={value}
-                        checked={postType === value}
-                      />
-                      {POST_TYPE_LABELS[value]}
-                    </label>
-                  ))}
-                </div>
+          {state.user && isUserVerified(state.user) && (
+            <div class="compose-post">
+              <h2 class="compose-post__title">
+                Quoi de neuf sur votre rue ?
+              </h2>
+              <form method="POST" class="compose-post__form">
+                <PostTypePlaceholder placeholders={POST_CONTENT_PLACEHOLDERS}>
+                  <div
+                    class="compose-post__types"
+                    role="radiogroup"
+                    aria-label="Type de publication"
+                  >
+                    {POST_TYPES.map((value) => (
+                      <label key={value} class="compose-post__type">
+                        <input
+                          type="radio"
+                          name="type"
+                          value={value}
+                          checked={postType === value}
+                        />
+                        {POST_TYPE_LABELS[value]}
+                      </label>
+                    ))}
+                  </div>
 
-                <div
-                  class="compose-post__types"
-                  role="radiogroup"
-                  aria-label="Durée de validité de la demande"
-                >
-                  {(["today", "week"] as const).map((value) => (
-                    <label key={value} class="compose-post__type">
+                  <div
+                    class="compose-post__types"
+                    role="radiogroup"
+                    aria-label="Durée de validité de la demande"
+                  >
+                    {(["today", "week"] as const).map((value) => (
+                      <label key={value} class="compose-post__type">
+                        <input
+                          type="radio"
+                          name="duration"
+                          value={value}
+                          checked={postDuration === value}
+                        />
+                        {POST_DURATION_LABELS[value]}
+                      </label>
+                    ))}
+                    <label class="compose-post__type">
                       <input
                         type="radio"
                         name="duration"
-                        value={value}
-                        checked={postDuration === value}
+                        value="months"
+                        checked={postDuration === "months"}
                       />
-                      {POST_DURATION_LABELS[value]}
+                      <select
+                        name="durationMonths"
+                        class="compose-post__duration-select"
+                        aria-label="Nombre de mois"
+                      >
+                        {POST_DURATION_MONTHS_OPTIONS.map((months) => (
+                          <option
+                            key={months}
+                            value={months}
+                            selected={months === postDurationMonths}
+                          >
+                            {months}
+                          </option>
+                        ))}
+                      </select>{" "}
+                      mois
                     </label>
-                  ))}
-                  <label class="compose-post__type">
+                  </div>
+
+                  <CharacterCounter max={MAX_POST_CONTENT_LENGTH}>
                     <input
-                      type="radio"
-                      name="duration"
-                      value="months"
-                      checked={postDuration === "months"}
+                      type="text"
+                      name="content"
+                      class="lookup-form__input"
+                      placeholder={POST_CONTENT_PLACEHOLDERS[postType]}
+                      maxlength={MAX_POST_CONTENT_LENGTH}
+                      value={postContent}
+                      autocomplete="off"
+                      required
                     />
-                    <select
-                      name="durationMonths"
-                      class="compose-post__duration-select"
-                      aria-label="Nombre de mois"
-                    >
-                      {POST_DURATION_MONTHS_OPTIONS.map((months) => (
-                        <option
-                          key={months}
-                          value={months}
-                          selected={months === postDurationMonths}
-                        >
-                          {months}
-                        </option>
-                      ))}
-                    </select>{" "}
-                    mois
-                  </label>
-                </div>
+                  </CharacterCounter>
+                </PostTypePlaceholder>
 
-                <CharacterCounter max={MAX_POST_CONTENT_LENGTH}>
-                  <input
-                    type="text"
-                    name="content"
-                    class="lookup-form__input"
-                    placeholder={POST_CONTENT_PLACEHOLDERS[postType]}
-                    maxlength={MAX_POST_CONTENT_LENGTH}
-                    value={postContent}
-                    autocomplete="off"
-                    required
-                  />
-                </CharacterCounter>
-              </PostTypePlaceholder>
-
-              <button type="submit" class="button">Publier</button>
-            </form>
-          </div>
+                <button type="submit" class="button">Publier</button>
+              </form>
+            </div>
+          )}
 
           <nav class="fil-filters" aria-label="Filtrer par type">
             <a
@@ -559,7 +589,8 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                 <div class="fil-post__footer">
                   <p class="fil-post__author">{item.authorLogin}</p>
 
-                  {state.user && item.authorId !== state.user.id && (
+                  {state.user && item.authorId !== state.user.id &&
+                    isUserVerified(state.user) && (
                     <div class="fil-post__actions">
                       <form method="POST" action="/taps">
                         <input
@@ -733,7 +764,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   </ul>
                 )}
 
-                {state.user && (
+                {state.user && isUserVerified(state.user) && (
                   <form
                     method="POST"
                     action="/reponses"

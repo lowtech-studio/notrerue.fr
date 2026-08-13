@@ -1,6 +1,6 @@
 import { Head } from "fresh/runtime";
 import "../assets/pages/messages.css" with { type: "css" };
-import { define } from "../utils.ts";
+import { define, isUserVerified } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
 import { getPostSummary, type PostSummary } from "../db/posts.ts";
@@ -149,7 +149,7 @@ export const handler = define.handlers({
       otherUserId,
     );
 
-    if (content && !containsBlockedContent(content)) {
+    if (content && !containsBlockedContent(content) && isUserVerified(user)) {
       await sendMessage({
         fromUserId: user.id,
         toUserId: otherUserId,
@@ -180,7 +180,12 @@ export const handler = define.handlers({
 
     // Erreur : on réaffiche la conversation avec le message d'erreur et le
     // brouillon tapé, plutôt qu'une redirection — même logique que /fil.
-    const error = !content
+    // Cf. db/vouches.ts : envoyer un message est réservé aux comptes
+    // vérifiés par un voisin — l'UI masque déjà ce formulaire, ce garde-fou
+    // couvre une page restée ouverte pendant la validation.
+    const error = !isUserVerified(user)
+      ? "Votre compte doit d'abord être validé par un voisin avant de pouvoir envoyer un message."
+      : !content
       ? "Écrivez votre message avant de l'envoyer."
       : "Merci de reformuler : ce message contient des termes non autorisés.";
     const messages = await getConversation(user.id, otherUserId);
@@ -341,6 +346,16 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
                     // soit perdu silencieusement (cf. revue).
                     <p class="empty-state">
                       Ce compte a été supprimé, vous ne pouvez plus lui écrire.
+                    </p>
+                  )
+                  : state.user && !isUserVerified(state.user)
+                  ? (
+                    // Cf. db/vouches.ts : même raison que le POST rejeté
+                    // côté serveur ci-dessus, pour ne pas afficher un
+                    // formulaire inutilisable.
+                    <p class="empty-state">
+                      Votre compte doit d'abord être validé par un voisin avant
+                      de pouvoir envoyer un message.
                     </p>
                   )
                   : (
