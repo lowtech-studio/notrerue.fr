@@ -1,0 +1,46 @@
+# Reverse proxy de NotreRue.fr — à copier dans /etc/caddy/Caddyfile (cf.
+# deploy/provision.sh). Caddy obtient et renouvelle automatiquement le
+# certificat Let's Encrypt pour ce domaine : les enregistrements DNS
+# (A/AAAA) doivent pointer vers ce serveur, et les ports 80/443 doivent
+# être ouverts (cf. ufw) *avant* le premier démarrage — le port 80 sert au
+# défi ACME HTTP-01, Caddy redirige lui-même le reste vers 443 ensuite.
+
+notrerue.fr {
+	# L'application ne compresse pas elle-même ses réponses (cf.
+	# web/utils/static_cache.ts, qui ne pose que des en-têtes de cache) —
+	# c'est le rôle du reverse proxy, plus sûr qu'une compression maison
+	# côté Deno.
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		# CSP, X-Frame-Options, Referrer-Policy : déjà posés par l'application
+		# elle-même (cf. web/main.ts, web/routes/_middleware.ts) — pas
+		# dupliqués ici pour garder une seule source de vérité en cas de
+		# changement futur.
+	}
+
+	# `X-Forwarded-Proto`/`X-Forwarded-For`/`X-Forwarded-Host` sont ajoutés
+	# automatiquement par `reverse_proxy` — c'est sur `X-Forwarded-Proto` que
+	# web/utils/http.ts#isSecureRequest se base pour poser le cookie de
+	# session en `Secure` : ne fonctionne que déployé derrière ce proxy,
+	# jamais en accès direct au port 8000 (fermé côté ufw de toute façon).
+	reverse_proxy 127.0.0.1:8000
+
+	log {
+		output file /var/log/caddy/notrerue.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+# Si www.notrerue.fr est aussi enregistré en DNS, ajouter un second bloc
+# plutôt que de l'inclure ci-dessus : Caddy demanderait sinon un certificat
+# pour un nom qui n'existe pas encore en DNS, ce qui échoue et peut
+# retarder le renouvellement du nom principal.
+#
+# www.notrerue.fr {
+# 	redir https://notrerue.fr{uri} permanent
+# }

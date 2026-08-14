@@ -27,15 +27,14 @@ Copier `web/.env.example` en `web/.env` et compléter — voir ce fichier pour
 la liste et le rôle de chaque variable (`DATABASE_URL`, `SESSION_SECRET`,
 `BREVO_API_KEY`, `EMAIL_FROM`, `DATABASE_POOL_MAX`).
 
-## Déploiement (cible : Raspberry Pi)
+## Déploiement en production
 
-```sh
-cd web
-deno task build   # build de production → _fresh/
-deno task start   # sert le build via deno serve
-```
+Configuration complète (Postgres + Deno + Caddy, systemd, pare-feu,
+sauvegardes chiffrées) pour un serveur à ressources modestes — VPS 1 vCore
+/ 1 Go RAM, ou Raspberry Pi — dans [deploy/README.md](deploy/README.md).
 
-Réglages pensés pour un matériel modeste (RAM/E-S disque limitées) :
+L'application elle-même est déjà réglée pour ce genre de matériel, quel
+que soit l'hébergeur choisi :
 
 - Pool de connexions Postgres borné à `DATABASE_POOL_MAX` (5 par défaut, cf.
   `web/db/client.ts`) plutôt que la valeur par défaut du driver.
@@ -46,7 +45,3 @@ Réglages pensés pour un matériel modeste (RAM/E-S disque limitées) :
   (captures d'écran, icônes — cf. `web/utils/static_cache.ts`) en plus du
   cache immuable déjà posé par Fresh sur les fichiers buildés par Vite (noms
   hashés).
-
-Aucun reverse proxy n'est fourni ici : en placer un (Caddy, par exemple)
-devant `deno task start` reste recommandé en production pour la compression
-et le TLS.

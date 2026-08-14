@@ -1,0 +1,63 @@
+[Unit]
+Description=NotreRue.fr (Fresh/Deno)
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=exec
+User=notrerue
+Group=notrerue
+WorkingDirectory=/srv/notrerue/app
+EnvironmentFile=/srv/notrerue/shared/notrerue.env
+
+# Permissions Deno réduites au strict nécessaire (cf. deploy/README.md) —
+# testé en conditions réelles : la base de données (loopback) et l'API
+# Brevo (envoi d'e-mails) sont les deux seules destinations réseau requises.
+# `--allow-env` reste large : le driver Postgres (`postgres.js`) lit en
+# interne plusieurs variables `PG*` en plus de `DATABASE_URL`, les énumérer
+# une à une serait fragile face à une mise à jour de dépendance.
+ExecStart=/usr/local/bin/deno serve --allow-net=127.0.0.1:5432,localhost:5432,api.brevo.com:443 --allow-env --allow-read=/srv/notrerue/app --host 127.0.0.1 --port 8000 _fresh/server.js
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+# Sandboxing systemd (cf. AGENTS.md « cyber sécurité ») — équivalent d'une
+# isolation à la Docker sans son coût mémoire sur une machine à 1 Go de RAM
+# (cf. deploy/README.md pour l'arbitrage container vs systemd nu).
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# V8 (moteur JS de Deno) a besoin de pages mémoire à la fois inscriptibles
+# et exécutables pour compiler à la volée (JIT) : impossible d'activer
+# MemoryDenyWriteExecute sans casser le runtime — laissé à `false`
+# explicitement plutôt qu'omis, pour documenter que c'est un choix.
+MemoryDenyWriteExecute=false
+ReadWritePaths=/srv/notrerue/app
+
+# Bornes de ressources : un service qui dérive est tué et redémarré plutôt
+# que de faire tomber le reste de la machine (cf. deploy/README.md).
+MemoryHigh=220M
+MemoryMax=280M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

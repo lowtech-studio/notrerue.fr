@@ -1,0 +1,15 @@
+[Unit]
+Description=Déclenche la sauvegarde quotidienne de NotreRue.fr
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+# Étale le déclenchement sur 10 min : évite de cogner pg_dump pile à
+# l'heure ronde si d'autres tâches (rotations de logs, unattended-upgrades)
+# sont aussi programmées à ce moment-là sur une machine à un seul cœur.
+RandomizedDelaySec=600
+# Rejoue la sauvegarde manquée au redémarrage si le serveur était éteint à
+# l'heure prévue (maintenance, coupure...), plutôt que d'attendre 24h de plus.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Sauvegarde chiffrée de la base NotreRue.fr
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/notrerue/bin/backup.sh
