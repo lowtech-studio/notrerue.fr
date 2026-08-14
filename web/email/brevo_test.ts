@@ -86,7 +86,7 @@ Deno.test("les trois e-mails portent l'en-tête commun (logo + nom du site)", ()
     assertStringIncludes(email.htmlContent, "NotreRue.fr");
     assertStringIncludes(
       email.htmlContent,
-      "l'entraide entre voisins, sans réseau social ni publicité.",
+      "entraide et bons plans entre voisins.",
     );
   }
 });

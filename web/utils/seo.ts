@@ -13,12 +13,12 @@ export const SITE_NAME = "NotreRue.fr";
 /**
  * Description par défaut, reprise en `<meta name="description">`,
  * `og:description` et `twitter:description` (cf. `routes/_app.tsx`) — un
- * habitant vérifié par ses voisins, gratuit, sans publicité ni revente de
+ * habitant vérifié par ses voisins, gratuit, sans revente de
  * données : les trois mots-clés qui reviennent dans les recherches "site
  * entraide voisins gratuit" / "alternative Nextdoor France".
  */
 export const DEFAULT_DESCRIPTION =
-  "NotreRue.fr, la plateforme gratuite d'entraide entre voisins d'une même rue : partage, troc, jardin partagé et recommandations de confiance — sans publicité ni revente de données, hébergée en France.";
+  "NotreRue.fr, la plateforme gratuite d'entraide entre voisins d'une même rue : partage, troc, jardin partagé, bons plans et recommandations de confiance — sans revente de données, hébergée en France, 100% open source.";
 
 /**
  * URL absolue et canonique pour un chemin donné — toujours sans requête ni

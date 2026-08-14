@@ -3,10 +3,10 @@
 > NotreRue.fr est une plateforme française gratuite d'entraide et de lien
 > social entre voisins, organisée rue par rue. Chaque rue n'est accessible
 > qu'aux habitants réellement vérifiés de cette rue (validation par un
-> voisin déjà inscrit) : pas de flux global, pas de publicité, pas de
+> voisin déjà inscrit) : pas de flux global, pas de
 > revente de données. Objectif du projet : « Nous rapprocher les uns des
 > autres » — recréer du lien de voisinage low-tech (partage, troc, jardin
-> partagé, sécurité collective), pas un réseau social de plus.
+> partagé, sécurité collective, bons plans entre voisins), pas un réseau social de plus.
 
 ## Ce que propose le site
 
@@ -22,7 +22,7 @@
 
 - Pas un réseau social ouvert à tous : réservé aux habitants d'une rue
   précise, vérifiés par leurs voisins.
-- Pas de publicité, pas de revente de données à des tiers.
+- Pas de revente de données à des tiers.
 - Réservé aux personnes d'au moins 15 ans (seuil légal français du
   consentement numérique).
 - Pas encore ouvert à l'échelle d'une ville ou d'une commune entière (prévu

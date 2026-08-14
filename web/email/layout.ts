@@ -99,7 +99,7 @@ export function renderEmailLayout(
             </tr>
             <tr>
               <td style="padding:20px 32px 28px;border-top:1px solid ${COLORS.border};font-family:${FONT_SANS};font-size:13px;line-height:1.5;color:${COLORS.inkMuted};">
-                NotreRue.fr — l'entraide entre voisins, sans réseau social ni publicité.
+                NotreRue.fr — Partage, coup de main, entraide et bons plans entre voisins.
               </td>
             </tr>
           </table>

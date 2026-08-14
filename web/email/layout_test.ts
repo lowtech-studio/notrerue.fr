@@ -11,7 +11,7 @@ Deno.test("renderEmailLayout : en-tête avec la marque, contenu, pied de page", 
   assertStringIncludes(html, "<p>Contenu du message</p>");
   assertStringIncludes(
     html,
-    "l'entraide entre voisins, sans réseau social ni publicité.",
+    "Partage, coup de main, entraide et bons plans entre voisins",
   );
 });
 

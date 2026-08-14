@@ -161,6 +161,17 @@ VPS_HOST=203.0.113.10 VPS_USER=admin ./deploy/deploy.sh
 Build en local → envoi → migrations → redémarrage du service. Caddy
 obtient son certificat TLS automatiquement au premier accès HTTPS.
 
+Juste après ce tout premier déploiement, lancer **une seule fois**
+(`deploy.sh` ne s'en charge pas, cf. `deploy/seed-cities.sh`) :
+
+```sh
+VPS_HOST=203.0.113.10 VPS_USER=admin ./deploy/seed-cities.sh
+```
+
+Sans ça, la table `city` reste vide et l'autocomplétion ville/rue
+(`routes/api/villes.ts`) ne renvoie jamais aucun résultat, sans erreur
+visible côté application.
+
 ### 3. Déploiements suivants
 
 Même commande. `deploy.sh` garde une archive de la version précédente dans

@@ -55,8 +55,8 @@ async function loadInviterCore(
 
   const message = `Salut ! Je m'inscris sur NotreRue.fr pour qu'on ` +
     `s'entraide entre voisins de la ${user.street.name} ` +
-    `(${user.street.city.name}) : partage, coup de main, bons plans — ` +
-    `sans réseau social ni pub. Rejoins-moi ici : ${joinUrl}`;
+    `(${user.street.city.name}) : partage, coup de main, bons plans` +
+    `Rejoins-moi ici : ${joinUrl}`;
 
   return {
     streetName: user.street.name,
@@ -285,8 +285,7 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
                     👋 Bonjour voisin·e,{"\n\n"}
                     On lance NotreRue.fr sur la {streetName}{" "}
                     : un espace privé pour s'entraider entre voisins (partage,
-                    coup de main, bons plans), sans réseau social ni
-                    publicité.{"\n\n"}
+                    coup de main, bons plans, reccommandations).{"\n\n"}
                     Scannez ce QR code pour nous rejoindre, ou tapez :
                   </p>
                   <p class="invite-flyer__url">{joinUrl}</p>

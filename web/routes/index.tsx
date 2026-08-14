@@ -34,13 +34,13 @@ const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: "NotreRue.fr est-il vraiment gratuit ?",
     answer:
-      "Oui, entièrement gratuit, sans publicité et sans abonnement caché. Le site ne vit pas de la revente de vos données.",
+      "Oui, entièrement gratuit et sans abonnement caché. Le site ne vit pas de la revente de vos données.",
   },
   {
     question:
       "Quelle différence avec un groupe WhatsApp ou une page Facebook de quartier ?",
     answer:
-      "Seuls les voisins d'une même rue, validés par un habitant déjà inscrit, peuvent lire et publier — pas de groupe qui grossit à l'infini ni de fil noyé sous la publicité. Un seul fil, trois types de message (Je cherche / Je propose / J'informe), rien de plus.",
+      "Seuls les voisins d'une même rue, validés par un habitant déjà inscrit, peuvent lire et publier — pas de groupe qui grossit à l'infini. Un seul fil, trois types de message (Je cherche / Je propose / J'informe), rien de plus.",
   },
   {
     question: "Mes données personnelles sont-elles en sécurité ?",
@@ -505,8 +505,8 @@ export default define.page<typeof handler>(function Home({ data, state }) {
       </main>
       <footer class="site-footer">
         <p class="container site-footer__text">
-          NotreRue.fr — « Nous rapprocher les uns des autres » | Souveraineté —
-          Hebergement 100% Français 🇫🇷 et{" "}
+          NotreRue.fr by LowTech.studio — « Nous rapprocher les uns des autres »
+          | Souveraineté — Hebergement 100% Français 🇫🇷 et{" "}
           <a
             href="https://github.com/lowtech-studio/notrerue.fr"
             target="_blank"

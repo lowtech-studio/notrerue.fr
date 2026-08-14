@@ -75,7 +75,7 @@ export function buildInviteEmail(
       `l'entraide entre voisins de la ${street} (${city}).`,
   ) +
     emailParagraph(
-      "Partage, coup de main, bons plans entre voisins — sans réseau social ni publicité.",
+      "Partage, coup de main, entraide et bons plans entre voisins.",
       true,
     ) +
     emailButton(joinUrl, `Rejoindre la ${street}`) +
