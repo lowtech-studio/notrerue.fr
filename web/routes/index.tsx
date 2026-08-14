@@ -18,6 +18,61 @@ import {
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
 import { pluralizeCount } from "../utils/pluralize.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
+import { jsonLd } from "../utils/seo.ts";
+
+/**
+ * Questions les plus probables d'un visiteur qui ne connaît pas encore
+ * NotreRue.fr (gratuité, différence avec un groupe WhatsApp/Facebook,
+ * confidentialité, âge minimum...) — affichées ci-dessous en `<details>`
+ * natifs (cf. mémoire « no-js-disclosure-pattern » : accordéon sans JS,
+ * même logique que `.profil-danger-zone` sur /profil) et reprises telles
+ * quelles dans `FAQ_JSON_LD` : le texte visible et les données structurées
+ * doivent rester identiques (exigence Google pour le rich result
+ * `FAQPage`), d'où une seule source pour les deux.
+ */
+const FAQ_ITEMS: { question: string; answer: string }[] = [
+  {
+    question: "NotreRue.fr est-il vraiment gratuit ?",
+    answer:
+      "Oui, entièrement gratuit, sans publicité et sans abonnement caché. Le site ne vit pas de la revente de vos données.",
+  },
+  {
+    question:
+      "Quelle différence avec un groupe WhatsApp ou une page Facebook de quartier ?",
+    answer:
+      "Seuls les voisins d'une même rue, validés par un habitant déjà inscrit, peuvent lire et publier — pas de groupe qui grossit à l'infini ni de fil noyé sous la publicité. Un seul fil, trois types de message (Je cherche / Je propose / J'informe), rien de plus.",
+  },
+  {
+    question: "Mes données personnelles sont-elles en sécurité ?",
+    answer:
+      "Votre nom de famille, votre adresse exacte et votre âge ne sont jamais demandés ni affichés aux autres voisins. Hébergement 100% français, code source 100% ouvert.",
+  },
+  {
+    question: "Comment savoir si ma rue est déjà sur NotreRue.fr ?",
+    answer:
+      "Indiquez votre ville et votre rue depuis la page d'accueil : si des voisins y sont déjà inscrits, vous voyez immédiatement combien, sinon vous devenez le premier ambassadeur de votre rue.",
+  },
+  {
+    question: "Qui peut s'inscrire sur NotreRue.fr ?",
+    answer:
+      "Toute personne d'au moins 15 ans habitant réellement la rue concernée — un voisin déjà vérifié doit confirmer votre adresse avant que vous puissiez publier ou écrire à quelqu'un.",
+  },
+  {
+    question: "Faut-il télécharger une application ?",
+    answer:
+      "Non : NotreRue.fr fonctionne directement dans le navigateur, et peut aussi s'installer en un geste comme une application (PWA) pour y accéder plus vite.",
+  },
+];
+
+const FAQ_JSON_LD = jsonLd({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": FAQ_ITEMS.map(({ question, answer }) => ({
+    "@type": "Question",
+    "name": question,
+    "acceptedAnswer": { "@type": "Answer", "text": answer },
+  })),
+});
 
 const MAX_STREET_LENGTH = 80;
 const MAX_CITY_LABEL_LENGTH = 120;
@@ -125,6 +180,18 @@ export default define.page<typeof handler>(function Home({ data, state }) {
     <>
       <Head>
         <title>NotreRue.fr — Créer du lien entre voisins</title>
+        {
+          /* FAQPage : uniquement quand la FAQ correspondante est bien
+          rendue plus bas (visiteur non connecté) — cf. FAQ_ITEMS. */
+        }
+        {!user && (
+          <script
+            type="application/ld+json"
+            // JSON-LD statique/auteur, cf. le raisonnement dans _app.tsx.
+            // deno-lint-ignore react-no-danger
+            dangerouslySetInnerHTML={{ __html: FAQ_JSON_LD }}
+          />
+        )}
       </Head>
       <Header
         user={user}
@@ -416,12 +483,39 @@ export default define.page<typeof handler>(function Home({ data, state }) {
             </div>
           </section>
         )}
+
+        {!user && (
+          <section
+            class="container faq"
+            aria-labelledby="faq-titre"
+          >
+            <h2 id="faq-titre" class="faq__title">
+              Questions fréquentes
+            </h2>
+            <div class="faq__list">
+              {FAQ_ITEMS.map(({ question, answer }) => (
+                <details key={question} class="faq__item">
+                  <summary class="faq__question">{question}</summary>
+                  <p class="faq__answer">{answer}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
       <footer class="site-footer">
         <p class="container site-footer__text">
           NotreRue.fr — « Nous rapprocher les uns des autres » | Souveraineté —
-          Hebergement 100% Français 🇫🇷 et Code 100% Open Source pas
-          d'entourloupe !
+          Hebergement 100% Français 🇫🇷 et{" "}
+          <a
+            href="https://github.com/lowtech-studio/notrerue.fr"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="site-footer__link"
+          >
+            Code 100% Open Source
+          </a>{" "}
+          pas d'entourloupe !
         </p>
       </footer>
     </>

@@ -344,6 +344,14 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     <>
       <Head>
         <title>Le fil de {streetName} — NotreRue.fr</title>
+        {
+          /* Contenu personnalisé, réservé aux habitants vérifiés de cette
+          rue (redirection vers /connexion sinon, cf. handler) : jamais
+          indexable. Défense en profondeur en plus de robots.txt — au cas
+          où la redirection viendrait à régresser (cf. AGENTS.md
+          cybersécurité). */
+        }
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       <Header
         user={state.user}

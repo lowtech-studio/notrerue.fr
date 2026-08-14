@@ -21,6 +21,7 @@ function renderApp(theme: State["theme"] = null): string {
   const props = {
     Component: DummyPage,
     state: { user: null, isStreetAwake: null, theme },
+    url: new URL("https://notrerue.fr/"),
   } as unknown as PageProps<unknown, State>;
   return render(<TestApp {...props} />);
 }
@@ -30,6 +31,25 @@ Deno.test("PWA", () => {
   assertStringIncludes(html, 'rel="manifest"');
   assertStringIncludes(html, 'href="/manifest.webmanifest"');
   assertStringIncludes(html, 'name="mobile-web-app-capable" content="yes"');
+});
+
+Deno.test("SEO : canonical, Open Graph et JSON-LD Organization/WebSite présents", () => {
+  const html = renderApp();
+  assertStringIncludes(
+    html,
+    '<link rel="canonical" href="https://notrerue.fr/"',
+  );
+  assertStringIncludes(html, 'property="og:title"');
+  assertStringIncludes(
+    html,
+    'property="og:url" content="https://notrerue.fr/"',
+  );
+  assertStringIncludes(
+    html,
+    'name="twitter:card" content="summary_large_image"',
+  );
+  assertStringIncludes(html, 'type="application/ld+json"');
+  assertStringIncludes(html, '"@type":"Organization"');
 });
 
 Deno.test("data-theme : reflète state.theme sur <html>, absent si système", () => {

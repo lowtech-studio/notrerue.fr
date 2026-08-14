@@ -304,6 +304,10 @@ export default define.page<typeof handler>(function Rejoindre({ data }) {
     <>
       <Head>
         <title>Rejoindre ma rue — NotreRue.fr</title>
+        <meta
+          name="description"
+          content="Inscrivez-vous gratuitement sur NotreRue.fr pour retrouver le fil de votre rue : entraide, troc et recommandations entre voisins vérifiés."
+        />
       </Head>
       <Header />
       <main>

@@ -101,6 +101,11 @@ export default define.page<typeof handler>(function Profil({ data, state }) {
     <>
       <Head>
         <title>Mon profil — NotreRue.fr</title>
+        {
+          /* Contenu personnalisé et privé : jamais indexable (cf. fil.tsx
+          pour le raisonnement complet). */
+        }
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       <Header
         user={state.user}

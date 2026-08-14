@@ -122,6 +122,10 @@ export default define.page<typeof handler>(function Connexion({ data }) {
     <>
       <Head>
         <title>Se connecter — NotreRue.fr</title>
+        <meta
+          name="description"
+          content="Connectez-vous à NotreRue.fr avec un simple code à 6 chiffres envoyé par e-mail, sans mot de passe à retenir."
+        />
       </Head>
       <Header />
       <main>

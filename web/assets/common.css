@@ -799,3 +799,11 @@ button.site-header__link {
   font-size: 14px;
   color: var(--color-ink-muted);
 }
+
+.site-footer__link {
+  text-decoration: underline;
+}
+
+.site-footer__link:hover {
+  color: var(--color-brand);
+}

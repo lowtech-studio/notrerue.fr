@@ -164,3 +164,63 @@
   border-radius: var(--radius-lg);
   break-inside: avoid;
 }
+
+/* Questions fréquentes : accordéon <details> natif (même logique que
+   .profil-danger-zone sur /profil et .fil-post__tappers-more sur /fil —
+   pas de JS) — sert aussi de contenu source à FAQ_JSON_LD (routes/index.tsx,
+   schema.org FAQPage), texte visible et données structurées identiques. */
+.faq {
+  padding: 8px 0 64px;
+  border-top: 1px solid var(--color-border);
+}
+
+.faq__title {
+  margin: 0 0 24px;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.3rem + 1vw, 2.1rem);
+  font-weight: 600;
+  text-align: center;
+}
+
+.faq__list {
+  display: grid;
+  gap: 12px;
+  max-width: 42em;
+  margin: 0 auto;
+}
+
+.faq__item {
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-warm);
+}
+
+.faq__question {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.faq__question::-webkit-details-marker {
+  display: none;
+}
+
+.faq__question::after {
+  content: "+";
+  float: right;
+  color: var(--color-brand);
+  font-weight: 700;
+}
+
+.faq__item[open] .faq__question::after {
+  content: "–";
+}
+
+.faq__answer {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+}

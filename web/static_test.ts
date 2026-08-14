@@ -59,3 +59,32 @@ Deno.test("PWA - La page hors-ligne existe et référence son script externe", a
   // Jette une erreur si offline.js n'existe pas réellement.
   await Deno.stat(`${STATIC_DIR}/offline.js`);
 });
+
+Deno.test("SEO - robots.txt autorise le crawl public et référence le sitemap", async () => {
+  const robots = await readStatic("robots.txt");
+  assertStringIncludes(robots, "Sitemap: https://notrerue.fr/sitemap.xml");
+  // Pages personnalisées (redirigent un visiteur non connecté, cf.
+  // routes/_middleware.ts) : jamais utile à un robot.
+  for (const path of ["/fil", "/messages", "/profil", "/inviter"]) {
+    assertStringIncludes(robots, `Disallow: ${path}`);
+  }
+});
+
+Deno.test("SEO - sitemap.xml ne référence que des URL absolues sur notrerue.fr", async () => {
+  const xml = await readStatic("sitemap.xml");
+  assertStringIncludes(xml, "<urlset");
+  const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1]);
+  assert(locs.length > 0, "le sitemap doit lister au moins une URL");
+  for (const loc of locs) {
+    assert(
+      loc.startsWith("https://notrerue.fr/"),
+      `${loc} doit être une URL absolue sur notrerue.fr`,
+    );
+  }
+});
+
+Deno.test("SEO - llms.txt existe et présente le site en Markdown", async () => {
+  const llmsTxt = await readStatic("llms.txt");
+  assert(llmsTxt.startsWith("# NotreRue.fr"), "doit commencer par un H1");
+  assertStringIncludes(llmsTxt, "https://notrerue.fr/");
+});

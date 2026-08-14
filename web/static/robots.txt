@@ -1,0 +1,14 @@
+# NotreRue.fr — cf. deploy/README.md pour le contexte du projet.
+# Pages publiques indexables : /, /connexion, /rejoindre.
+# Pages personnalisées/privées (redirigent un visiteur non connecté vers
+# /connexion de toute façon, cf. routes/_middleware.ts) : jamais utile à un
+# robot, on lui évite de consommer du budget de crawl dessus.
+User-agent: *
+Disallow: /fil
+Disallow: /messages
+Disallow: /profil
+Disallow: /inviter
+Disallow: /api/
+Allow: /
+
+Sitemap: https://notrerue.fr/sitemap.xml

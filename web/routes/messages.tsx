@@ -219,6 +219,11 @@ export default define.page<typeof handler>(function Messages({ data, state }) {
     <>
       <Head>
         <title>Mes messages — NotreRue.fr</title>
+        {
+          /* Contenu personnalisé et privé : jamais indexable (cf. fil.tsx
+          pour le raisonnement complet). */
+        }
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       <Header
         user={state.user}

@@ -1,0 +1,44 @@
+# NotreRue.fr
+
+> NotreRue.fr est une plateforme française gratuite d'entraide et de lien
+> social entre voisins, organisée rue par rue. Chaque rue n'est accessible
+> qu'aux habitants réellement vérifiés de cette rue (validation par un
+> voisin déjà inscrit) : pas de flux global, pas de publicité, pas de
+> revente de données. Objectif du projet : « Nous rapprocher les uns des
+> autres » — recréer du lien de voisinage low-tech (partage, troc, jardin
+> partagé, sécurité collective), pas un réseau social de plus.
+
+## Ce que propose le site
+
+- Un fil chronologique unique par rue, avec trois types de publication :
+  « Je cherche », « Je propose », « J'informe ».
+- Des recommandations locales de confiance (artisans, professions de santé...)
+  entre voisins plutôt que des avis anonymes.
+- Une messagerie privée entre voisins d'une même rue.
+- Une installation possible comme application (PWA), sans passer par un
+  store.
+
+## Ce que le site n'est pas / ne fait pas
+
+- Pas un réseau social ouvert à tous : réservé aux habitants d'une rue
+  précise, vérifiés par leurs voisins.
+- Pas de publicité, pas de revente de données à des tiers.
+- Réservé aux personnes d'au moins 15 ans (seuil légal français du
+  consentement numérique).
+- Pas encore ouvert à l'échelle d'une ville ou d'une commune entière (prévu
+  en évolution future) — l'unité de base est la rue.
+
+## Pages publiques
+
+- [Accueil](https://notrerue.fr/) : recherche de sa rue, statut
+  d'« éveil » (nombre de foyers inscrits), FAQ.
+- [Rejoindre ma rue](https://notrerue.fr/rejoindre) : inscription.
+- [Se connecter](https://notrerue.fr/connexion) : connexion par code à 6
+  chiffres envoyé par e-mail (pas de mot de passe).
+
+## Détails techniques (pour agents/développeurs)
+
+- Code source public : https://github.com/lowtech-studio/notrerue.fr
+- Stack : Fresh 2 (Deno) + Preact + Postgres, hébergement 100% français.
+- Aucune donnée sensible (nom de famille, adresse exacte, âge) n'est
+  affichée aux autres utilisateurs.
