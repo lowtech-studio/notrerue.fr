@@ -84,7 +84,7 @@ Deno.test("POST /supprimer : non connecté → redirigé vers /connexion", async
   assertEquals(response.headers.get("location"), "/connexion");
 });
 
-Deno.test("POST /supprimer : propriétaire → demande supprimée (soft delete), back respecté", async () => {
+Deno.test("POST /supprimer : propriétaire → demande supprimée (soft delete), back respecté + deleted=1", async () => {
   const setup = await setupPost("supprimer-1");
 
   try {
@@ -98,13 +98,31 @@ Deno.test("POST /supprimer : propriétaire → demande supprimée (soft delete),
     assertEquals(response.status, 302);
     assertEquals(
       response.headers.get("location"),
-      "/fil?type=cherche&page=2",
+      "/fil?type=cherche&page=2&deleted=1",
     );
 
     const [reloaded] = await db.select().from(post).where(
       eq(post.id, setup.post.id),
     );
     assertEquals(reloaded.deletedAt !== null, true);
+  } finally {
+    await teardown(setup);
+  }
+});
+
+Deno.test("POST /supprimer : back porte un ?published=1 périmé → remplacé par deleted=1, pas cumulé", async () => {
+  const setup = await setupPost("supprimer-5");
+
+  try {
+    const form = new FormData();
+    form.set("postId", String(setup.post.id));
+    form.set("back", "/fil?published=1");
+
+    const response = await handler.POST!(
+      makeContext({ user: setup.authorSession, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(response.headers.get("location"), "/fil?deleted=1");
   } finally {
     await teardown(setup);
   }
@@ -144,7 +162,7 @@ Deno.test("POST /supprimer : back absent/invalide (open redirect) → fallback v
       makeContext({ user: setup.authorSession, form }),
     ) as Response;
     assertEquals(response.status, 302);
-    assertEquals(response.headers.get("location"), "/fil");
+    assertEquals(response.headers.get("location"), "/fil?deleted=1");
   } finally {
     await teardown(setup);
   }

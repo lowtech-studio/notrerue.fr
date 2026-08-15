@@ -166,6 +166,22 @@ Deno.test("GET /fil : ?published=1 → bandeau de confirmation", async () => {
   }
 });
 
+Deno.test("GET /fil : ?deleted=1 → bandeau de suppression, pas de confirmation de publication", async () => {
+  const awake = await createAwakeStreetWithUser("fil-3b");
+
+  try {
+    const result = await handler.GET!(
+      makeContext("http://localhost/fil?deleted=1", {
+        user: awake.sessionUser,
+      }),
+    ) as { data: { postPublished: boolean; postDeleted: boolean } };
+    assertEquals(result.data.postDeleted, true);
+    assertEquals(result.data.postPublished, false);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
 Deno.test("GET /fil : ?type=propose → ne filtre que ce type", async () => {
   const awake = await createAwakeStreetWithUser("fil-4");
 

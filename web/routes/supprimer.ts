@@ -1,6 +1,6 @@
 import { define } from "../utils.ts";
 import { getPostSummary, softDeletePost } from "../db/posts.ts";
-import { resolvePostBackPath } from "../utils/validation.ts";
+import { resolvePostBackPath, withQueryParam } from "../utils/validation.ts";
 
 /**
  * Supprime (soft delete) une demande et revient à sa page d'origine (cf.
@@ -33,6 +33,11 @@ export const handler = define.handlers({
 
     await softDeletePost(postId, user.id);
 
-    return ctx.redirect(back);
+    // `deleted=1` plutôt qu'une redirection silencieuse vers `back` tel
+    // quel : sinon un `back` capturé juste après une publication (encore
+    // `?published=1`) réafficherait « Votre demande a été publiée ! » au
+    // lieu de confirmer la suppression (cf. revue, withQueryParam nettoie
+    // les autres flashs).
+    return ctx.redirect(withQueryParam(back, "deleted", "1"));
   },
 });

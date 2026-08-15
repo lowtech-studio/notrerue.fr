@@ -127,6 +127,8 @@ interface FilData {
   backPath: string;
   postError: string | null;
   postPublished: boolean;
+  /** `?deleted=1` posé par /supprimer après une suppression réussie. */
+  postDeleted: boolean;
   /** `?edit_error=1` posé par /modifier quand la correction est bloquée par la modération (cf. revue : sinon perdue en silence). */
   editError: boolean;
   /** `?reponse_error=1` posé par /reponses (réponse bloquée par la modération). */
@@ -190,6 +192,7 @@ export const handler = define.handlers({
     const page = parsePage(ctx.url.searchParams.get("page"));
     const backPath = ctx.url.pathname + ctx.url.search;
     const postPublished = ctx.url.searchParams.get("published") === "1";
+    const postDeleted = ctx.url.searchParams.get("deleted") === "1";
     const editError = ctx.url.searchParams.get("edit_error") === "1";
     const reponseError = ctx.url.searchParams.get("reponse_error") === "1";
     const verifError = ctx.url.searchParams.get("verif_error") === "1";
@@ -216,6 +219,7 @@ export const handler = define.handlers({
         backPath,
         postError: null,
         postPublished,
+        postDeleted,
         editError,
         reponseError,
         verifError,
@@ -320,6 +324,7 @@ export const handler = define.handlers({
         backPath: "/fil",
         postError: error,
         postPublished: false,
+        postDeleted: false,
         editError: false,
         reponseError: false,
         verifError: false,
@@ -363,6 +368,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
     backPath,
     postError,
     postPublished,
+    postDeleted,
     editError,
     reponseError,
     verifError,
@@ -404,6 +410,9 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
 
           {postPublished && (
             <p class="hero__confirmation">Votre demande a été publiée !</p>
+          )}
+          {postDeleted && (
+            <p class="hero__confirmation">Votre demande a été supprimée !</p>
           )}
           {postError && <p class="form-error" role="alert">{postError}</p>}
           {editError && (

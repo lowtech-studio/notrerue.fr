@@ -38,11 +38,27 @@ export function resolvePostBackPath(raw: string, fallback: string): string {
 }
 
 /**
- * Ajoute (ou remplace) un paramètre de requête sur un chemin local
- * (`/fil?type=cherche`…), en préservant les paramètres déjà présents.
- * Utilisé pour faire remonter un état (ex. `edit_error=1`) à travers une
- * redirection sans passer par une session/un flash — cohérent avec
- * `?published=1` déjà utilisé par /fil.
+ * Paramètres de requête « flash » : posés par une redirection pour faire
+ * remonter un état ponctuel (bandeau de confirmation/erreur) à /fil, sans
+ * session ni flash côté serveur. Un seul à la fois a du sens — cf.
+ * `withQueryParam` ci-dessous.
+ */
+const FLASH_QUERY_PARAMS = [
+  "published",
+  "deleted",
+  "edit_error",
+  "reponse_error",
+  "verif_error",
+];
+
+/**
+ * Ajoute (ou remplace) un paramètre de requête « flash » sur un chemin local
+ * (`/fil?type=cherche`…), en préservant les paramètres de filtre déjà
+ * présents (`type`, `q`, `page`…). Retire d'abord les autres paramètres
+ * flash : `back` est capturé sur la page d'origine et peut encore porter un
+ * flash d'une action précédente (ex. `?published=1`) — sans ce nettoyage,
+ * une suppression après une publication réafficherait le bandeau « publiée »
+ * en plus (ou à la place) de « supprimée ».
  */
 export function withQueryParam(
   path: string,
@@ -52,6 +68,9 @@ export function withQueryParam(
   // Base arbitraire : seuls `pathname` + `search` sont réutilisés, jamais
   // l'origine (le chemin passé ici est toujours local, cf. resolvePostBackPath).
   const url = new URL(path, "http://localhost");
+  for (const flashParam of FLASH_QUERY_PARAMS) {
+    url.searchParams.delete(flashParam);
+  }
   url.searchParams.set(key, value);
   return url.pathname + url.search;
 }
