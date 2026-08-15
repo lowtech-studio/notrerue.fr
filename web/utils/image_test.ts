@@ -71,7 +71,7 @@ Deno.test("resizeAndEncodeImage : image unie sous la limite de dimension → un 
   assert(result.data.length <= TARGET_IMAGE_BYTES);
 });
 
-Deno.test("resizeAndEncodeImage : image très détaillée (bruit) qui résiste à la qualité 80 → recompressée jusqu'à passer sous 500 Ko", async () => {
+Deno.test("resizeAndEncodeImage : image très détaillée (bruit) qui résiste à la qualité 78 → recompressée jusqu'à passer sous 500 Ko", async () => {
   const source = await noisyPng(1600, 900);
 
   const result = await resizeAndEncodeImage(source);

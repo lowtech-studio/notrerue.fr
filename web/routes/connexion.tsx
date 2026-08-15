@@ -2,7 +2,11 @@ import { Head } from "fresh/runtime";
 import "../assets/pages/connexion.css" with { type: "css" };
 import { define } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
-import { startLogin, verifyLoginCode } from "../db/users.ts";
+import {
+  clearLoginCodeSentAt,
+  startLogin,
+  verifyLoginCode,
+} from "../db/users.ts";
 import { sendLoginCodeEmail } from "../email/brevo.ts";
 import {
   createSessionValue,
@@ -79,6 +83,12 @@ export const handler = define.handlers({
           // d'erreur détaillé en production ») — le détail réel reste dans
           // les logs serveur, jamais exposé tel quel à l'utilisateur.
           console.error("Échec de l'envoi du code de connexion :", error);
+          // `startLogin` a déjà armé le throttle avant cette tentative
+          // d'envoi : sans l'effacer, un nouvel essai immédiat tombait dans
+          // la fenêtre anti-spam et ressortait en `sent=1` malgré l'échec
+          // (cf. revue) — l'utilisateur pouvait alors réessayer tout de
+          // suite, comme le message l'invite à le faire.
+          await clearLoginCodeSentAt(email);
           return {
             data: {
               email,

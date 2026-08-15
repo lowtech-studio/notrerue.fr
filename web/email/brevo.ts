@@ -74,10 +74,9 @@ export function buildInviteEmail(
     `<strong>${login}</strong> vous invite à rejoindre NotreRue.fr, ` +
       `l'entraide entre voisins de la ${street} (${city}).`,
   ) +
-    emailParagraph(
-      "Partage, coup de main, entraide et bons plans entre voisins.",
-      true,
-    ) +
+    // Pas de paragraphe d'accroche ici (cf. revue) : le pied de page commun
+    // (renderEmailLayout) porte déjà "Partage, coup de main, entraide et
+    // bons plans entre voisins." — un second ici l'affichait deux fois.
     emailButton(joinUrl, `Rejoindre la ${street}`) +
     `<p style="margin:24px 0 0;font-size:14px;color:#6b6558;">Vous pouvez répondre directement à cet e-mail pour joindre ${login}.</p>`;
 

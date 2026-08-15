@@ -34,7 +34,7 @@ const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: "NotreRue.fr est-il vraiment gratuit ?",
     answer:
-      "Oui, entièrement gratuit et sans abonnement caché. Le site ne vit que grâce aux quelques pubs qui seront discrètes ou aux demandes de dons, pas de la revente de vos données.",
+      "Oui, entièrement gratuit et sans abonnement caché. Le site vit de quelques pubs discrètes et de dons, jamais de la revente de vos données.",
   },
   {
     question:
@@ -332,7 +332,7 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                         Tant qu'elle n'est pas allumée, rien à lire ni à publier
                         : la seule action utile est d'inviter vos voisins à vous
                         rejoindre. Ensuite vous pourrez discuter, partager vos
-                        bons plans, reccommandations...
+                        bons plans, recommandations...
                       </p>
                       <StreetProgress
                         housesCount={ownStreetStatus.housesCount}

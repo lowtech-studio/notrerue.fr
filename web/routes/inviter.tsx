@@ -285,7 +285,7 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
                     👋 Bonjour voisin·e,{"\n\n"}
                     On lance NotreRue.fr sur la {streetName}{" "}
                     : un espace privé pour s'entraider entre voisins (partage,
-                    coup de main, bons plans, reccommandations).{"\n\n"}
+                    coup de main, bons plans, recommandations).{"\n\n"}
                     Scannez ce QR code pour nous rejoindre, ou tapez :
                   </p>
                   <p class="invite-flyer__url">{joinUrl}</p>

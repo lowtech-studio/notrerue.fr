@@ -159,6 +159,21 @@ export async function startLogin(email: string): Promise<StartLoginOutcome> {
 }
 
 /**
+ * Efface l'horodatage de dernier envoi, après un échec réel de l'envoi de
+ * l'e-mail de code (cf. connexion.tsx). `startLogin` pose `loginCodeSentAt`
+ * avant que l'appelant ait tenté l'envoi : sans cet effacement, un échec
+ * laissait la fenêtre de throttle armée, et un nouvel essai immédiat tombait
+ * dans `startLogin` → `{ status: "throttled" }`, silencieusement traité comme
+ * un envoi réussi côté route (même redirection `sent=1`) — l'utilisateur
+ * attendait alors un code qui n'était jamais arrivé (cf. revue).
+ */
+export async function clearLoginCodeSentAt(email: string): Promise<void> {
+  await db.update(user).set({ loginCodeSentAt: null }).where(
+    eq(user.email, email),
+  );
+}
+
+/**
  * Vérifie le code à 6 chiffres reçu par e-mail. Le code est à usage unique :
  * une vérification réussie l'invalide immédiatement. Après
  * `MAX_LOGIN_CODE_ATTEMPTS` essais erronés, le code est invalidé (protège

@@ -9,7 +9,7 @@ import {
   buildTapNotificationEmail,
 } from "./brevo.ts";
 
-Deno.test("les trois e-mails portent l'en-tête commun (logo + nom du site)", () => {
+Deno.test("tous les e-mails transactionnels portent l'en-tête (logo + nom du site) et le pied de page commun", () => {
   const emails = [
     buildLoginCodeEmail(
       "camille@exemple.fr",
