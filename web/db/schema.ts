@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -12,6 +13,21 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+/**
+ * `bytea` Postgres — absent des types pg-core de drizzle-orm (cf.
+ * db/post_images.ts), d'où ce `customType` minimal. Pas de
+ * `toDriver`/`fromDriver` : le driver `postgres` (postgres.js, cf.
+ * db/client.ts) sait déjà sérialiser/parser `bytea` pour tout
+ * `Uint8Array`/`Buffer` passé tel quel (voir `inferType`/`types.bytea` dans
+ * ses sources) — un identité suffit, pas besoin de coder l'encodage hex à
+ * la main.
+ */
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // Trois types de demande, tous à l'échelle de la rue de l'auteur. Il y a eu
 // un quatrième type, "recommandation" (portée ville, répondu par `comment`
@@ -183,6 +199,47 @@ export const post = pgTable("post", {
   index("post_user_id_idx").on(table.userId),
 ]);
 
+// Photo jointe à une demande (cf. backlog « ajouter des pièces jointes... si
+// c'est une image ») — table séparée plutôt que des colonnes sur `post` :
+// `listStreetPosts` lit `post` à chaque affichage du fil, y trainer du
+// `bytea` à chaque ligne (même quand la colonne ne serait pas sélectionnée
+// explicitement dans le SELECT) grossirait inutilement ce chemin chaud. Une
+// seule image par demande (relation 1-1 via `postId` unique) : cohérent
+// avec l'esprit "publier en une phrase, en moins de 30 secondes" du fil, pas
+// une galerie.
+export const postImage = pgTable("post_image", {
+  id: serial("id").primaryKey(),
+  // `onDelete: "cascade"` : en pratique `post` n'est jamais supprimée en dur
+  // (toujours `deletedAt`, cf. softDeletePost) — sert surtout à ce qu'une
+  // suppression en dur (nettoyage de tests, ou une future purge RGPD hors
+  // scope ici) n'orpheline jamais une photo sans sa demande, plutôt que de
+  // devoir supprimer les deux manuellement dans le bon ordre à chaque appelant.
+  postId: integer("post_id").notNull().unique().references(() => post.id, {
+    onDelete: "cascade",
+  }),
+  // Toujours ré-encodée en JPEG côté serveur (cf. utils/image.ts), quel que
+  // soit le format d'origine (PNG/WebP/GIF...) — un seul format à servir,
+  // et les métadonnées EXIF (position GPS notamment, souvent présente dans
+  // les photos de téléphone) sont perdues au passage plutôt que republiées
+  // sans le vouloir (cf. AGENTS.md « jamais l'adresse exacte »).
+  data: bytea("data").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  // Dénormalisé depuis la rue de l'auteur au moment de l'upload : évite de
+  // remonter jusqu'à `post → user → house → street` à chaque affichage
+  // d'une photo (routes/photos/[id].ts, appelée une fois par image, pas
+  // seulement une fois par page) pour vérifier que le visiteur a le droit
+  // de la voir.
+  streetId: integer("street_id").notNull().references(() => street.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull()
+    .defaultNow(),
+}, (table) => [
+  // `routes/photos/[id].ts` vérifie `streetId` sur la ligne déjà trouvée par
+  // sa clé primaire : pas besoin d'index dédié pour cette lecture. Utile en
+  // revanche si une future fonctionnalité liste les photos d'une rue.
+  index("post_image_street_id_idx").on(table.streetId),
+]);
+
 export const comment = pgTable("comment", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
@@ -286,6 +343,15 @@ export const postRelations = relations(post, ({ one, many }) => ({
   taps: many(tap, { relationName: "tapPost" }),
   comments: many(comment),
   messages: many(message),
+  image: one(postImage),
+}));
+
+export const postImageRelations = relations(postImage, ({ one }) => ({
+  post: one(post, { fields: [postImage.postId], references: [post.id] }),
+  street: one(street, {
+    fields: [postImage.streetId],
+    references: [street.id],
+  }),
 }));
 
 export const commentRelations = relations(comment, ({ one }) => ({

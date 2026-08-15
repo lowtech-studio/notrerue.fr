@@ -34,7 +34,7 @@ const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: "NotreRue.fr est-il vraiment gratuit ?",
     answer:
-      "Oui, entièrement gratuit et sans abonnement caché. Le site ne vit pas de la revente de vos données.",
+      "Oui, entièrement gratuit et sans abonnement caché. Le site ne vit que grâce aux quelques pubs qui seront discrètes ou aux demandes de dons, pas de la revente de vos données.",
   },
   {
     question:
@@ -247,9 +247,8 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                       <p class="street-status__subtitle">
                         Un voisin déjà inscrit doit confirmer que vous habitez
                         bien {user.street.name}{" "}
-                        avant que vous puissiez publier, tapper ou écrire à
-                        quelqu'un — vous pouvez déjà consulter le fil en
-                        attendant.
+                        avant que vous puissiez publier ou écrire à quelqu'un —
+                        vous pouvez déjà consulter le fil en attendant.
                       </p>
                       {verifiedNeighbors.length > 0
                         ? (
@@ -332,7 +331,8 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                       <p class="street-status__subtitle">
                         Tant qu'elle n'est pas allumée, rien à lire ni à publier
                         : la seule action utile est d'inviter vos voisins à vous
-                        rejoindre.
+                        rejoindre. Ensuite vous pourrez discuter, partager vos
+                        bons plans, reccommandations...
                       </p>
                       <StreetProgress
                         housesCount={ownStreetStatus.housesCount}
@@ -426,7 +426,7 @@ export default define.page<typeof handler>(function Home({ data, state }) {
           </aside>
         </section>
 
-        {!user && (
+        {(!user || !ownStreetStatus?.isAwake) && (
           <section
             class="container preview-wall"
             aria-labelledby="apercu-titre"

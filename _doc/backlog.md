@@ -72,6 +72,7 @@
 - [*] En tant qu'habitant connecté, dans la page fil je veux que le placeholder du champs content pour publier une demande s'adapate quand je change de type pour donner de meilleures idées, dans je cherche ajoute aussi un exemple de recommandations...
 - [*] change le style du texte 4 foyers en dessous de "Le fil de ma rue" pour qu'on le voit un poil mieux fait moi une proposition
 - [*] En tant qu'habitant connecté, une validation est nécessaire pour prouver que j'habite cette rue afin de n'avoir que des personnes qui habitent réellement la rue ... imaginer un système pas trop contraignant et en même temps qui prouve que les voisins habitent bien dans la même rue...
+- [*] En tant qu'habitant connecté, je veux ajouter des pièces jointes à mes demandes si c'est une image réduire la taille de l'image pour éviter de surcharger du vps, la taille maximum d'un fichier doit etre fixé à 5MO
 
 ## V0.1
 

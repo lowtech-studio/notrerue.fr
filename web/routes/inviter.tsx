@@ -55,7 +55,7 @@ async function loadInviterCore(
 
   const message = `Salut ! Je m'inscris sur NotreRue.fr pour qu'on ` +
     `s'entraide entre voisins de la ${user.street.name} ` +
-    `(${user.street.city.name}) : partage, coup de main, bons plans` +
+    `(${user.street.city.name}) : partage, coup de main, bons plans. ` +
     `Rejoins-moi ici : ${joinUrl}`;
 
   return {

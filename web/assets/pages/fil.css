@@ -98,6 +98,86 @@
   outline-offset: 2px;
 }
 
+/* Photo jointe à la demande, cf. backlog « bouton plus joli et glisser-
+   déposer » (islands/ImageDropzone.tsx). Le `<input type="file">` reste
+   présent et fonctionnel (masqué visuellement seulement, jamais
+   `display: none` — cf. même technique que .fil-post__edit-toggle plus
+   bas : `display: none` le retirerait du clavier/lecteur d'écran), c'est
+   le `<label>` associé qui porte l'apparence de zone cliquable. */
+.image-dropzone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.image-dropzone__area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-ink-muted);
+  text-align: center;
+  font-size: 14px;
+  cursor: pointer;
+  background: var(--color-paper);
+}
+
+.image-dropzone__area:hover {
+  border-color: var(--color-brand);
+  color: var(--color-ink-soft);
+}
+
+.image-dropzone__icon {
+  color: var(--color-brand);
+}
+
+/* Focus clavier : posé sur l'input masqué (Tab + Entrée/Espace l'active),
+   reporté visuellement sur le label voisin — même logique que
+   .fil-post__edit-toggle:focus-visible plus bas. */
+.image-dropzone__input:focus-visible + .image-dropzone__area {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Glisser-déposer en cours (cf. ImageDropzone.tsx) : retour visuel immédiat
+   pour confirmer que la zone accepte le dépôt. */
+.image-dropzone--active .image-dropzone__area {
+  border-color: var(--color-brand);
+  border-style: solid;
+  background: var(--color-paper-warm);
+  color: var(--color-ink);
+}
+
+.image-dropzone__filename {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--color-ink);
+  word-break: break-all;
+}
+
+.image-dropzone__clear {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-brand-hover);
+  text-decoration: underline;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.image-dropzone__clear:hover {
+  color: var(--color-brand);
+}
+
 /* Filtres par type, liste chronologique, pagination. */
 .fil-filters {
   display: flex;
@@ -164,6 +244,17 @@
   font-size: 17px;
   line-height: 1.4;
   color: var(--color-ink);
+}
+
+/* Photo jointe (cf. backlog « pièces jointes... si c'est une image ») —
+   hauteur bornée : une photo de téléphone en portrait ne doit pas dominer
+   toute la carte au milieu d'un fil qui reste avant tout textuel. */
+.fil-post__image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  margin: 0 0 8px;
+  border-radius: var(--radius-md);
 }
 
 .fil-post__footer {
@@ -403,6 +494,23 @@
   border-color: var(--color-brand);
   color: var(--color-brand);
   background: var(--color-paper-warm);
+}
+
+/* Libellé "Annuler" masqué par défaut, affiché à la place de "Modifier"/
+   "Supprimer" une fois la case cochée — même principe que le panneau qu'elle
+   ouvre juste au-dessus, pour signaler qu'on peut revenir en arrière. */
+.fil-post__owner-link-label--active {
+  display: none;
+}
+
+.fil-post__edit-toggle:checked + .fil-post__owner-link .fil-post__owner-link-label,
+.fil-post__delete-toggle:checked + .fil-post__owner-link .fil-post__owner-link-label {
+  display: none;
+}
+
+.fil-post__edit-toggle:checked + .fil-post__owner-link .fil-post__owner-link-label--active,
+.fil-post__delete-toggle:checked + .fil-post__owner-link .fil-post__owner-link-label--active {
+  display: inline;
 }
 
 .fil-post:has(.fil-post__edit-toggle:checked) > .fil-post__content {

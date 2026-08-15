@@ -98,6 +98,54 @@ Deno.test("POST /connexion : e-mail inconnu → même redirection qu'un e-mail i
   );
 });
 
+Deno.test("POST /connexion : e-mail échoue à l'envoi → erreur affichée plutôt qu'une 500 brute, rien ne bloque l'utilisateur", async () => {
+  // Intégration réelle vers Brevo (même logique que taps_test.ts/
+  // reponses_test.ts pour leurs notifications), forcée en échec via une
+  // clé délibérément invalide plutôt que de dépendre de la validité
+  // (changeante) de la vraie clé de l'environnement de test — déterministe
+  // dans un sens comme dans l'autre, restaurée dans `finally`.
+  const realApiKey = Deno.env.get("BREVO_API_KEY");
+  Deno.env.set("BREVO_API_KEY", "invalid-test-key");
+
+  const testStreet = await createTestStreet("connexion-email-failure");
+  const email = `connexion-fail-${crypto.randomUUID()}@example.invalid`;
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  // `registerInhabitant` pose déjà `loginCodeSentAt` : on le recule pour
+  // sortir de la fenêtre de throttle et retomber dans le cas "sent", celui
+  // qui déclenche réellement `sendLoginCodeEmail`.
+  await db.update(user).set({
+    loginCodeSentAt: new Date(Date.now() - 120_000),
+  }).where(eq(user.id, created.id));
+
+  try {
+    const form = new FormData();
+    form.set("email", email);
+    const result = await connexionHandler.POST!(makeContext({ form }));
+    assertEquals(result, {
+      data: {
+        email,
+        step: "email",
+        sent: false,
+        error: "Erreur d'envoi de l'e-mail — réessayez dans quelques instants.",
+      },
+    });
+  } finally {
+    if (realApiKey === undefined) {
+      Deno.env.delete("BREVO_API_KEY");
+    } else {
+      Deno.env.set("BREVO_API_KEY", realApiKey);
+    }
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
 Deno.test("POST /connexion : code valide pose un cookie de session qui authentifie ensuite les requêtes", async (t) => {
   const testStreet = await createTestStreet("connexion-1");
 

@@ -64,11 +64,31 @@ export const handler = define.handlers({
       // comptes). Seul un envoi effectif ("sent") déclenche un e-mail.
       const outcome = await startLogin(email);
       if (outcome.status === "sent") {
-        await sendLoginCodeEmail(
-          email,
-          outcome.code,
-          `${ctx.url.origin}/connexion?email=${encodeURIComponent(email)}`,
-        );
+        try {
+          await sendLoginCodeEmail(
+            email,
+            outcome.code,
+            `${ctx.url.origin}/connexion?email=${encodeURIComponent(email)}`,
+          );
+        } catch (error) {
+          // Contrairement aux notifications (taps/reponses/messages), cet
+          // e-mail est indispensable pour se connecter : un échec ne peut
+          // pas être toléré en silence (l'utilisateur resterait bloqué sans
+          // code ni explication). On l'affiche plutôt que de laisser Fresh
+          // renvoyer une 500 brute (cf. AGENTS.md « jamais de message
+          // d'erreur détaillé en production ») — le détail réel reste dans
+          // les logs serveur, jamais exposé tel quel à l'utilisateur.
+          console.error("Échec de l'envoi du code de connexion :", error);
+          return {
+            data: {
+              email,
+              step: "email",
+              sent: false,
+              error:
+                "Erreur d'envoi de l'e-mail — réessayez dans quelques instants.",
+            },
+          };
+        }
       }
 
       return ctx.redirect(

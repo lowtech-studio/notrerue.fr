@@ -2,7 +2,7 @@ import { Head } from "fresh/runtime";
 import "../assets/pages/fil.css" with { type: "css" };
 import { define, isUserVerified } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
-import { MailIcon } from "../components/icons.tsx";
+import { ImageIcon, MailIcon } from "../components/icons.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
 import {
   computeExpiresAt,
@@ -32,8 +32,14 @@ import {
   type Tapper,
 } from "../db/taps.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
+import {
+  MAX_IMAGE_UPLOAD_BYTES,
+  resizeAndEncodeImage,
+  UnsupportedImageError,
+} from "../utils/image.ts";
 import CharacterCounter from "../islands/CharacterCounter.tsx";
 import PostTypePlaceholder from "../islands/PostTypePlaceholder.tsx";
+import ImageDropzone from "../islands/ImageDropzone.tsx";
 
 const POST_TYPE_LABELS: Record<PostType, string> = {
   cherche: "Je cherche",
@@ -249,22 +255,51 @@ export const handler = define.handlers({
       MIN_POST_DURATION_MONTHS,
     );
 
+    // Champ facultatif (cf. backlog « ajouter des pièces jointes... si
+    // c'est une image ») : un `<input type="file">` non rempli soumet une
+    // valeur, mais un `File` de taille nulle — `hasImage` l'exclut.
+    const imageFile = form.get("image");
+    const hasImage = imageFile instanceof File && imageFile.size > 0;
+    let imageError: string | null = null;
+    let image: Parameters<typeof createPost>[0]["image"];
+    if (hasImage) {
+      if (imageFile.size > MAX_IMAGE_UPLOAD_BYTES) {
+        imageError = "L'image dépasse la taille maximale autorisée (5 Mo).";
+      } else {
+        try {
+          const bytes = new Uint8Array(await imageFile.arrayBuffer());
+          const resized = await resizeAndEncodeImage(bytes);
+          image = { streetId: user.street.id, ...resized };
+        } catch (cause) {
+          if (!(cause instanceof UnsupportedImageError)) throw cause;
+          imageError =
+            "Format d'image non reconnu — essayez un JPEG, PNG ou WebP.";
+        }
+      }
+    }
+
     if (
       isPostType(rawType) && isPostDuration(rawDuration) && content &&
-      !containsBlockedContent(content)
+      !containsBlockedContent(content) && !imageError
     ) {
       const expiresAt = computeExpiresAt(postDuration, postDurationMonths);
-      await createPost({ userId: user.id, type: postType, content, expiresAt });
+      await createPost({
+        userId: user.id,
+        type: postType,
+        content,
+        expiresAt,
+        image,
+      });
       return ctx.redirect("/fil?published=1");
     }
 
     // Erreur : on réaffiche le fil (première page, sans filtre) avec le
     // message d'erreur et le brouillon tapé, plutôt qu'une redirection —
     // même logique que /rejoindre et /inviter.
-    const error = !isPostType(rawType) || !isPostDuration(rawDuration) ||
-        !content
-      ? "Merci de choisir un type, une durée et d'écrire votre demande."
-      : "Merci de reformuler : ce message contient des termes non autorisés.";
+    const error = imageError ??
+      (!isPostType(rawType) || !isPostDuration(rawDuration) || !content
+        ? "Merci de choisir un type, une durée et d'écrire votre demande."
+        : "Merci de reformuler : ce message contient des termes non autorisés.");
     const { posts: rawPosts, totalPages, totalCount, page } =
       await listStreetPosts({
         streetId: user.street.id,
@@ -436,7 +471,11 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
               <h2 class="compose-post__title">
                 Quoi de neuf sur votre rue ?
               </h2>
-              <form method="POST" class="compose-post__form">
+              <form
+                method="POST"
+                class="compose-post__form"
+                enctype="multipart/form-data"
+              >
                 <PostTypePlaceholder placeholders={POST_CONTENT_PLACEHOLDERS}>
                   <div
                     class="compose-post__types"
@@ -512,6 +551,41 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   </CharacterCounter>
                 </PostTypePlaceholder>
 
+                {
+                  /* Facultatif (cf. backlog « pièces jointes... si c'est
+                    une image, bouton plus joli et glisser-déposer ») —
+                    types resserrés dans `accept` pour éviter à la plupart
+                    des habitants de sélectionner un format non supporté
+                    (HEIC des iPhone notamment), la validation réelle reste
+                    côté serveur (cf. handler POST). Le `<label for>`
+                    déclenche nativement le sélecteur de fichier au clic
+                    (aucun JS requis pour ça) ; ImageDropzone n'ajoute que ce
+                    que le HTML seul ne peut pas faire : le glisser-déposer
+                    et le nom du fichier choisi (cf. islands/ImageDropzone.tsx). */
+                }
+                <div class="form-field">
+                  <span class="lookup-card__label">Photo (facultatif)</span>
+                  <ImageDropzone>
+                    <input
+                      id="compose-post-image"
+                      type="file"
+                      name="image"
+                      accept="image/jpeg,image/png,image/webp"
+                      class="image-dropzone__input"
+                    />
+                    <label
+                      for="compose-post-image"
+                      class="image-dropzone__area"
+                    >
+                      <ImageIcon class="image-dropzone__icon" />
+                      <span>
+                        Glissez une photo ici, ou cliquez pour la choisir
+                      </span>
+                    </label>
+                  </ImageDropzone>
+                  <p class="autocomplete-field__hint">5 Mo maximum.</p>
+                </div>
+
                 <button type="submit" class="button">Publier</button>
               </form>
             </div>
@@ -556,6 +630,17 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                   </span>
                 </div>
                 <p class="fil-post__content">{item.content}</p>
+
+                {item.image && (
+                  <img
+                    src={`/photos/${item.image.id}`}
+                    width={item.image.width}
+                    height={item.image.height}
+                    loading="lazy"
+                    alt={`Photo jointe à la demande de ${item.authorLogin}`}
+                    class="fil-post__image"
+                  />
+                )}
 
                 {
                   /* Formulaire d'édition posé ici, à la place du contenu
@@ -704,7 +789,20 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                           for={`fil-edit-toggle-${item.id}`}
                           class="fil-post__owner-link"
                         >
-                          Modifier
+                          {
+                            /* Le libellé bascule sur "Annuler" une fois la
+                              case cochée (cf. retour utilisateur : montrer
+                              qu'on peut revenir en arrière) — deux <span>
+                              plutôt que du JS, basculés par la même case à
+                              cocher que le panneau qu'elle ouvre (cf.
+                              .fil-post__owner-link-label--active plus bas). */
+                          }
+                          <span class="fil-post__owner-link-label">
+                            Modifier
+                          </span>
+                          <span class="fil-post__owner-link-label--active">
+                            Annuler
+                          </span>
                         </label>
 
                         <input
@@ -716,7 +814,12 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                           for={`fil-delete-toggle-${item.id}`}
                           class="fil-post__owner-link fil-post__owner-link--danger"
                         >
-                          Supprimer
+                          <span class="fil-post__owner-link-label">
+                            Supprimer
+                          </span>
+                          <span class="fil-post__owner-link-label--active">
+                            Annuler
+                          </span>
                         </label>
                       </div>
                     </>

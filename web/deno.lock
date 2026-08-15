@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@cross/image@~0.4.3": "0.4.3",
     "jsr:@deno/esbuild-plugin@^1.2.0": "1.2.1",
     "jsr:@deno/loader@0.4": "0.4.0",
     "jsr:@deno/loader@~0.3.10": "0.3.14",
@@ -59,6 +60,9 @@
     "npm:vite@^7.1.4": "7.3.6"
   },
   "jsr": {
+    "@cross/image@0.4.3": {
+      "integrity": "35de7afd2b3ea800dad368ff364e735f66b2719dbd053084fa42b0d233e3492c"
+    },
     "@deno/esbuild-plugin@1.2.1": {
       "integrity": "df629467913adc1f960149fdfa3a3430ba8c20381c310fba096db244e6c3c9f6",
       "dependencies": [
@@ -1516,6 +1520,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@cross/image@~0.4.3",
       "jsr:@fresh/core@^2.3.3",
       "jsr:@fresh/plugin-vite@^1.1.2",
       "jsr:@std/assert@^1.0.19",

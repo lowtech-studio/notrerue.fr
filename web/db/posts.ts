@@ -10,7 +10,7 @@ import {
   or,
 } from "drizzle-orm";
 import { db } from "./client.ts";
-import { comment, house, post, postType, user } from "./schema.ts";
+import { comment, house, post, postImage, postType, user } from "./schema.ts";
 import { escapeLikePattern } from "../utils/validation.ts";
 
 export type Post = typeof post.$inferSelect;
@@ -86,6 +86,14 @@ export function computeExpiresAt(
   return expiresAt;
 }
 
+/** Photo à joindre à la demande créée — déjà redimensionnée/ré-encodée par l'appelant (cf. utils/image.ts), `createPost` ne fait qu'enregistrer le résultat. */
+export interface CreatePostImageInput {
+  streetId: number;
+  data: Uint8Array;
+  width: number;
+  height: number;
+}
+
 export interface CreatePostInput {
   userId: number;
   type: PostType;
@@ -98,21 +106,38 @@ export interface CreatePostInput {
    * retombe sur une semaine si omise.
    */
   expiresAt?: Date;
+  /** Cf. backlog « ajouter des pièces jointes... si c'est une image » — absente si la demande n'en a pas. */
+  image?: CreatePostImageInput;
 }
 
 /**
- * Enregistre une demande. Aucune vérification d'appartenance à une rue ici
- * (le foyer de l'auteur la détermine déjà) ni de modération : ces contrôles
+ * Enregistre une demande, et sa photo le cas échéant, dans la même
+ * transaction (cf. schema.ts#postImage : relation 1-1, l'une n'a pas de
+ * sens sans l'autre). Aucune vérification d'appartenance à une rue ici (le
+ * foyer de l'auteur la détermine déjà) ni de modération : ces contrôles
  * sont faits par l'appelant (route) avant insertion.
  */
 export async function createPost(input: CreatePostInput): Promise<Post> {
-  const [created] = await db.insert(post).values({
-    userId: input.userId,
-    type: input.type,
-    content: input.content,
-    expiresAt: input.expiresAt ?? computeExpiresAt("week", 1),
-  }).returning();
-  return created;
+  return await db.transaction(async (tx) => {
+    const [created] = await tx.insert(post).values({
+      userId: input.userId,
+      type: input.type,
+      content: input.content,
+      expiresAt: input.expiresAt ?? computeExpiresAt("week", 1),
+    }).returning();
+
+    if (input.image) {
+      await tx.insert(postImage).values({
+        postId: created.id,
+        streetId: input.image.streetId,
+        data: input.image.data,
+        width: input.image.width,
+        height: input.image.height,
+      });
+    }
+
+    return created;
+  });
 }
 
 /**
@@ -178,6 +203,13 @@ export interface StreetPost {
   createdAt: Date;
   authorId: number;
   authorLogin: string;
+  /**
+   * Photo jointe (cf. schema.ts#postImage), sans ses octets : juste de quoi
+   * construire `<img src="/photos/{id}">` avec `width`/`height` corrects
+   * (cf. routes/fil.tsx) sans faire transiter du `bytea` à chaque ligne du
+   * fil. `null` si la demande n'en a pas.
+   */
+  image: { id: number; width: number; height: number } | null;
 }
 
 export interface ListStreetPostsInput {
@@ -266,10 +298,19 @@ export async function listStreetPosts(
     createdAt: post.createdAt,
     authorId: user.id,
     authorLogin: user.login,
+    // `leftJoin` : la grande majorité des demandes n'ont pas de photo, un
+    // `innerJoin` les aurait exclues. Seules `id`/largeur/hauteur sont
+    // sélectionnées ici, jamais `postImage.data` (cf. StreetPost.image) —
+    // le poids des photos ne transite jamais par ce chemin, appelé à
+    // chaque affichage du fil.
+    imageId: postImage.id,
+    imageWidth: postImage.width,
+    imageHeight: postImage.height,
   })
     .from(post)
     .innerJoin(user, eq(post.userId, user.id))
     .innerJoin(house, eq(user.houseId, house.id))
+    .leftJoin(postImage, eq(postImage.postId, post.id))
     .where(where)
     // `id` en second critère : deux demandes créées à la même seconde (ou un
     // insert en masse) auraient sinon un ordre instable d'une requête à
@@ -278,7 +319,16 @@ export async function listStreetPosts(
     .limit(POSTS_PER_PAGE)
     .offset((page - 1) * POSTS_PER_PAGE);
 
-  return { posts: rows, totalCount, totalPages, page };
+  const posts: StreetPost[] = rows.map(
+    ({ imageId, imageWidth, imageHeight, ...row }) => ({
+      ...row,
+      image: imageId !== null
+        ? { id: imageId, width: imageWidth!, height: imageHeight! }
+        : null,
+    }),
+  );
+
+  return { posts, totalCount, totalPages, page };
 }
 
 export interface PostSummary {

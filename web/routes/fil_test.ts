@@ -1,15 +1,17 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { eq } from "drizzle-orm";
 import type { Context } from "fresh";
+import { Image } from "@cross/image";
 import type { SessionUser, State } from "../utils.ts";
 import { db } from "../db/client.ts";
-import { comment, house, post, tap, user } from "../db/schema.ts";
+import { comment, house, post, postImage, tap, user } from "../db/schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { registerInhabitant } from "../db/users.ts";
 import { toggleTap } from "../db/taps.ts";
 import { createComment } from "../db/comments.ts";
 import { createPost, MIN_POST_DURATION_MONTHS } from "../db/posts.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
+import { MAX_IMAGE_UPLOAD_BYTES } from "../utils/image.ts";
 import { handler } from "./fil.tsx";
 
 function makeContext(
@@ -350,6 +352,101 @@ Deno.test("POST /fil : message valide → publié, redirection avec confirmation
     );
     assertEquals(created.content, "Je prête ma tondeuse ce week-end");
     assertEquals(created.type, "propose");
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("POST /fil : avec une photo valide → publiée, redimensionnée et jointe à la demande", async () => {
+  const awake = await createAwakeStreetWithUser("fil-image-1");
+
+  try {
+    const source = new Uint8Array(
+      await Image.create(2000, 1000, 255, 0, 0).encode("png"),
+    );
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("duration", "week");
+    form.set("content", "Je cherche une perceuse, photo à l'appui");
+    form.set(
+      "image",
+      new File([source], "photo.png", { type: "image/png" }),
+    );
+
+    const response = await handler.POST!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser, form }),
+    ) as Response;
+    assertEquals(response.status, 302);
+    assertEquals(response.headers.get("location"), "/fil?published=1");
+
+    const [created] = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+    const [image] = await db.select().from(postImage).where(
+      eq(postImage.postId, created.id),
+    );
+    assertEquals(image.width, 1600);
+    assertEquals(image.height, 800);
+    assertEquals(image.streetId, awake.testStreet.testStreet.id);
+    // JPEG (cf. utils/image.ts : toujours ré-encodée), pas le PNG envoyé.
+    assertEquals([...image.data.slice(0, 2)], [0xff, 0xd8]);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("POST /fil : photo trop lourde (> 5 Mo) → erreur, rien publié", async () => {
+  const awake = await createAwakeStreetWithUser("fil-image-2");
+
+  try {
+    const oversized = new Uint8Array(MAX_IMAGE_UPLOAD_BYTES + 1);
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("duration", "week");
+    form.set("content", "Je cherche une perceuse");
+    form.set(
+      "image",
+      new File([oversized], "trop-lourde.jpg", { type: "image/jpeg" }),
+    );
+
+    const result = await handler.POST!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser, form }),
+    ) as { data: { postError: string | null } };
+    assertStringIncludes(result.data.postError ?? "", "5 Mo");
+
+    const posts = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+    assertEquals(posts.length, 0);
+  } finally {
+    await cleanupAwakeStreet(awake);
+  }
+});
+
+Deno.test("POST /fil : fichier qui n'est pas une image → erreur, rien publié", async () => {
+  const awake = await createAwakeStreetWithUser("fil-image-3");
+
+  try {
+    const form = new FormData();
+    form.set("type", "cherche");
+    form.set("duration", "week");
+    form.set("content", "Je cherche une perceuse");
+    form.set(
+      "image",
+      new File([new Uint8Array([1, 2, 3, 4])], "pas-une-image.jpg", {
+        type: "image/jpeg",
+      }),
+    );
+
+    const result = await handler.POST!(
+      makeContext("http://localhost/fil", { user: awake.sessionUser, form }),
+    ) as { data: { postError: string | null } };
+    assertStringIncludes(result.data.postError ?? "", "Format d'image");
+
+    const posts = await db.select().from(post).where(
+      eq(post.userId, awake.created.id),
+    );
+    assertEquals(posts.length, 0);
   } finally {
     await cleanupAwakeStreet(awake);
   }

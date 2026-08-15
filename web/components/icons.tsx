@@ -111,6 +111,28 @@ export function ThemeIcon({ class: className }: IconProps) {
   );
 }
 
+/** Photo/paysage, pour la zone d'ajout d'image d'une demande (cf. islands/ImageDropzone.tsx). */
+export function ImageIcon({ class: className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      class={className}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
+  );
+}
+
 /** Imprimante, pour le bouton « Imprimer le kit papier ». */
 export function PrinterIcon({ class: className }: IconProps) {
   return (

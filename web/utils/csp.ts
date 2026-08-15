@@ -14,13 +14,27 @@ import type { CSPOptions } from "fresh";
  * garde ces autorisations statiques plutôt que de les voir remplacées par un
  * nonce — jamais le cas en production (seul chemin qui sert de vrais
  * utilisateurs).
+ *
+ * `fresh-island:` dans `script-src`, en dev uniquement : `@fresh/plugin-vite`
+ * y charge le JS de chaque island via des spécificateurs
+ * `fresh-island::NomDuComposant.tsx`, que le navigateur traite comme une URL
+ * de schéma `fresh-island:` — jamais couvert par `'self'` (l'origine ne
+ * correspond pas) ni par `'unsafe-inline'` (qui ne concerne que le code
+ * inline, pas le chargement d'un script externe). Sans cette entrée,
+ * *toutes* les islands restent muettes en dev, sans la moindre erreur
+ * visible côté UI (juste une ligne dans la console) — régression trouvée en
+ * conditions réelles sur islands/ImageDropzone.tsx (glisser-déposer une
+ * image sans effet). Absent en production : les islands y sont servies sous
+ * des chemins `/self`-relatifs classiques (cf. utils/csp_test.ts).
  */
 export function buildCspOptions(isDev: boolean): CSPOptions {
   return {
     useNonce: !isDev,
     csp: [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+      `script-src 'self' 'unsafe-inline'${
+        isDev ? " 'unsafe-eval' fresh-island:" : ""
+      }`,
       "style-src 'self' 'unsafe-inline'",
       // Pas de `data:`/`blob:` (défauts Fresh) : aucune image encodée en
       // base64, aucun média, aucun worker construit dynamiquement ici.
