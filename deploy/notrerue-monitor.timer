@@ -1,0 +1,12 @@
+[Unit]
+Description=Déclenche la vérification CPU/RAM/disque toutes les 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+# Rejoue la vérification manquée au redémarrage plutôt que d'attendre
+# jusqu'à 5 min de plus (même logique que notrerue-backup.timer).
+Persistent=true
+
+[Install]
+WantedBy=timers.target

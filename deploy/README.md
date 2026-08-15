@@ -192,11 +192,44 @@ sudo journalctl -u caddy.service -f          # accès/erreurs du reverse proxy
 sudo systemctl status notrerue.service postgresql caddy
 ```
 
-Rien de plus lourd n'est recommandé ici : un Prometheus/Grafana local
-consommerait une part significative des 1 Go disponibles pour surveiller
-une machine qui n'en a pas les moyens. Pour un contrôle de disponibilité
-externe, un service de "uptime monitoring" gratuit (ping HTTP périodique
-depuis l'extérieur) suffit largement à ce stade, sans rien installer ici.
+Rien de plus lourd n'est recommandé ici : un Prometheus/Grafana/Datadog/
+New Relic/netdata local consommerait une part significative (souvent
+100-300 Mo) des ~300 Mo de marge libre de ce serveur (cf. « Budget
+mémoire » plus haut), pour un besoin que deux mécanismes bien plus légers
+couvrent entièrement.
+
+**Panne totale (le serveur ne répond plus)** — un agent local ne peut par
+définition pas signaler sa propre panne. Un moniteur externe gratuit
+(UptimeRobot, Better Stack...) qui ping `https://notrerue.fr` toutes les
+quelques minutes et alerte par e-mail/push suffit largement, sans rien
+installer sur ce serveur :
+
+1. Créer un compte sur [uptimerobot.com](https://uptimerobot.com) (gratuit
+   jusqu'à 50 moniteurs).
+2. Ajouter un moniteur HTTP(S) sur `https://notrerue.fr`, intervalle 5 min.
+3. Configurer l'alerte (e-mail suffit pour commencer).
+
+**CPU/RAM/disque qui approchent de leur limite** — `deploy/monitor.sh`,
+déclenché toutes les 5 min par `notrerue-monitor.timer` (installé par
+`provision.sh`). Contrairement à un agent de supervision classique, il ne
+reste jamais en mémoire : il tourne quelques secondes, vérifie les seuils
+via `df`/`free`/`/proc/loadavg`, et se termine — coût mémoire ~nul entre
+deux exécutions. Alerte par e-mail (Brevo, déjà configuré) uniquement au
+franchissement d'un seuil, avec un e-mail de rétablissement quand la
+métrique repasse en dessous (pas de spam toutes les 5 min).
+
+Seuils par défaut (adaptés à 1 Go de RAM / 10 Go de disque / 1 vCore),
+surchargeables dans `notrerue.env` sans toucher au script :
+
+| Métrique | Seuil par défaut | Variable |
+|---|---|---|
+| Disque utilisé | 80 % | `MONITOR_DISK_THRESHOLD_PCT` |
+| RAM disponible | < 100 Mo | `MONITOR_RAM_AVAILABLE_MIN_MB` |
+| Charge CPU (moyenne 5 min) | > 1.5 | `MONITOR_LOAD_THRESHOLD` |
+
+Prérequis : `MONITOR_ALERT_EMAIL` complété dans
+`/srv/notrerue/shared/notrerue.env` (cf. message de fin de
+`provision.sh`). Test manuel : `sudo /srv/notrerue/bin/monitor.sh`.
 
 ### 5. Restaurer une sauvegarde (à tester au moins une fois, hors urgence)
 

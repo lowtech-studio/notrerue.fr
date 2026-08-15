@@ -1,0 +1,6 @@
+[Unit]
+Description=Vérifie CPU/RAM/disque et alerte par e-mail en cas de dépassement de seuil
+
+[Service]
+Type=oneshot
+ExecStart=/srv/notrerue/bin/monitor.sh

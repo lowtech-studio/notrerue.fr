@@ -39,7 +39,7 @@ apt-get -y upgrade
 
 echo "==> Paquets de base"
 apt-get install -y --no-install-recommends \
-  ca-certificates curl gnupg rsync \
+  ca-certificates curl gnupg rsync jq \
   ufw fail2ban unattended-upgrades apt-listchanges \
   postgresql postgresql-contrib \
   systemd-zram-generator age
@@ -122,9 +122,15 @@ cp "$DEPLOY_DIR/notrerue-backup.service" /etc/systemd/system/notrerue-backup.ser
 cp "$DEPLOY_DIR/notrerue-backup.timer" /etc/systemd/system/notrerue-backup.timer
 cp "$DEPLOY_DIR/backup.sh" "$BASE_DIR/bin/backup.sh"
 chmod 750 "$BASE_DIR/bin/backup.sh"
+cp "$DEPLOY_DIR/notrerue-monitor.service" /etc/systemd/system/notrerue-monitor.service
+cp "$DEPLOY_DIR/notrerue-monitor.timer" /etc/systemd/system/notrerue-monitor.timer
+cp "$DEPLOY_DIR/monitor.sh" "$BASE_DIR/bin/monitor.sh"
+chmod 750 "$BASE_DIR/bin/monitor.sh"
 systemctl daemon-reload
 systemctl enable notrerue-backup.timer
 systemctl start notrerue-backup.timer
+systemctl enable notrerue-monitor.timer
+systemctl start notrerue-monitor.timer
 
 if [ ! -f "$BASE_DIR/shared/notrerue.env" ]; then
   cat > "$BASE_DIR/shared/notrerue.env" <<EOF
@@ -135,6 +141,15 @@ SESSION_SECRET=$(openssl rand -base64 48)
 DATABASE_POOL_MAX=5
 BREVO_API_KEY=
 EMAIL_FROM=
+
+# Supervision (cf. deploy/monitor.sh) — adresse qui reçoit les alertes
+# CPU/RAM/disque. Les seuils ci-dessous ont des valeurs par défaut dans
+# monitor.sh (80% / 100 Mo / 1.5) : ne les redéfinir ici que pour les
+# changer.
+MONITOR_ALERT_EMAIL=
+#MONITOR_DISK_THRESHOLD_PCT=80
+#MONITOR_RAM_AVAILABLE_MIN_MB=100
+#MONITOR_LOAD_THRESHOLD=1.5
 EOF
   chown "$APP_USER:$APP_USER" "$BASE_DIR/shared/notrerue.env"
   chmod 640 "$BASE_DIR/shared/notrerue.env"
@@ -151,11 +166,14 @@ plus, notez-le ailleurs si besoin d'y accéder sans se reconnecter au serveur)
 
 Reste à faire avant le premier déploiement (cf. deploy/README.md) :
   1. Pointer les DNS (A/AAAA) de notrerue.fr vers ce serveur.
-  2. Compléter BREVO_API_KEY et EMAIL_FROM dans
+  2. Compléter BREVO_API_KEY, EMAIL_FROM et MONITOR_ALERT_EMAIL dans
      $BASE_DIR/shared/notrerue.env
   3. Générer une paire de clés de sauvegarde HORS de ce serveur
      ('age-keygen'), copier la clé PUBLIQUE dans
      $BASE_DIR/shared/backup-recipient.txt
-  4. Depuis votre poste : VPS_HOST=... VPS_USER=... ./deploy/deploy.sh
+  4. Créer un moniteur externe gratuit (UptimeRobot...) sur
+     https://notrerue.fr — un agent local ne peut pas signaler sa propre
+     panne (cf. deploy/README.md « Supervision externe »).
+  5. Depuis votre poste : VPS_HOST=... VPS_USER=... ./deploy/deploy.sh
 ==============================================================================
 EOF
