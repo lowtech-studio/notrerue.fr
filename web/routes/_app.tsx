@@ -34,6 +34,11 @@ const SITE_JSON_LD = jsonLd({
       "logo": `${SITE_URL}/icon.svg`,
       "description": DEFAULT_DESCRIPTION,
       "areaServed": { "@type": "Country", "name": "France" },
+      // Consolide l'identité de la marque (cf. audit SEO) : seule présence
+      // externe vérifiable à ce jour, le dépôt du code source (le site
+      // n'a pas encore de comptes sociaux officiels — à compléter ici
+      // dès qu'ils existent, plutôt que d'inventer une présence fictive).
+      "sameAs": ["https://github.com/lowtech-studio/notrerue.fr"],
     },
     {
       "@type": "WebSite",

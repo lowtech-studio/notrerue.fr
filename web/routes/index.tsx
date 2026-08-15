@@ -2,6 +2,7 @@ import { Head } from "fresh/runtime";
 import "../assets/pages/index.css" with { type: "css" };
 import { define, isUserVerified } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
+import { SiteFooter } from "../components/SiteFooter.tsx";
 import { StreetProgress } from "../components/StreetProgress.tsx";
 import {
   getStreetAwakeningStatus,
@@ -503,21 +504,7 @@ export default define.page<typeof handler>(function Home({ data, state }) {
           </section>
         )}
       </main>
-      <footer class="site-footer">
-        <p class="container site-footer__text">
-          NotreRue.fr by LowTech.studio — « Nous rapprocher les uns des autres »
-          | Souveraineté — Hebergement 100% Français 🇫🇷 et{" "}
-          <a
-            href="https://github.com/lowtech-studio/notrerue.fr"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="site-footer__link"
-          >
-            Code 100% Open Source
-          </a>{" "}
-          pas d'entourloupe !
-        </p>
-      </footer>
+      <SiteFooter />
     </>
   );
 });

@@ -795,6 +795,15 @@ button.site-header__link {
   padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
+.site-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .site-footer__text {
   font-size: 14px;
   color: var(--color-ink-muted);

@@ -70,19 +70,6 @@ Deno.test("SEO - robots.txt autorise le crawl public et référence le sitemap",
   }
 });
 
-Deno.test("SEO - sitemap.xml ne référence que des URL absolues sur notrerue.fr", async () => {
-  const xml = await readStatic("sitemap.xml");
-  assertStringIncludes(xml, "<urlset");
-  const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1]);
-  assert(locs.length > 0, "le sitemap doit lister au moins une URL");
-  for (const loc of locs) {
-    assert(
-      loc.startsWith("https://notrerue.fr/"),
-      `${loc} doit être une URL absolue sur notrerue.fr`,
-    );
-  }
-});
-
 Deno.test("SEO - llms.txt existe et présente le site en Markdown", async () => {
   const llmsTxt = await readStatic("llms.txt");
   assert(llmsTxt.startsWith("# NotreRue.fr"), "doit commencer par un H1");

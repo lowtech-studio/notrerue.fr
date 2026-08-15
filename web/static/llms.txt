@@ -35,6 +35,21 @@
 - [Rejoindre ma rue](https://notrerue.fr/rejoindre) : inscription.
 - [Se connecter](https://notrerue.fr/connexion) : connexion par code à 6
   chiffres envoyé par e-mail (pas de mot de passe).
+- [À propos](https://notrerue.fr/a-propos) : qui édite le site (LowTech.studio)
+  et pourquoi il existe.
+- [Blog](https://notrerue.fr/blog) : conseils de voisinage ancrés dans des
+  situations réelles (confiance, entraide, prêt de matériel...).
+  - [NotreRue.fr ou groupe WhatsApp de quartier ?](https://notrerue.fr/blog/whatsapp-groupe-de-quartier)
+  - [Trouver un artisan de confiance dans son quartier](https://notrerue.fr/blog/trouver-artisan-confiance-quartier)
+  - [Prêter et emprunter du matériel entre voisins](https://notrerue.fr/blog/preter-materiel-entre-voisins)
+  - [Qui peut garder mon chien le temps d'un week-end ?](https://notrerue.fr/blog/garder-animal-vacances-voisins)
+  - [Panne internet : c'est chez moi, ou toute la rue est touchée ?](https://notrerue.fr/blog/panne-fibre-internet-rue)
+  - [On roule trop vite dans ma rue : se faire entendre à plusieurs](https://notrerue.fr/blog/signaler-vitesse-excessive-rue)
+  - [Covoiturage entre voisins : partager le trajet de l'école ou de la gare](https://notrerue.fr/blog/covoiturage-entre-voisins)
+  - [Un imprévu, personne pour garder les enfants](https://notrerue.fr/blog/garde-enfants-depannage-voisins)
+  - [Réparer plutôt que jeter : mutualiser objets et compétences](https://notrerue.fr/blog/echanger-reparer-objets-entre-voisins)
+  - [Rompre l'isolement par un service du quotidien](https://notrerue.fr/blog/rompre-isolement-voisinage)
+  - [Faire veiller sa maison par un voisin pendant les vacances](https://notrerue.fr/blog/veiller-maison-absence-vacances)
 
 ## Détails techniques (pour agents/développeurs)
 

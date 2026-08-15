@@ -1,0 +1,36 @@
+/* Page /a-propos — prose simple sur la coquille .hero--single commune
+   (cf. assets/common.css), pas de mise en page propre à réinventer. */
+
+.about-content {
+  max-width: 42em;
+}
+
+.about-content p {
+  margin: 0 0 20px;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--color-ink-soft);
+}
+
+.about-content p:last-child {
+  margin-bottom: 0;
+}
+
+.about-content a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
+
+.about-content a:hover {
+  color: var(--color-brand-hover);
+}
+
+.about-content__signature {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+}
+
+.about-content__signature strong {
+  font-weight: 600;
+}
