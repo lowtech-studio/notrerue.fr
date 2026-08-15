@@ -1,0 +1,65 @@
+/* Styles de /blog/[slug] (article) — cf. routes/blog/[slug].tsx. Séparé de
+   blog.css (liste) : voir le commentaire en tête de ce fichier sur la
+   règle « un fichier CSS par route » côté @fresh/plugin-vite. */
+
+.blog-article__back {
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--color-brand);
+}
+
+.blog-article__back:hover {
+  text-decoration: underline;
+}
+
+.blog-article__date {
+  margin: -12px 0 24px;
+  font-size: 14px;
+  color: var(--color-ink-muted);
+}
+
+/* Réponse directe (cf. dossier SEO) : mise en valeur, distincte du reste du
+   corps, plutôt qu'un simple premier paragraphe — pour rester repérable
+   même en lecture en diagonale. */
+.blog-article__intro {
+  margin: 0 0 28px;
+  padding: 18px 20px;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--color-paper-warm);
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--color-ink);
+}
+
+.blog-article__body {
+  max-width: 42em;
+}
+
+.blog-article__body p {
+  margin: 0 0 20px;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--color-ink-soft);
+}
+
+.blog-article__body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Appel à l'action de fin d'article — même déclencheur sur tous les
+   articles (cf. routes/blog/[slug].tsx), pas répété dans le texte de
+   chacun. */
+.blog-article__cta {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-border);
+}
+
+.blog-article__cta p {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--color-ink);
+}

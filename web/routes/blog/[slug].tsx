@@ -1,5 +1,5 @@
 import { Head } from "fresh/runtime";
-import "../../assets/pages/blog.css" with { type: "css" };
+import "../../assets/pages/blog-article.css" with { type: "css" };
 import { define } from "../../utils.ts";
 import { Header } from "../../components/Header.tsx";
 import { SiteFooter } from "../../components/SiteFooter.tsx";
