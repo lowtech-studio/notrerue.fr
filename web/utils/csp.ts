@@ -23,7 +23,7 @@ import type { CSPOptions } from "fresh";
  * inline, pas le chargement d'un script externe). Sans cette entrée,
  * *toutes* les islands restent muettes en dev, sans la moindre erreur
  * visible côté UI (juste une ligne dans la console) — régression trouvée en
- * conditions réelles sur islands/ImageDropzone.tsx (glisser-déposer une
+ * conditions réelles sur islands/PostComposerField.tsx (glisser-déposer une
  * image sans effet). Absent en production : les islands y sont servies sous
  * des chemins `/self`-relatifs classiques (cf. utils/csp_test.ts).
  */

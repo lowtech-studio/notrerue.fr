@@ -8,6 +8,7 @@ import {
   inArray,
   isNull,
   or,
+  sql,
 } from "drizzle-orm";
 import { db } from "./client.ts";
 import { comment, house, post, postImage, postType, user } from "./schema.ts";
@@ -282,53 +283,86 @@ export async function listStreetPosts(
     searchCondition,
   );
 
-  const [{ value: totalCount }] = await db.select({ value: count() })
-    .from(post)
-    .innerJoin(user, eq(post.userId, user.id))
-    .innerJoin(house, eq(user.houseId, house.id))
-    .where(where);
+  const selectPage = (page: number) =>
+    db.select({
+      id: post.id,
+      type: post.type,
+      content: post.content,
+      createdAt: post.createdAt,
+      authorId: user.id,
+      authorLogin: user.login,
+      // `leftJoin` : la grande majorité des demandes n'ont pas de photo, un
+      // `innerJoin` les aurait exclues. Seules `id`/largeur/hauteur sont
+      // sélectionnées ici, jamais `postImage.data` (cf. StreetPost.image) —
+      // le poids des photos ne transite jamais par ce chemin, appelé à
+      // chaque affichage du fil.
+      imageId: postImage.id,
+      imageWidth: postImage.width,
+      imageHeight: postImage.height,
+      // `count(*) over()` plutôt qu'un `SELECT count(...)` séparé (cf.
+      // revue perf) : un aller-retour DB en moins à chaque affichage du fil
+      // — la fenêtre porte sur toutes les lignes filtrées par `where`,
+      // évaluée avant `LIMIT`/`OFFSET`, donc le total reste correct même
+      // si la page ne ramène que 3 lignes. `.mapWith(Number)` : même
+      // conversion que le helper `count()` de drizzle (sinon un bigint
+      // Postgres remonte en `string` via postgres.js).
+      totalCount: sql<number>`count(*) over()`.mapWith(Number),
+    })
+      .from(post)
+      .innerJoin(user, eq(post.userId, user.id))
+      .innerJoin(house, eq(user.houseId, house.id))
+      .leftJoin(postImage, eq(postImage.postId, post.id))
+      .where(where)
+      // `id` en second critère : deux demandes créées à la même seconde (ou
+      // un insert en masse) auraient sinon un ordre instable d'une requête
+      // à l'autre, avec un risque de doublons/trous entre deux pages (cf.
+      // revue).
+      .orderBy(desc(post.createdAt), desc(post.id))
+      .limit(POSTS_PER_PAGE)
+      .offset((page - 1) * POSTS_PER_PAGE);
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / POSTS_PER_PAGE));
-  const page = Math.min(Math.max(1, input.page), totalPages);
-
-  const rows = await db.select({
-    id: post.id,
-    type: post.type,
-    content: post.content,
-    createdAt: post.createdAt,
-    authorId: user.id,
-    authorLogin: user.login,
-    // `leftJoin` : la grande majorité des demandes n'ont pas de photo, un
-    // `innerJoin` les aurait exclues. Seules `id`/largeur/hauteur sont
-    // sélectionnées ici, jamais `postImage.data` (cf. StreetPost.image) —
-    // le poids des photos ne transite jamais par ce chemin, appelé à
-    // chaque affichage du fil.
-    imageId: postImage.id,
-    imageWidth: postImage.width,
-    imageHeight: postImage.height,
-  })
-    .from(post)
-    .innerJoin(user, eq(post.userId, user.id))
-    .innerJoin(house, eq(user.houseId, house.id))
-    .leftJoin(postImage, eq(postImage.postId, post.id))
-    .where(where)
-    // `id` en second critère : deux demandes créées à la même seconde (ou un
-    // insert en masse) auraient sinon un ordre instable d'une requête à
-    // l'autre, avec un risque de doublons/trous entre deux pages (cf. revue).
-    .orderBy(desc(post.createdAt), desc(post.id))
-    .limit(POSTS_PER_PAGE)
-    .offset((page - 1) * POSTS_PER_PAGE);
-
-  const posts: StreetPost[] = rows.map(
-    ({ imageId, imageWidth, imageHeight, ...row }) => ({
+  const toPosts = (
+    rows: Awaited<ReturnType<typeof selectPage>>,
+  ): StreetPost[] =>
+    rows.map(({ imageId, imageWidth, imageHeight, totalCount: _, ...row }) => ({
       ...row,
       image: imageId !== null
         ? { id: imageId, width: imageWidth!, height: imageHeight! }
         : null,
-    }),
-  );
+    }));
 
-  return { posts, totalCount, totalPages, page };
+  let rows = await selectPage(Math.max(1, input.page));
+
+  // Page demandée hors bornes (au-delà de la dernière, ou aucune demande du
+  // tout) : `count(*) over()` n'apparaît sur aucune ligne puisqu'il n'y en a
+  // aucune à cette page — retombe sur une requête `COUNT` dédiée pour
+  // connaître le total, ramène la page dans les bornes, puis reprend la
+  // bonne page. Coûte le second aller-retour que ce changement économise
+  // d'ordinaire, mais seulement dans ce cas marginal (page invalide ou fil
+  // vide), jamais sur le chemin nominal.
+  if (rows.length === 0) {
+    const [{ value: totalCount }] = await db.select({ value: count() })
+      .from(post)
+      .innerJoin(user, eq(post.userId, user.id))
+      .innerJoin(house, eq(user.houseId, house.id))
+      .where(where);
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / POSTS_PER_PAGE));
+    const page = Math.min(Math.max(1, input.page), totalPages);
+    if (totalCount > 0) rows = await selectPage(page);
+
+    return { posts: toPosts(rows), totalCount, totalPages, page };
+  }
+
+  const totalCount = rows[0].totalCount;
+  const totalPages = Math.max(1, Math.ceil(totalCount / POSTS_PER_PAGE));
+
+  return {
+    posts: toPosts(rows),
+    totalCount,
+    totalPages,
+    page: Math.max(1, input.page),
+  };
 }
 
 export interface PostSummary {

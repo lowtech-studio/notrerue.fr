@@ -38,8 +38,7 @@ import {
   UnsupportedImageError,
 } from "../utils/image.ts";
 import CharacterCounter from "../islands/CharacterCounter.tsx";
-import PostTypePlaceholder from "../islands/PostTypePlaceholder.tsx";
-import ImageDropzone from "../islands/ImageDropzone.tsx";
+import PostComposerField from "../islands/PostComposerField.tsx";
 
 const POST_TYPE_LABELS: Record<PostType, string> = {
   cherche: "Je cherche",
@@ -555,7 +554,8 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                     class="compose-post__form"
                     enctype="multipart/form-data"
                   >
-                    <PostTypePlaceholder
+                    <PostComposerField
+                      variant="placeholder"
                       placeholders={POST_CONTENT_PLACEHOLDERS}
                     >
                       <div class="form-field">
@@ -646,7 +646,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                           required
                         />
                       </CharacterCounter>
-                    </PostTypePlaceholder>
+                    </PostComposerField>
 
                     {
                       /* Facultatif (cf. backlog « pièces jointes... si c'est
@@ -657,15 +657,15 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                       reste côté serveur (cf. handler POST). Le
                       `<label for>` déclenche nativement le sélecteur de
                       fichier au clic (aucun JS requis pour ça) ;
-                      ImageDropzone n'ajoute que ce que le HTML seul ne peut
-                      pas faire : le glisser-déposer et le nom du fichier
-                      choisi (cf. islands/ImageDropzone.tsx). */
+                      PostComposerField n'ajoute que ce que le HTML seul ne
+                      peut pas faire : le glisser-déposer et le nom du
+                      fichier choisi (cf. islands/PostComposerField.tsx). */
                     }
                     <div class="form-field">
                       <span class="lookup-card__label">
                         Photo (facultatif)
                       </span>
-                      <ImageDropzone>
+                      <PostComposerField variant="dropzone">
                         <input
                           id="compose-post-image"
                           type="file"
@@ -682,7 +682,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
                             Glissez une photo ici, ou cliquez pour la choisir
                           </span>
                         </label>
-                      </ImageDropzone>
+                      </PostComposerField>
                       <p class="autocomplete-field__hint">5 Mo maximum.</p>
                     </div>
 

@@ -144,7 +144,7 @@ export function ThemeIcon({ class: className }: IconProps) {
   );
 }
 
-/** Photo/paysage, pour la zone d'ajout d'image d'une demande (cf. islands/ImageDropzone.tsx). */
+/** Photo/paysage, pour la zone d'ajout d'image d'une demande (cf. islands/PostComposerField.tsx). */
 export function ImageIcon({ class: className }: IconProps) {
   return (
     <svg

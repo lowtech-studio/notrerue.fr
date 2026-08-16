@@ -52,7 +52,7 @@ Deno.test("buildCspOptions(dev) : autorise le schéma fresh-island: (chargement 
   // couvert par `'self'` (ni par `'unsafe-inline'`, qui ne concerne que le
   // code inline, pas le chargement d'un script externe). Régression trouvée
   // en conditions réelles : glisser-déposer une image dans /fil (cf.
-  // islands/ImageDropzone.tsx) ne faisait rien, sans erreur visible côté
+  // islands/PostComposerField.tsx) ne faisait rien, sans erreur visible côté
   // UI — uniquement `Loading the script 'fresh-island::...' violates...`
   // dans la console. Le build de production n'est pas concerné (cf. test
   // prod ci-dessus) : les islands y sont servies sous des chemins normaux.
