@@ -127,7 +127,7 @@ Deno.test("GET /inviter : ?invited=... → bandeau de confirmation", async () =>
   }
 });
 
-Deno.test("POST /inviter : e-mail du voisin invalide → erreur, pas d'envoi tenté", async () => {
+Deno.test("POST /inviter : e-mail du voisin invalide → erreur, pas d'envoi tenté, saisie resoumise", async () => {
   const testStreet = await createTestStreet("inviter-3");
   const { user: created } = await registerInhabitant({
     login: `login-${crypto.randomUUID()}`,
@@ -148,6 +148,60 @@ Deno.test("POST /inviter : e-mail du voisin invalide → erreur, pas d'envoi ten
   };
   const form = new FormData();
   form.set("neighborEmail", "pas-un-email");
+  form.set("personalMessage", "On se croise souvent au parc !");
+
+  try {
+    const result = await handler.POST!(
+      makeContext(sessionUser, { form }),
+    ) as {
+      data: {
+        inviteError: string | null;
+        invitedEmail: string | null;
+        neighborEmail: string;
+        personalMessage: string;
+      };
+    };
+
+    assertEquals(
+      result.data.inviteError,
+      "Merci de renseigner un e-mail valide.",
+    );
+    assertEquals(result.data.invitedEmail, null);
+    // La saisie reste affichée plutôt que perdue (cf. /fil : postContent).
+    assertEquals(result.data.neighborEmail, "pas-un-email");
+    assertEquals(
+      result.data.personalMessage,
+      "On se croise souvent au parc !",
+    );
+  } finally {
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("POST /inviter : mot personnel avec terme non autorisé → erreur de modération, pas d'envoi tenté", async () => {
+  const testStreet = await createTestStreet("inviter-4");
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `inviter-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const sessionUser: SessionUser = {
+    id: created.id,
+    login: created.login,
+    email: created.email,
+    isAmbassador: created.isAmbassador,
+    street: {
+      id: testStreet.testStreet.id,
+      name: testStreet.testStreet.name,
+      city: { id: testStreet.testCity.id, name: testStreet.testCity.name },
+    },
+  };
+  const form = new FormData();
+  form.set("neighborEmail", "voisin@exemple.fr");
+  form.set("personalMessage", "connard, viens sur le site");
 
   try {
     const result = await handler.POST!(
@@ -156,7 +210,7 @@ Deno.test("POST /inviter : e-mail du voisin invalide → erreur, pas d'envoi ten
 
     assertEquals(
       result.data.inviteError,
-      "Merci de renseigner un e-mail valide.",
+      "Merci de reformuler votre message : il contient des termes non autorisés.",
     );
     assertEquals(result.data.invitedEmail, null);
   } finally {

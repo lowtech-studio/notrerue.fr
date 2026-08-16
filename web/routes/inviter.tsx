@@ -15,11 +15,21 @@ import { sendInviteEmail } from "../email/brevo.ts";
 import { MAX_EMAIL_LENGTH } from "../utils/validation.ts";
 import { createCooldown } from "../utils/rate_limit.ts";
 import { pluralizeCount } from "../utils/pluralize.ts";
+import { containsBlockedContent } from "../moderation/blocklist.ts";
 import PrintButton from "../islands/PrintButton.tsx";
+import CharacterCounter from "../islands/CharacterCounter.tsx";
 
 /** Délai minimal entre deux invitations envoyées par un même habitant (anti-spam). */
 const INVITE_RESEND_MIN_SECONDS = 10;
 const inviteCooldown = createCooldown(INVITE_RESEND_MIN_SECONDS * 1000);
+
+/** Longueur maximale du mot personnel ajouté au texte standard de
+ * l'invitation par e-mail (cf. backlog « personnaliser le message
+ * d'invitation ») — même ordre de grandeur qu'un commentaire public
+ * (MAX_COMMENT_CONTENT_LENGTH, cf. db/comments.ts), un peu plus large
+ * puisque c'est un message privé, pas une réponse publique affichée sur
+ * une vignette. */
+const MAX_INVITE_MESSAGE_LENGTH = 400;
 
 interface InviterCore {
   streetName: string;
@@ -34,6 +44,11 @@ interface InviterData extends InviterCore {
   inviteError: string | null;
   /** Adresse à laquelle une invitation vient d'être envoyée (bandeau de confirmation). */
   invitedEmail: string | null;
+  /** Valeurs re-soumises telles quelles si l'envoi échoue — même logique que
+   * /fil (`postContent`) : sans ça, une erreur de modération ou de cooldown
+   * effacerait le mot personnel déjà rédigé. */
+  neighborEmail: string;
+  personalMessage: string;
 }
 
 async function loadInviterCore(
@@ -75,7 +90,15 @@ export const handler = define.handlers({
     const core = await loadInviterCore(user, ctx.url.origin);
     const invitedEmail = ctx.url.searchParams.get("invited");
 
-    return { data: { ...core, inviteError: null, invitedEmail } };
+    return {
+      data: {
+        ...core,
+        inviteError: null,
+        invitedEmail,
+        neighborEmail: "",
+        personalMessage: "",
+      },
+    };
   },
 
   async POST(ctx) {
@@ -85,6 +108,8 @@ export const handler = define.handlers({
     const form = await ctx.req.formData();
     const neighborEmail = String(form.get("neighborEmail") ?? "").trim()
       .slice(0, MAX_EMAIL_LENGTH);
+    const personalMessage = String(form.get("personalMessage") ?? "").trim()
+      .slice(0, MAX_INVITE_MESSAGE_LENGTH);
     const core = await loadInviterCore(user, ctx.url.origin);
 
     if (!neighborEmail.includes("@")) {
@@ -93,6 +118,21 @@ export const handler = define.handlers({
           ...core,
           inviteError: "Merci de renseigner un e-mail valide.",
           invitedEmail: null,
+          neighborEmail,
+          personalMessage,
+        },
+      };
+    }
+
+    if (personalMessage && containsBlockedContent(personalMessage)) {
+      return {
+        data: {
+          ...core,
+          inviteError:
+            "Merci de reformuler votre message : il contient des termes non autorisés.",
+          invitedEmail: null,
+          neighborEmail,
+          personalMessage,
         },
       };
     }
@@ -104,6 +144,8 @@ export const handler = define.handlers({
           inviteError:
             "Merci de patienter quelques secondes avant d'envoyer une autre invitation.",
           invitedEmail: null,
+          neighborEmail,
+          personalMessage,
         },
       };
     }
@@ -116,6 +158,7 @@ export const handler = define.handlers({
         streetName: user.street.name,
         cityName: user.street.city.name,
         joinUrl: core.joinUrl,
+        personalMessage: personalMessage || undefined,
       });
       inviteCooldown.record(user.id);
     } catch (error) {
@@ -127,6 +170,8 @@ export const handler = define.handlers({
             "Impossible d'envoyer l'invitation pour le moment. Réessayez " +
             "plus tard, ou utilisez WhatsApp ou le kit papier.",
           invitedEmail: null,
+          neighborEmail,
+          personalMessage,
         },
       };
     }
@@ -170,6 +215,8 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
     message,
     inviteError,
     invitedEmail,
+    neighborEmail,
+    personalMessage,
   } = data as InviterData;
   const { housesCount, isAwake } = status;
   const whatsappHref = `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -226,9 +273,26 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
                   class="lookup-form__input"
                   placeholder="voisin@exemple.fr"
                   maxlength={MAX_EMAIL_LENGTH}
+                  value={neighborEmail}
                   autocomplete="off"
                   required
                 />
+
+                <label class="lookup-card__label" for="personalMessage">
+                  Un mot personnel (facultatif)
+                </label>
+                <CharacterCounter max={MAX_INVITE_MESSAGE_LENGTH}>
+                  <textarea
+                    id="personalMessage"
+                    name="personalMessage"
+                    class="invite-message-input"
+                    placeholder="Ex : On se croise souvent au parc, viens nous rejoindre !"
+                    maxlength={MAX_INVITE_MESSAGE_LENGTH}
+                  >
+                    {personalMessage}
+                  </textarea>
+                </CharacterCounter>
+
                 <button type="submit" class="button">
                   <MailIcon /> Inviter par e-mail
                 </button>

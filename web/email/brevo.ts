@@ -46,6 +46,10 @@ export interface InviteEmailInput {
   streetName: string;
   cityName: string;
   joinUrl: string;
+  /** Mot ajouté par l'invitant en plus du texte standard (cf. backlog
+   * « personnaliser le message d'invitation ») — absent si le champ est
+   * resté vide, jamais une chaîne vide ici (cf. routes/inviter.tsx). */
+  personalMessage?: string;
 }
 
 /**
@@ -55,25 +59,43 @@ export interface InviteEmailInput {
  * pointe vers son adresse à lui : le voisin invité peut répondre directement,
  * sans que NotreRue.fr reste au milieu de l'échange.
  *
- * `inviterLogin`/`streetName`/`cityName` viennent d'un habitant (login choisi
- * à l'inscription, nom de rue/ville en partie libres) : échappés avant
- * interpolation dans le HTML de l'e-mail, qui n'a pas l'échappement
- * automatique de JSX.
+ * `inviterLogin`/`streetName`/`cityName`/`personalMessage` viennent d'un
+ * habitant (login choisi à l'inscription, nom de rue/ville en partie
+ * libres, mot personnel en texte libre) : échappés avant interpolation dans
+ * le HTML de l'e-mail, qui n'a pas l'échappement automatique de JSX.
  */
 export function buildInviteEmail(
   input: InviteEmailInput,
   from: string,
 ): BrevoEmailPayload {
-  const { to, inviterLogin, inviterEmail, streetName, cityName, joinUrl } =
-    input;
+  const {
+    to,
+    inviterLogin,
+    inviterEmail,
+    streetName,
+    cityName,
+    joinUrl,
+    personalMessage,
+  } = input;
   const login = escapeHtml(inviterLogin);
   const street = escapeHtml(streetName);
   const city = escapeHtml(cityName);
+
+  // `<br>` plutôt que le `\n` brut (perdu par le rendu HTML d'un `<p>`) :
+  // seul champ ici saisi dans un `<textarea>`, donc seul à pouvoir contenir
+  // plusieurs lignes (cf. routes/inviter.tsx).
+  const personalMessageHtml = personalMessage
+    ? emailParagraph(
+      `« ${escapeHtml(personalMessage).replace(/\n/g, "<br>")} »`,
+      true,
+    )
+    : "";
 
   const body = emailParagraph(
     `<strong>${login}</strong> vous invite à rejoindre NotreRue.fr, ` +
       `l'entraide entre voisins de la ${street} (${city}).`,
   ) +
+    personalMessageHtml +
     // Pas de paragraphe d'accroche ici (cf. revue) : le pied de page commun
     // (renderEmailLayout) porte déjà "Partage, coup de main, entraide et
     // bons plans entre voisins." — un second ici l'affichait deux fois.

@@ -18,6 +18,18 @@
   color: var(--color-ink-muted);
 }
 
+/* Titre dynamique « Le fil de <rue> » (cf. retour utilisateur) : le nom de
+   la rue n'a pas de longueur bornée, donc coupé en ellipse plutôt que de
+   déborder ou de passer sur plusieurs lignes une fois le format fluide
+   `.hero__title` appliqué (cf. common.css) — le nom complet reste
+   disponible au survol via l'attribut `title` posé côté JSX. */
+.fil-hero__title {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* « N foyers · du plus récent au plus ancien » sous le titre : un peu plus
    de contraste que `.hero__subtitle` par défaut (cf. retour utilisateur —
    texte trop discret pour une info qu'on veut lire d'un coup d'œil en
@@ -34,22 +46,141 @@
 }
 
 /* Publication d'une demande (rue allumée) — cf. backlog « publier en moins
-   de 30 secondes ». Même gabarit de carte que .street-status : une seule
-   action mise en avant, avant/après l'éveil de la rue. */
+   de 30 secondes ». Repliée par défaut dans un panneau qui glisse depuis le
+   bord de l'écran plutôt que de pousser le contenu de la page (cf. retour
+   utilisateur : ce bloc prenait trop de place sur mobile avant même
+   d'arriver sur le fil, et devait s'ouvrir depuis un bouton "Publier" posé
+   au niveau des filtres — cf. .fil-compose-trigger plus bas). Case à cocher
+   masquée (.compose-post-toggle, cf. routes/fil.tsx) + `:has()` sur `.hero`
+   plutôt qu'un island ou un <details> : deux déclencheurs distincts (le
+   bouton "Publier" et la croix de fermeture) pointent vers la même case,
+   ce qu'un <details>/<summary> ne permet pas. Aucun JS, donc aucun coût de
+   performance. */
+.compose-post-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Couvre tout le viewport dès que la case est cochée : fond assombri
+   (.compose-post-backdrop) + panneau qui glisse depuis le bord droit
+   (.compose-post ci-dessous). `visibility` (et non `display`) pour que
+   `transform`/`opacity` restent transitionnables sur les enfants ; sa
+   propre transition est retardée à la fermeture seulement (`transition-
+   delay` plus bas), le temps que l'animation de sortie du panneau se
+   termine avant de sortir complètement du rendu et de l'arbre
+   d'accessibilité. */
+.compose-post-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  visibility: hidden;
+  transition: visibility 0s linear 0.25s;
+}
+
+.hero:has(.compose-post-toggle:checked) .compose-post-overlay {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.compose-post-backdrop {
+  position: absolute;
+  inset: 0;
+  display: block;
+  margin: 0;
+  background: rgba(27, 26, 23, 0.45);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.25s ease;
+}
+
+.hero:has(.compose-post-toggle:checked) .compose-post-backdrop {
+  opacity: 1;
+}
+
 .compose-post {
-  margin: 0 0 20px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* 90% de la largeur sur mobile (cf. retour utilisateur), 40% à partir de
+     760px (même seuil que .page-wide/.hero--single, cf. common.css) — un
+     panneau plein écran serait déplacé sur desktop, mais doit rester
+     largement accessible au pouce sur mobile sans pour autant masquer
+     totalement le fond assombri derrière. */
+  width: 90%;
   padding: 24px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   background: var(--color-paper-warm);
+  box-shadow: -8px 0 24px rgba(27, 26, 23, 0.16);
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+
+.hero:has(.compose-post-toggle:checked) .compose-post {
+  transform: translateX(0);
+}
+
+@media (min-width: 760px) {
+  .compose-post {
+    width: 60%;
+  }
+}
+
+.compose-post__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .compose-post__title {
-  margin: 0 0 16px;
+  margin: 0;
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
   color: var(--color-ink);
+}
+
+/* Croix de fermeture — second déclencheur de .compose-post-toggle, cf. plus
+   haut : cliquer dessus décoche la même case que le bouton "Publier". */
+.compose-post__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+
+.compose-post__close:hover {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Anneau de focus reporté sur le déclencheur visuellement pertinent quand la
+   case (masquée) reçoit le focus clavier — même principe que
+   .fil-post__edit-toggle:focus-visible plus bas, étendu aux deux
+   déclencheurs via `:has()` puisqu'ils ne sont pas de simples voisins
+   directs de la case. */
+.hero:has(.compose-post-toggle:focus-visible) .fil-compose-trigger,
+.hero:has(.compose-post-toggle:focus-visible) .compose-post__close {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
 }
 
 .compose-post__form {
@@ -179,11 +310,37 @@
 }
 
 /* Filtres par type, liste chronologique, pagination. */
+
+/* Ligne portant les filtres et le bouton "Publier" (cf. .fil-compose-
+   trigger ci-dessous) : au même niveau plutôt qu'en haut de page, cf.
+   retour utilisateur. `space-between` les pousse aux deux bouts sur une
+   ligne large ; sur mobile, `flex-wrap` les repasse l'un sous l'autre
+   plutôt que de les tasser côte à côte. */
+.fil-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+
 .fil-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 20px;
+}
+
+/* Déclencheur du panneau de publication — fond plein/texte clair comme
+   .button (cf. common.css), mais plus compact pour rester à hauteur des
+   pilules de filtre voisines plutôt que d'imposer le gabarit XL d'un CTA
+   pleine largeur. */
+.fil-compose-trigger {
+  flex: none;
+  min-height: 0;
+  padding: 8px 20px;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .fil-filters__tab {

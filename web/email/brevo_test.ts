@@ -171,6 +171,43 @@ Deno.test("buildInviteEmail : échappe le HTML dans le login/rue/ville avant int
   assertEquals(payload.htmlContent.includes("Rue &quot;des&quot; Lilas"), true);
 });
 
+Deno.test("buildInviteEmail : sans mot personnel → aucun paragraphe de citation ajouté", () => {
+  const payload = buildInviteEmail(
+    {
+      to: "voisin@exemple.fr",
+      inviterLogin: "camille",
+      inviterEmail: "camille@exemple.fr",
+      streetName: "Rue des Lilas",
+      cityName: "Nantes",
+      joinUrl: "https://notrerue.fr/rejoindre",
+    },
+    "no-reply@notrerue.fr",
+  );
+
+  assertEquals(payload.htmlContent.includes("«"), false);
+});
+
+Deno.test("buildInviteEmail : mot personnel → repris entre guillemets, échappé, retours à la ligne convertis", () => {
+  const payload = buildInviteEmail(
+    {
+      to: "voisin@exemple.fr",
+      inviterLogin: "camille",
+      inviterEmail: "camille@exemple.fr",
+      streetName: "Rue des Lilas",
+      cityName: "Nantes",
+      joinUrl: "https://notrerue.fr/rejoindre",
+      personalMessage:
+        `On se croise souvent au parc <3\nViens nous rejoindre !`,
+    },
+    "no-reply@notrerue.fr",
+  );
+
+  assertStringIncludes(
+    payload.htmlContent,
+    "« On se croise souvent au parc &lt;3<br>Viens nous rejoindre ! »",
+  );
+});
+
 Deno.test("buildStreetAwakeningEmail : forme du payload", () => {
   const payload = buildStreetAwakeningEmail(
     {

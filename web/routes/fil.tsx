@@ -48,6 +48,17 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
 };
 const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
 
+/** Libellés des boutons de type dans le formulaire de publication seulement
+ * — au verbe plutôt qu'à la première personne, puisque l'intitulé "Je
+ * souhaite" posé juste au-dessus porte déjà le "je" (cf. retour
+ * utilisateur : "Je souhaite : Je cherche" faisait doublon). Le badge posé
+ * sur chaque demande et les onglets de filtre gardent POST_TYPE_LABELS. */
+const COMPOSE_POST_TYPE_LABELS: Record<PostType, string> = {
+  cherche: "Chercher",
+  propose: "Proposer",
+  informe: "Informer",
+};
+
 /** Exemple affiché en placeholder du champ de saisie, adapté au type
  * sélectionné (cf. backlog « donner de meilleures idées ») — "cherche" porte
  * deux exemples : un objet à emprunter et une recommandation de confiance
@@ -337,12 +348,16 @@ export const handler = define.handlers({
   },
 });
 
+/** `#fil-filters` en suffixe : au clic, le navigateur atterrit directement
+ * sur les onglets de filtre plutôt qu'en haut de page — sans ça, filtrer
+ * obligeait à rescroller devant le hero et le formulaire de publication à
+ * chaque fois (cf. retour utilisateur). */
 function filterHref(type: PostType | null, search: string | null): string {
   const params = new URLSearchParams();
   if (type) params.set("type", type);
   if (search) params.set("q", search);
   const qs = params.toString();
-  return qs ? `/fil?${qs}` : "/fil";
+  return (qs ? `/fil?${qs}` : "/fil") + "#fil-filters";
 }
 
 function pageHref(
@@ -402,7 +417,17 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
       />
       <main>
         <section class="container hero hero--single page-wide">
-          <h1 class="hero__title">Le fil de ma rue</h1>
+          {
+            /* Titre dynamique (cf. retour utilisateur) — `streetName` porte
+              déjà le type de voie ("Rue Jacoulet", "Rue Réaumur"...), même
+              convention que le <title> de l'onglet plus haut, donc pas de
+              "rue" ajouté ici. `title=` (info-bulle native) restitue le nom
+              complet au survol quand `.fil-hero__title` le tronque en
+              ellipse sur un écran étroit (cf. fil.css). */
+          }
+          <h1 class="hero__title fil-hero__title" title={streetName}>
+            Le fil de la rue "{streetName}"
+          </h1>
           <p class="hero__subtitle fil-hero__subtitle">
             <strong>{housesCount} foyers</strong>{" "}
             · du plus récent au plus ancien
@@ -475,152 +500,240 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
             </p>
           )}
 
+          {
+            /* Case à cocher masquée + `:has()` sur `.hero` plutôt qu'un
+              `<details>` — cf. retour utilisateur : le bouton "Publier"
+              doit vivre au niveau des filtres plus bas, et ouvrir un
+              panneau sur le côté plutôt que de pousser le contenu de la
+              page. Deux déclencheurs pointent vers la même case (le bouton
+              "Publier" dans la rangée de filtres, et la croix de fermeture
+              dans le panneau, cf. plus bas) : un `<details>/<summary>` ne
+              permet qu'un seul déclencheur, d'où la case à cocher, même
+              famille de bascule sans JS que .fil-post__edit-toggle plus
+              bas. Aucun JS ajouté, donc aucun coût de performance. Rouverte
+              automatiquement quand la publication précédente a échoué
+              (`postError`), pour que le brouillon resoumis reste visible
+              sans clic supplémentaire. */
+          }
           {state.user && isUserVerified(state.user) && (
-            <div class="compose-post">
-              <h2 class="compose-post__title">
-                Quoi de neuf sur votre rue ?
-              </h2>
-              <form
-                method="POST"
-                class="compose-post__form"
-                enctype="multipart/form-data"
-              >
-                <PostTypePlaceholder placeholders={POST_CONTENT_PLACEHOLDERS}>
-                  <div
-                    class="compose-post__types"
-                    role="radiogroup"
-                    aria-label="Type de publication"
-                  >
-                    {POST_TYPES.map((value) => (
-                      <label key={value} class="compose-post__type">
-                        <input
-                          type="radio"
-                          name="type"
-                          value={value}
-                          checked={postType === value}
-                        />
-                        {POST_TYPE_LABELS[value]}
-                      </label>
-                    ))}
-                  </div>
-
-                  <div
-                    class="compose-post__types"
-                    role="radiogroup"
-                    aria-label="Durée de validité de la demande"
-                  >
-                    {(["today", "week"] as const).map((value) => (
-                      <label key={value} class="compose-post__type">
-                        <input
-                          type="radio"
-                          name="duration"
-                          value={value}
-                          checked={postDuration === value}
-                        />
-                        {POST_DURATION_LABELS[value]}
-                      </label>
-                    ))}
-                    <label class="compose-post__type">
-                      <input
-                        type="radio"
-                        name="duration"
-                        value="months"
-                        checked={postDuration === "months"}
-                      />
-                      <select
-                        name="durationMonths"
-                        class="compose-post__duration-select"
-                        aria-label="Nombre de mois"
-                      >
-                        {POST_DURATION_MONTHS_OPTIONS.map((months) => (
-                          <option
-                            key={months}
-                            value={months}
-                            selected={months === postDurationMonths}
-                          >
-                            {months}
-                          </option>
-                        ))}
-                      </select>{" "}
-                      mois
-                    </label>
-                  </div>
-
-                  <CharacterCounter max={MAX_POST_CONTENT_LENGTH}>
-                    <input
-                      type="text"
-                      name="content"
-                      class="lookup-form__input"
-                      placeholder={POST_CONTENT_PLACEHOLDERS[postType]}
-                      maxlength={MAX_POST_CONTENT_LENGTH}
-                      value={postContent}
-                      autocomplete="off"
-                      required
-                    />
-                  </CharacterCounter>
-                </PostTypePlaceholder>
-
+            <>
+              <input
+                type="checkbox"
+                id="compose-post-toggle"
+                class="compose-post-toggle"
+                aria-label="Afficher le formulaire de publication"
+                checked={postError !== null}
+              />
+              <div class="compose-post-overlay">
                 {
-                  /* Facultatif (cf. backlog « pièces jointes... si c'est
-                    une image, bouton plus joli et glisser-déposer ») —
-                    types resserrés dans `accept` pour éviter à la plupart
-                    des habitants de sélectionner un format non supporté
-                    (HEIC des iPhone notamment), la validation réelle reste
-                    côté serveur (cf. handler POST). Le `<label for>`
-                    déclenche nativement le sélecteur de fichier au clic
-                    (aucun JS requis pour ça) ; ImageDropzone n'ajoute que ce
-                    que le HTML seul ne peut pas faire : le glisser-déposer
-                    et le nom du fichier choisi (cf. islands/ImageDropzone.tsx). */
+                  /* Cliquer en dehors du panneau ferme aussi le formulaire
+                    — un `<label>` de plus vers la même case, en fond, sous
+                    le panneau (cf. ordre du DOM : le panneau vient après,
+                    donc par-dessus). */
                 }
-                <div class="form-field">
-                  <span class="lookup-card__label">Photo (facultatif)</span>
-                  <ImageDropzone>
-                    <input
-                      id="compose-post-image"
-                      type="file"
-                      name="image"
-                      accept="image/jpeg,image/png,image/webp"
-                      class="image-dropzone__input"
-                    />
+                <label
+                  for="compose-post-toggle"
+                  class="compose-post-backdrop"
+                  aria-hidden="true"
+                >
+                </label>
+                <div class="compose-post">
+                  <div class="compose-post__header">
+                    <h2 class="compose-post__title">
+                      Quoi de neuf sur votre rue ?
+                    </h2>
                     <label
-                      for="compose-post-image"
-                      class="image-dropzone__area"
+                      for="compose-post-toggle"
+                      class="compose-post__close"
+                      aria-label="Fermer"
                     >
-                      <ImageIcon class="image-dropzone__icon" />
-                      <span>
-                        Glissez une photo ici, ou cliquez pour la choisir
-                      </span>
+                      ×
                     </label>
-                  </ImageDropzone>
-                  <p class="autocomplete-field__hint">5 Mo maximum.</p>
-                </div>
+                  </div>
+                  <form
+                    method="POST"
+                    class="compose-post__form"
+                    enctype="multipart/form-data"
+                  >
+                    <PostTypePlaceholder
+                      placeholders={POST_CONTENT_PLACEHOLDERS}
+                    >
+                      <div class="form-field">
+                        <span
+                          id="compose-post-type-label"
+                          class="lookup-card__label"
+                        >
+                          Je souhaite
+                        </span>
+                        <div
+                          class="compose-post__types"
+                          role="radiogroup"
+                          aria-labelledby="compose-post-type-label"
+                        >
+                          {POST_TYPES.map((value) => (
+                            <label key={value} class="compose-post__type">
+                              <input
+                                type="radio"
+                                name="type"
+                                value={value}
+                                checked={postType === value}
+                              />
+                              {COMPOSE_POST_TYPE_LABELS[value]}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
 
-                <button type="submit" class="button">Publier</button>
-              </form>
-            </div>
+                      <div class="form-field">
+                        <span
+                          id="compose-post-duration-label"
+                          class="lookup-card__label"
+                        >
+                          Durée de validité
+                        </span>
+                        <div
+                          class="compose-post__types"
+                          role="radiogroup"
+                          aria-labelledby="compose-post-duration-label"
+                        >
+                          {(["today", "week"] as const).map((value) => (
+                            <label key={value} class="compose-post__type">
+                              <input
+                                type="radio"
+                                name="duration"
+                                value={value}
+                                checked={postDuration === value}
+                              />
+                              {POST_DURATION_LABELS[value]}
+                            </label>
+                          ))}
+                          <label class="compose-post__type">
+                            <input
+                              type="radio"
+                              name="duration"
+                              value="months"
+                              checked={postDuration === "months"}
+                            />
+                            <select
+                              name="durationMonths"
+                              class="compose-post__duration-select"
+                              aria-label="Nombre de mois"
+                            >
+                              {POST_DURATION_MONTHS_OPTIONS.map((months) => (
+                                <option
+                                  key={months}
+                                  value={months}
+                                  selected={months === postDurationMonths}
+                                >
+                                  {months}
+                                </option>
+                              ))}
+                            </select>{" "}
+                            mois
+                          </label>
+                        </div>
+                      </div>
+
+                      <CharacterCounter max={MAX_POST_CONTENT_LENGTH}>
+                        <input
+                          type="text"
+                          name="content"
+                          class="lookup-form__input"
+                          placeholder={POST_CONTENT_PLACEHOLDERS[postType]}
+                          maxlength={MAX_POST_CONTENT_LENGTH}
+                          value={postContent}
+                          autocomplete="off"
+                          required
+                        />
+                      </CharacterCounter>
+                    </PostTypePlaceholder>
+
+                    {
+                      /* Facultatif (cf. backlog « pièces jointes... si c'est
+                      une image, bouton plus joli et glisser-déposer ») —
+                      types resserrés dans `accept` pour éviter à la plupart
+                      des habitants de sélectionner un format non supporté
+                      (HEIC des iPhone notamment), la validation réelle
+                      reste côté serveur (cf. handler POST). Le
+                      `<label for>` déclenche nativement le sélecteur de
+                      fichier au clic (aucun JS requis pour ça) ;
+                      ImageDropzone n'ajoute que ce que le HTML seul ne peut
+                      pas faire : le glisser-déposer et le nom du fichier
+                      choisi (cf. islands/ImageDropzone.tsx). */
+                    }
+                    <div class="form-field">
+                      <span class="lookup-card__label">
+                        Photo (facultatif)
+                      </span>
+                      <ImageDropzone>
+                        <input
+                          id="compose-post-image"
+                          type="file"
+                          name="image"
+                          accept="image/jpeg,image/png,image/webp"
+                          class="image-dropzone__input"
+                        />
+                        <label
+                          for="compose-post-image"
+                          class="image-dropzone__area"
+                        >
+                          <ImageIcon class="image-dropzone__icon" />
+                          <span>
+                            Glissez une photo ici, ou cliquez pour la choisir
+                          </span>
+                        </label>
+                      </ImageDropzone>
+                      <p class="autocomplete-field__hint">5 Mo maximum.</p>
+                    </div>
+
+                    <button type="submit" class="button">Publier</button>
+                  </form>
+                </div>
+              </div>
+            </>
           )}
 
-          <nav class="fil-filters" aria-label="Filtrer par type">
-            <a
-              href={filterHref(null, search)}
-              class={`fil-filters__tab ${
-                !activeType ? "fil-filters__tab--active" : ""
-              }`}
+          <div class="fil-filters-row">
+            <nav
+              id="fil-filters"
+              class="fil-filters"
+              aria-label="Filtrer par type"
             >
-              Tout
-            </a>
-            {POST_TYPES.map((value) => (
               <a
-                key={value}
-                href={filterHref(value, search)}
+                href={filterHref(null, search)}
                 class={`fil-filters__tab ${
-                  activeType === value ? "fil-filters__tab--active" : ""
+                  !activeType ? "fil-filters__tab--active" : ""
                 }`}
               >
-                {POST_TYPE_LABELS[value]}
+                Tout
               </a>
-            ))}
-          </nav>
+              {POST_TYPES.map((value) => (
+                <a
+                  key={value}
+                  href={filterHref(value, search)}
+                  class={`fil-filters__tab ${
+                    activeType === value ? "fil-filters__tab--active" : ""
+                  }`}
+                >
+                  {POST_TYPE_LABELS[value]}
+                </a>
+              ))}
+            </nav>
+
+            {
+              /* Déclencheur du panneau de publication (cf. plus haut) : posé
+                au niveau des filtres plutôt qu'en haut de page — cf. retour
+                utilisateur. */
+            }
+            {state.user && isUserVerified(state.user) && (
+              <label
+                for="compose-post-toggle"
+                class="button fil-compose-trigger"
+              >
+                Publier
+              </label>
+            )}
+          </div>
 
           <ul class="fil-list">
             {posts.length === 0 && (
