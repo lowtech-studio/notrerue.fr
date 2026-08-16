@@ -133,6 +133,18 @@ disponible pendant l'opération. `deploy/deploy.sh` construit **en local
   totalement compromis, il ne peut pas déchiffrer ses propres sauvegardes.
   Disque de 10 Go oblige, seules les 2 dernières sauvegardes chiffrées
   restent en local, le reste doit vivre ailleurs.
+- **Durcissement système complémentaire** (cf. `harden.sh`) : ce que
+  `provision.sh` ne couvre pas déjà, d'après ANSSI-BP-028
+  (« Recommandations de configuration d'un système GNU/Linux ») — SSH
+  (désactivation du login root, timeouts, pas de forwarding), politique de
+  mots de passe (complexité, expiration), journalisation `sudo`, sysctl
+  noyau complémentaire (ASLR, `kptr_restrict`, `ptrace_scope`...), modules
+  noyau obsolètes bloqués (systèmes de fichiers legacy, `usb-storage`),
+  core dumps désactivés, `journald` persistant et borné, `cron`/`at`
+  restreints à root, bannière légale. Détails et options (`ENABLE_AUDITD`,
+  `HARDEN_TMP_NOEXEC`, `SSH_ALLOW_USERS`) en tête du script. À exécuter
+  après `provision.sh` (cf. étapes ci-dessous) — idempotent, peut être
+  rejoué sans risque.
 
 ## Étapes
 
@@ -147,6 +159,21 @@ Installe et configure Postgres, Deno, Caddy, ufw, fail2ban,
 unattended-upgrades, zram, le durcissement sysctl, et prépare (sans les
 démarrer) les services `notrerue`/`notrerue-backup`. Affiche à la fin les
 étapes manuelles restantes (DNS, clés Brevo, clé de sauvegarde).
+
+### 1bis. Durcissement système complémentaire (recommandé)
+
+Une fois qu'une connexion SSH par clé fonctionne pour votre compte
+d'administration (`ADMIN_USER`, `admin` par défaut) :
+
+```sh
+sudo ADMIN_USER=admin bash deploy/harden.sh
+```
+
+Voir « Sécurité » ci-dessus pour le détail, et l'en-tête de `harden.sh`
+pour les options. **Gardez une session SSH ouverte en parallèle** le temps
+de vérifier, dans une nouvelle connexion, que l'accès par clé fonctionne
+toujours après le passage du script (il désactive le login root et, si une
+clé est trouvée pour `ADMIN_USER`, l'authentification par mot de passe).
 
 ### 2. Premier déploiement
 
