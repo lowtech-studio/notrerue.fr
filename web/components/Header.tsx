@@ -1,5 +1,11 @@
 import type { SessionUser } from "../utils.ts";
-import { LogoutIcon, MailIcon, ThemeIcon, UserIcon } from "./icons.tsx";
+import {
+  LogoutIcon,
+  MailIcon,
+  StreetPlaqueIcon,
+  ThemeIcon,
+  UserIcon,
+} from "./icons.tsx";
 import type { Theme } from "../utils/theme.ts";
 import { nextThemeLabel } from "../utils/theme.ts";
 
@@ -30,7 +36,9 @@ export function Header(
     <header class="site-header">
       <div class="container site-header__bar">
         <a href="/" class="brand">
-          <span class="brand__mark" aria-hidden="true">◍</span>
+          <span class="brand__mark" aria-hidden="true">
+            <StreetPlaqueIcon />
+          </span>
           <span>
             <span class="brand__name">NotreRue.fr</span>
             <span class="brand__tagline">

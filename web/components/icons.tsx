@@ -8,6 +8,39 @@ interface IconProps {
  * texte du bouton qui les porte.
  */
 
+/** Contour d'une plaque de rue parisienne (double liseré, petite bosse au
+ * centre du haut) — motif du badge de marque (cf. .brand__mark dans
+ * common.css, Header.tsx, static/icon.svg, static/icon-maskable.svg,
+ * static/offline.html). Remplace l'ancien glyphe texte "◍" partout où une
+ * vraie forme est possible ; email/layout.ts garde volontairement le
+ * glyphe texte (la plupart des clients mail bloquent les images/SVG par
+ * défaut, cf. commentaire sur place). */
+export function StreetPlaqueIcon({ class: className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 40 40"
+      fill="none"
+      stroke="currentColor"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      class={className}
+    >
+      <path
+        d="M 6,12.2 L 14.4,12.2 A 5.6,5 0 0 1 25.6,12.2 L 34,12.2 L 34,27.8 L 6,27.8 Z"
+        stroke-width="2"
+      />
+      <rect
+        x="9.4"
+        y="15"
+        width="21.2"
+        height="10.1"
+        rx="0.7"
+        stroke-width="1.3"
+      />
+    </svg>
+  );
+}
+
 export function MailIcon({ class: className }: IconProps) {
   return (
     <svg
