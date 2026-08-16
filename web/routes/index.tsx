@@ -330,10 +330,11 @@ export default define.page<typeof handler>(function Home({ data, state }) {
                         Votre rue dort encore.
                       </h2>
                       <p class="street-status__subtitle">
-                        Tant qu'elle n'est pas allumée, rien à lire, rien à publier
-                        : la seule action utile est d'inviter vos voisins à vous
-                        rejoindre. La rue s'allume à partir de 4 foyers inscrits. 
-                        Ensuite vous pourrez discuter, partager vos bons plans, recommandations...
+                        Tant qu'elle n'est pas allumée, rien à lire, rien à
+                        publier : la seule action utile est d'inviter vos
+                        voisins à vous rejoindre. La rue s'allume à partir de 4
+                        foyers inscrits. Ensuite vous pourrez discuter, partager
+                        vos bons plans, recommandations...
                       </p>
                       <StreetProgress
                         housesCount={ownStreetStatus.housesCount}

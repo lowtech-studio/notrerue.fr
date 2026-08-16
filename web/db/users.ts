@@ -111,6 +111,26 @@ export async function findStreetUsers(streetId: number): Promise<User[]> {
   return rows.map((row) => row.user);
 }
 
+/**
+ * Ambassadeur actif (non soft-supprimé) d'une rue, s'il existe — le premier
+ * inscrit, seul vérifié dès l'inscription (cf. `registerInhabitant`).
+ * `null` si son compte a depuis été supprimé : la chaîne de confiance de
+ * cette rue n'a alors plus personne d'automatiquement vérifié pour
+ * démarrer les validations, cas rare non géré ici (cf. backlog).
+ */
+export async function findStreetAmbassador(
+  streetId: number,
+): Promise<User | null> {
+  const [found] = await db.select({ user }).from(user)
+    .innerJoin(house, eq(user.houseId, house.id))
+    .where(and(
+      eq(house.streetId, streetId),
+      eq(user.isAmbassador, true),
+      isNull(user.deletedAt),
+    ));
+  return found?.user ?? null;
+}
+
 /** Compte actif (non soft-supprimé) associé à cet e-mail, s'il existe. */
 export async function findUserByEmail(email: string): Promise<User | null> {
   const [found] = await db.select().from(user).where(

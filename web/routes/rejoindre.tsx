@@ -4,8 +4,11 @@ import { Header } from "../components/Header.tsx";
 import { findCityById } from "../db/cities.ts";
 import { isUniqueViolation } from "../db/errors.ts";
 import { findOrCreateStreet, getStreetAwakeningStatus } from "../db/streets.ts";
-import { findStreetUsers, registerInhabitant } from "../db/users.ts";
-import { listVerifiedNeighbors } from "../db/vouches.ts";
+import {
+  findStreetAmbassador,
+  findStreetUsers,
+  registerInhabitant,
+} from "../db/users.ts";
 import {
   sendLoginCodeEmail,
   sendPendingNeighborEmail,
@@ -239,28 +242,26 @@ export const handler = define.handlers({
 
       // L'ambassadeur est vérifié dès l'inscription (cf.
       // db/users.ts#registerInhabitant) : rien à valider, personne à
-      // notifier. Pour les suivants, prévenir les voisins déjà vérifiés
-      // qu'un nouvel arrivant attend d'être validé — sans ça, ni eux ni le
-      // nouvel arrivant ne sauraient qui solliciter (cf. retour
-      // utilisateur, db/vouches.ts).
+      // notifier. Pour les suivants, prévenir l'ambassadeur (lui seul,
+      // pas tous les voisins déjà vérifiés — cf. retour utilisateur : sur
+      // une grande rue, ça générait trop d'e-mails) qu'un nouvel arrivant
+      // attend d'être validé, sans quoi seul un passage sur la page
+      // d'accueil le lui révèle.
       if (!newInhabitant.isAmbassador) {
-        const verifiedNeighbors = await listVerifiedNeighbors(street.id);
-        const results = await Promise.allSettled(
-          verifiedNeighbors.map((neighbor) =>
-            sendPendingNeighborEmail({
-              to: neighbor.email,
-              recipientLogin: neighbor.login,
+        const ambassador = await findStreetAmbassador(street.id);
+        if (ambassador) {
+          try {
+            await sendPendingNeighborEmail({
+              to: ambassador.email,
+              recipientLogin: ambassador.login,
               newcomerLogin: newInhabitant.login,
               streetName: street.name,
               homeUrl: ctx.url.origin,
-            })
-          ),
-        );
-        for (const result of results) {
-          if (result.status === "rejected") {
+            });
+          } catch (error) {
             console.error(
               "Échec de la notification de nouveau voisin à valider :",
-              result.reason,
+              error,
             );
           }
         }

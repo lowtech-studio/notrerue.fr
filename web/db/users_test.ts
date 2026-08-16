@@ -4,6 +4,7 @@ import { db } from "./client.ts";
 import { house, user } from "./schema.ts";
 import { STREET_AWAKENING_THRESHOLD } from "./streets.ts";
 import {
+  findStreetAmbassador,
   findStreetUsers,
   findUserByEmail,
   MAX_LOGIN_CODE_ATTEMPTS,
@@ -211,6 +212,87 @@ Deno.test("findStreetUsers : rue sans habitant → tableau vide", async () => {
 
   try {
     assertEquals(await findStreetUsers(testStreet.testStreet.id), []);
+  } finally {
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("findStreetAmbassador : retrouve l'ambassadeur, pas le second habitant ni celui d'une autre rue", async () => {
+  const testStreet = await createTestStreet("users-8");
+  const otherStreet = await createTestStreet("users-8b");
+  const userIds: number[] = [];
+  const houseIds: number[] = [];
+
+  try {
+    const ambassador = await registerInhabitant({
+      login: `ambassador-${crypto.randomUUID()}`,
+      email: `ambassador-${crypto.randomUUID()}@example.invalid`,
+      houseNumber: null,
+      streetId: testStreet.testStreet.id,
+    });
+    userIds.push(ambassador.user.id);
+    houseIds.push(ambassador.user.houseId);
+
+    const second = await registerInhabitant({
+      login: `second-${crypto.randomUUID()}`,
+      email: `second-${crypto.randomUUID()}@example.invalid`,
+      houseNumber: null,
+      streetId: testStreet.testStreet.id,
+    });
+    userIds.push(second.user.id);
+    houseIds.push(second.user.houseId);
+
+    const otherStreetAmbassador = await registerInhabitant({
+      login: `other-ambassador-${crypto.randomUUID()}`,
+      email: `other-ambassador-${crypto.randomUUID()}@example.invalid`,
+      houseNumber: null,
+      streetId: otherStreet.testStreet.id,
+    });
+    userIds.push(otherStreetAmbassador.user.id);
+    houseIds.push(otherStreetAmbassador.user.houseId);
+
+    const found = await findStreetAmbassador(testStreet.testStreet.id);
+    assertEquals(found?.id, ambassador.user.id);
+  } finally {
+    for (const id of userIds) await db.delete(user).where(eq(user.id, id));
+    for (const id of houseIds) await db.delete(house).where(eq(house.id, id));
+    await cleanupTestStreet(testStreet);
+    await cleanupTestStreet(otherStreet);
+  }
+});
+
+Deno.test("findStreetAmbassador : compte ambassadeur supprimé → null", async () => {
+  const testStreet = await createTestStreet("users-9");
+  const userIds: number[] = [];
+  const houseIds: number[] = [];
+
+  try {
+    const ambassador = await registerInhabitant({
+      login: `ambassador-${crypto.randomUUID()}`,
+      email: `ambassador-${crypto.randomUUID()}@example.invalid`,
+      houseNumber: null,
+      streetId: testStreet.testStreet.id,
+    });
+    userIds.push(ambassador.user.id);
+    houseIds.push(ambassador.user.houseId);
+
+    await db.update(user).set({ deletedAt: new Date() }).where(
+      eq(user.id, ambassador.user.id),
+    );
+
+    assertEquals(await findStreetAmbassador(testStreet.testStreet.id), null);
+  } finally {
+    for (const id of userIds) await db.delete(user).where(eq(user.id, id));
+    for (const id of houseIds) await db.delete(house).where(eq(house.id, id));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("findStreetAmbassador : rue sans habitant → null", async () => {
+  const testStreet = await createTestStreet("users-10");
+
+  try {
+    assertEquals(await findStreetAmbassador(testStreet.testStreet.id), null);
   } finally {
     await cleanupTestStreet(testStreet);
   }

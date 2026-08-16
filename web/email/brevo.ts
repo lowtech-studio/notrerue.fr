@@ -177,8 +177,10 @@ export interface PendingNeighborEmailInput {
  * voisins habitent bien dans la même rue ») — sans cet e-mail, seul un
  * passage sur la page d'accueil le lui révèle, et le nouvel arrivant n'a
  * alors aucun moyen de savoir qui solliciter (cf. retour utilisateur).
- * Envoyée à tous les voisins déjà vérifiés de la rue, pas seulement à
- * l'ambassadeur.
+ * Envoyée au seul ambassadeur de la rue (cf. routes/rejoindre.tsx,
+ * db/users.ts#findStreetAmbassador), pas à tous les voisins déjà vérifiés :
+ * sur une grande rue, une notification à chaque voisin vérifié à chaque
+ * inscription générait trop d'e-mails (cf. retour utilisateur).
  */
 export function buildPendingNeighborEmail(
   input: PendingNeighborEmailInput,

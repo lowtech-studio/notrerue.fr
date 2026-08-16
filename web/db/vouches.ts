@@ -42,13 +42,14 @@ export interface VerifiedNeighbor {
 
 /**
  * Habitants actifs déjà vérifiés de `streetId` (cf. `user.verifiedAt`) —
- * les seuls capables de vouch pour un nouvel arrivant. Utilisé pour :
- * 1) montrer à un compte en attente qui approcher sur sa rue (cf. retour
- *    utilisateur « comment identifier un voisin... pour demander une
- *    validation ? ») ;
- * 2) notifier ces voisins par e-mail dès qu'un nouvel arrivant s'inscrit
- *    (cf. routes/rejoindre.tsx) — sans ça, seul un passage sur la page
- *    d'accueil le leur révèle.
+ * les seuls capables de vouch pour un nouvel arrivant. Utilisé pour montrer
+ * à un compte en attente qui approcher sur sa rue (cf. retour utilisateur
+ * « comment identifier un voisin... pour demander une validation ? »).
+ * La notification par e-mail d'un nouvel arrivant en attente ne part plus à
+ * toute cette liste mais au seul ambassadeur (cf. routes/rejoindre.tsx,
+ * db/users.ts#findStreetAmbassador) — sur une grande rue, prévenir chaque
+ * voisin déjà vérifié à chaque inscription générait trop d'e-mails (cf.
+ * retour utilisateur).
  */
 export async function listVerifiedNeighbors(
   streetId: number,
