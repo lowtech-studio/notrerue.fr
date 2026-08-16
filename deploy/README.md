@@ -115,7 +115,21 @@ disponible pendant l'opération. `deploy/deploy.sh` construit **en local
   duplique pas, une seule source de vérité.
 - **Comptes** : l'application tourne sous un utilisateur système dédié
   (`notrerue`, sans shell de connexion), jamais root. PostgreSQL sous son
-  utilisateur `postgres` habituel.
+  utilisateur `postgres` habituel. `/srv/notrerue` (et `bin/` en dessous,
+  où vivent les scripts exécutés en root — voir le point suivant)
+  appartiennent à **root**, pas à `notrerue` : `useradd --create-home` en
+  fait par défaut le foyer de `notrerue`, ce qui laisserait ce compte
+  renommer/recréer ces répertoires et y glisser un script piégé, exécuté
+  en root au déploiement suivant ou par un timer.
+- **Sudo scoped pour `deploy.sh`** : ce script tourne via `ssh host "sudo
+  ..."` **sans terminal** — sudo ne peut alors pas demander de mot de passe
+  interactif, même si un sudo manuel en SSH fonctionne très bien pour ce
+  compte (cf. « Erreurs fréquentes » ci-dessous, régression rencontrée en
+  pratique après `harden.sh`). `provision.sh` pose donc un
+  `/etc/sudoers.d/90-notrerue-deploy` en `NOPASSWD`, mais **restreint aux
+  commandes exactes utilisées par `deploy.sh`** (sauvegarde, publication,
+  migrations via le script fixe `migrate.sh`, redémarrage du service) —
+  jamais un `NOPASSWD:ALL`.
 - **SSH** : accès par clé uniquement — désactiver l'authentification par
   mot de passe et la connexion root dans `/etc/ssh/sshd_config`
   (`PasswordAuthentication no`, `PermitRootLogin no`) puis
@@ -265,6 +279,102 @@ age --decrypt --identity votre-cle-privee.txt notrerue-<date>.sql.gz.age | gunzi
 # Sur le serveur, base vidée ou de test :
 sudo -u postgres psql notrerue < restore.sql
 ```
+
+## Erreurs fréquentes
+
+**`deploy.sh` se termine sans erreur, mais le site ne change pas.** Symptôme
+observé en pratique : `systemctl show notrerue.service -p
+ActiveEnterTimestamp` montre un redémarrage d'avant le dernier déploiement.
+Cause : `deploy.sh` lance `sudo` via `ssh host "sudo ..."`, une session
+**sans terminal** — sudo ne peut alors pas afficher de prompt de mot de
+passe, même si ce compte a bien du sudo (un `sudo` manuel en SSH interactif
+fonctionne très bien, ce qui rend le diagnostic trompeur). Vérifier :
+
+```sh
+ssh <user>@<host> "sudo -n systemctl restart notrerue.service; echo EXIT=\$?"
+```
+
+`EXIT=1` avec « sudo: interactive authentication is required » confirme le
+diagnostic. Le correctif est le `NOPASSWD` scoped posé par `provision.sh`
+(cf. « Sécurité » plus haut). Sur un serveur déjà provisionné avant son
+ajout : ne PAS rejouer tout `provision.sh` (il refait un `apt-get upgrade`
+complet et redémarre Postgres/Caddy — trop lourd juste pour ça). Depuis une
+copie à jour du dépôt sur le serveur, en root (remplacer `<user>` par le
+compte utilisé pour `deploy.sh`, c'est-à-dire `VPS_USER`) :
+
+```sh
+# /srv/notrerue lui-même : root reste propriétaire, jamais notrerue (cf.
+# revue, bloquant) — `useradd --create-home` en avait fait le foyer de
+# notrerue, propriétaire par défaut. Avec notrerue propriétaire du parent,
+# durcir seulement bin/ ne servait à rien : notrerue pouvait renommer/
+# recréer bin/ en entier (ça ne dépend que des droits sur le parent) et y
+# glisser un script piégé, exécuté en root au déploiement suivant ou par
+# le timer monitor.sh (5 min). Le groupe notrerue garde la traversée
+# (r-x) pour continuer à lire app/ et shared/ dessous.
+chown root:notrerue /srv/notrerue
+chmod 750 /srv/notrerue
+
+# bin/ : même raisonnement, un cran plus bas — root reste propriétaire
+# (personne ne peut remplacer les scripts exécutés en root), groupe
+# notrerue pour que migrate.sh (exécuté sous cette identité, cf. règle
+# sudoers plus bas) puisse au moins traverser le répertoire — root:root
+# seul l'en empêcherait. Sur un serveur où ce répertoire traînait en 777
+# (constaté en pratique), ce chown/chmod referme aussi cette brèche-là.
+chown root:notrerue /srv/notrerue/bin
+chmod 750 /srv/notrerue/bin
+
+# Cache Deno de migrate.sh (cf. revue) : `sudo -u notrerue` pose
+# HOME=/srv/notrerue — sans ce dossier inscriptible, `deno run` échouerait
+# à créer son cache par défaut maintenant que /srv/notrerue ne l'est plus
+# pour notrerue (chown ci-dessus). Sous shared/ plutôt que app/ : ce
+# dernier est resynchronisé avec `--delete` à chaque déploiement, qui
+# effacerait le cache à chaque fois.
+mkdir -p /srv/notrerue/shared/deno-cache
+chown -R notrerue:notrerue /srv/notrerue/shared/deno-cache
+
+# migrate.sh : groupe notrerue (pas propriétaire) — lisible/exécutable par
+# ce compte sans qu'il puisse le réécrire lui-même.
+install -m 750 -o root -g notrerue deploy/migrate.sh /srv/notrerue/bin/migrate.sh
+install -m 750 -o root -g root deploy/backup-pre-deploy.sh /srv/notrerue/bin/backup-pre-deploy.sh
+
+# Fichier temporaire + `visudo -cf` AVANT d'écrire dans /etc/sudoers.d/ —
+# jamais directement dedans (cf. revue, bloquant) : une syntaxe invalide
+# (ex. `<user>` oublié ci-dessous) laisserait sinon un fichier cassé en
+# place, qui casse `sudo` pour tout le serveur (erreur de parsing globale)
+# — avec `PermitRootLogin no` posé par harden.sh, un quasi-lockout sans
+# console. `install` ne s'exécute que si la validation passe.
+SUDOERS_TMP="$(mktemp)"
+cat > "$SUDOERS_TMP" <<EOF
+<user> ALL=(root) NOPASSWD: /srv/notrerue/bin/backup-pre-deploy.sh
+<user> ALL=(root) NOPASSWD: $(command -v rsync) -a --delete /home/<user>/notrerue-deploy-staging/ /srv/notrerue/app/
+<user> ALL=(root) NOPASSWD: $(command -v chown) -R notrerue\:notrerue /srv/notrerue/app
+<user> ALL=(root) NOPASSWD: $(command -v systemctl) restart notrerue.service
+<user> ALL=(root) NOPASSWD: $(command -v systemctl) --no-pager --full status notrerue.service
+<user> ALL=(notrerue) NOPASSWD: /srv/notrerue/bin/migrate.sh
+EOF
+visudo -cf "$SUDOERS_TMP" && install -m 0440 "$SUDOERS_TMP" /etc/sudoers.d/90-notrerue-deploy
+rm -f "$SUDOERS_TMP"
+```
+
+Pas de wildcard (`*`) dans ces règles — la sauvegarde (noms de fichiers
+horodatés) est déléguée à un script fixe (`backup-pre-deploy.sh`, qui fait
+son propre glob dans un shell normal) plutôt qu'un `tar`/`rm` inline dans
+la règle sudoers : au moins un `sudo` (paquet Ubuntu récent) refuse
+catégoriquement tout wildcard dans les arguments d'une commande sudoers
+(« wildcards are not allowed in command arguments », durcissement à la
+compilation) — une règle qui en contient ne charge simplement jamais,
+silencieusement, sans bloquer le reste de la policy pour autant (cf. `sudo
+-l` pour voir ce qui est réellement chargé en cas de doute).
+
+C'est exactement ce que produit la section « Sudo scoped pour deploy.sh »
+de `provision.sh` — le rejouer en entier plus tard (à un moment calme, pas
+en urgence) écrasera ce fichier avec le même contenu, sans effet de bord.
+
+Ne pas « corriger » ce symptôme en augmentant `Defaults timestamp_timeout`
+dans `harden.sh` (ou en le supprimant) : ça ne ferait que déplacer le
+problème (marche tant qu'un sudo interactif récent a laissé un ticket en
+cache, recasse dès qu'il expire) au lieu de le résoudre — le `NOPASSWD`
+scoped est la seule solution qui ne dépend pas du timing.
 
 ## Limites connues
 

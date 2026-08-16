@@ -13,15 +13,18 @@
 #   - /srv/notrerue/app existe, appartient à l'utilisateur système "notrerue" ;
 #   - /srv/notrerue/shared/notrerue.env contient les variables d'environnement
 #     (cf. web/.env.example) ;
-#   - VPS_USER a un accès SSH par clé et du sudo côté serveur (pour publier
-#     dans /srv/notrerue/app avec les bons droits et redémarrer le service).
+#   - VPS_USER a un accès SSH par clé, et un sudo NOPASSWD restreint aux
+#     commandes ci-dessous (cf. provision.sh « Sudo scoped pour deploy.sh »,
+#     DEPLOY_USER doit correspondre à VPS_USER) — ce script tourne via ssh
+#     sans terminal, donc sans possibilité de saisir un mot de passe sudo
+#     interactif : un sudo « normal » (avec mot de passe) échoue ici, même
+#     si un sudo manuel fonctionne très bien en SSH interactif.
 
 set -euo pipefail
 
 VPS_HOST="${VPS_HOST:?Définir VPS_HOST (ex: VPS_HOST=203.0.113.10)}"
 VPS_USER="${VPS_USER:-admin}"
 APP_DIR="/srv/notrerue/app"
-BACKUP_DIR="/srv/notrerue/backups"
 STAGING="/home/$VPS_USER/notrerue-deploy-staging"
 
 cd "$(dirname "$0")/../web"
@@ -36,17 +39,14 @@ rsync -az --delete \
   "$VPS_USER@$VPS_HOST:$STAGING/"
 
 echo "==> Sauvegarde de la version actuellement déployée (rollback manuel possible)"
-ssh "$VPS_USER@$VPS_HOST" "sudo mkdir -p '$BACKUP_DIR' && \
-  sudo tar -czf '$BACKUP_DIR/pre-deploy-$(date +%Y%m%d-%H%M%S).tar.gz' -C '$APP_DIR' . 2>/dev/null; \
-  cd '$BACKUP_DIR' && ls -t pre-deploy-*.tar.gz 2>/dev/null | tail -n +4 | xargs -r sudo rm --"
+ssh "$VPS_USER@$VPS_HOST" "sudo /srv/notrerue/bin/backup-pre-deploy.sh"
 
 echo "==> Publication (droits + emplacement final)"
 ssh "$VPS_USER@$VPS_HOST" \
   "sudo rsync -a --delete '$STAGING/' '$APP_DIR/' && sudo chown -R notrerue:notrerue '$APP_DIR'"
 
 echo "==> Migrations de base de données"
-ssh "$VPS_USER@$VPS_HOST" \
-  "cd '$APP_DIR' && sudo -u notrerue bash -c 'set -a; source /srv/notrerue/shared/notrerue.env; set +a; deno run -A db/migrate.ts'"
+ssh "$VPS_USER@$VPS_HOST" "sudo -u notrerue /srv/notrerue/bin/migrate.sh"
 
 echo "==> Redémarrage du service"
 ssh "$VPS_USER@$VPS_HOST" "sudo systemctl restart notrerue.service && sudo systemctl --no-pager --full status notrerue.service"

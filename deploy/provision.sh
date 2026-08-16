@@ -31,6 +31,13 @@ BASE_DIR="/srv/notrerue"
 APP_DIR="$BASE_DIR/app"
 DB_NAME="notrerue"
 DB_USER="notrerue"
+# Compte utilisé pour lancer deploy/deploy.sh (VPS_USER dans ce script, et
+# ADMIN_USER si deploy/harden.sh est aussi exécuté pour ce compte) —
+# DOIT être le même partout. Reçoit un sudo NOPASSWD restreint aux
+# commandes précises de deploy.sh (cf. section « Sudo scoped pour
+# deploy.sh » plus bas) : ce script tourne en SSH sans terminal, donc sans
+# aucune possibilité de saisir un mot de passe sudo interactif.
+DEPLOY_USER="${DEPLOY_USER:-admin}"
 
 echo "==> Mise à jour du système"
 export DEBIAN_FRONTEND=noninteractive
@@ -49,7 +56,43 @@ id -u "$APP_USER" >/dev/null 2>&1 || \
   useradd --system --home-dir "$BASE_DIR" --shell /usr/sbin/nologin --create-home "$APP_USER"
 mkdir -p "$BASE_DIR"/{app,shared,backups,bin}
 chown -R "$APP_USER:$APP_USER" "$APP_DIR" "$BASE_DIR/shared"
+# `$BASE_DIR` lui-même reste root:$APP_USER, jamais $APP_USER:$APP_USER —
+# `useradd --create-home` en a fait le foyer de $APP_USER, propriétaire par
+# défaut (cf. revue, bloquant) : avec `notrerue` propriétaire du parent, le
+# durcissement de `bin/` ci-dessous (root:notrerue 750, contenant des
+# scripts exécutés en root) ne servait à rien — `notrerue` pouvait
+# renommer/recréer `bin/` en entier (ça ne dépend que des droits sur le
+# parent, pas sur `bin/` lui-même) et y glisser un `backup-pre-deploy.sh`
+# ou un `monitor.sh` piégé, exécuté en root au déploiement suivant ou par
+# le timer 5 min. root propriétaire ferme ce chemin ; le groupe $APP_USER
+# garde la traversée (`r-x`, jamais l'écriture) pour que `notrerue` continue
+# à lire ses propres app/ et shared/ dessous.
+chown root:"$APP_USER" "$BASE_DIR"
 chmod 750 "$BASE_DIR"
+# `bin/` explicitement, pas seulement en héritant du umask du process qui a
+# fait le `mkdir -p` ci-dessus (constaté trop permissif — 777 — en
+# pratique sur un serveur déjà provisionné) : les scripts qui y vivent
+# (migrate.sh, backup-pre-deploy.sh) sont exécutables en root via sudo
+# NOPASSWD (cf. section « Sudo scoped pour deploy.sh » plus bas) — un
+# répertoire world-writable les rendrait remplaçables par n'importe quel
+# compte local, avec exécution root à la clé au prochain déploiement.
+# Groupe `notrerue` (pas `root:root`) : `migrate.sh` s'exécute sous
+# l'identité `notrerue` (`sudo -u notrerue`, cf. plus bas) — en `root:root`
+# 750, `notrerue` tombe dans « other » et ne peut même pas traverser le
+# répertoire pour l'atteindre (cf. revue). Le groupe peut lire/traverser
+# (`r-x`), jamais écrire : seul root reste propriétaire, personne d'autre
+# ne peut remplacer les scripts qui s'exécutent en root.
+chown root:"$APP_USER" "$BASE_DIR/bin"
+chmod 750 "$BASE_DIR/bin"
+# Cache Deno pour migrate.sh (cf. revue) : `sudo -u notrerue` pose
+# HOME=/srv/notrerue (foyer système de $APP_USER) — sans ce dossier
+# pré-créé et inscriptible, `deno run` dans migrate.sh échouerait à créer
+# son cache par défaut ($HOME/.cache/deno) maintenant que $BASE_DIR n'est
+# plus inscriptible par $APP_USER (cf. chown ci-dessus). Sous shared/
+# plutôt que app/ : ce dernier est resynchronisé avec `--delete` à chaque
+# déploiement (cf. deploy.sh), qui effacerait le cache à chaque fois.
+mkdir -p "$BASE_DIR/shared/deno-cache"
+chown -R "$APP_USER:$APP_USER" "$BASE_DIR/shared/deno-cache"
 
 echo "==> Installation de Deno (binaire unique dans /opt/deno)"
 if [ ! -x /opt/deno/bin/deno ]; then
@@ -126,11 +169,73 @@ cp "$DEPLOY_DIR/notrerue-monitor.service" /etc/systemd/system/notrerue-monitor.s
 cp "$DEPLOY_DIR/notrerue-monitor.timer" /etc/systemd/system/notrerue-monitor.timer
 cp "$DEPLOY_DIR/monitor.sh" "$BASE_DIR/bin/monitor.sh"
 chmod 750 "$BASE_DIR/bin/monitor.sh"
+# Exécuté par deploy.sh via `sudo -u notrerue` (cf. migrate.sh) : groupe
+# notrerue (pas propriétaire — cf. revue, cohérent avec bin/ ci-dessus) pour
+# que ce compte puisse le lire/exécuter sans pouvoir le réécrire lui-même.
+cp "$DEPLOY_DIR/migrate.sh" "$BASE_DIR/bin/migrate.sh"
+chown root:"$APP_USER" "$BASE_DIR/bin/migrate.sh"
+chmod 750 "$BASE_DIR/bin/migrate.sh"
+# Exécuté par deploy.sh via `sudo` (root, comme backup.sh/monitor.sh) —
+# cf. commentaire en tête du script pour pourquoi ce n'est pas juste des
+# commandes tar/rm inline dans la règle sudoers ci-dessous.
+cp "$DEPLOY_DIR/backup-pre-deploy.sh" "$BASE_DIR/bin/backup-pre-deploy.sh"
+chmod 750 "$BASE_DIR/bin/backup-pre-deploy.sh"
 systemctl daemon-reload
 systemctl enable notrerue-backup.timer
 systemctl start notrerue-backup.timer
 systemctl enable notrerue-monitor.timer
 systemctl start notrerue-monitor.timer
+
+echo "==> Sudo scoped pour deploy.sh (DEPLOY_USER=$DEPLOY_USER)"
+# deploy.sh tourne via ssh SANS terminal (`ssh host "sudo ..."`, jamais
+# `ssh -t`) : sudo ne peut alors pas demander de mot de passe (« sudo: a
+# password is required » / « no tty present »), même si un sudo manuel en
+# SSH interactif fonctionne très bien pour ce compte. D'où ce NOPASSWD —
+# volontairement restreint aux commandes exactes utilisées par deploy.sh
+# (jamais un NOPASSWD:ALL) : sauvegarde, rsync + chown de publication,
+# redémarrage/statut du service, migrations — chacune via un script fixe
+# (backup-pre-deploy.sh, migrate.sh) plutôt qu'une commande inline avec
+# wildcard partout où un nom de fichier varie (horodatage des sauvegardes,
+# notamment) : au moins un sudo réel (paquet Ubuntu récent) refuse
+# catégoriquement tout wildcard dans les arguments d'une règle sudoers
+# (« wildcards are not allowed in command arguments », durcissement à la
+# compilation, ni contournable ni désactivable ici) — une règle qui en
+# contient ne charge simplement jamais, silencieusement.
+#
+# Idempotent : réécrit à chaque passage. Repose sur les chemins résolus
+# dynamiquement (`command -v`) plutôt que codés en dur, pour rester correct
+# si un futur système range ces binaires ailleurs.
+DEPLOY_STAGING="/home/$DEPLOY_USER/notrerue-deploy-staging"
+SUDOERS_DEPLOY=/etc/sudoers.d/90-notrerue-deploy
+SUDOERS_DEPLOY_TMP="$(mktemp)"
+cat > "$SUDOERS_DEPLOY_TMP" <<EOF
+# Généré par deploy/provision.sh — ne pas éditer à la main, cf. commentaire
+# dans provision.sh (section « Sudo scoped pour deploy.sh »).
+$DEPLOY_USER ALL=(root) NOPASSWD: $BASE_DIR/bin/backup-pre-deploy.sh
+$DEPLOY_USER ALL=(root) NOPASSWD: $(command -v rsync) -a --delete $DEPLOY_STAGING/ $APP_DIR/
+$DEPLOY_USER ALL=(root) NOPASSWD: $(command -v chown) -R $APP_USER\:$APP_USER $APP_DIR
+$DEPLOY_USER ALL=(root) NOPASSWD: $(command -v systemctl) restart notrerue.service
+$DEPLOY_USER ALL=(root) NOPASSWD: $(command -v systemctl) --no-pager --full status notrerue.service
+$DEPLOY_USER ALL=($APP_USER) NOPASSWD: $BASE_DIR/bin/migrate.sh
+EOF
+if VISUDO_OUTPUT="$(visudo -cf "$SUDOERS_DEPLOY_TMP" 2>&1)"; then
+  install -m 0440 "$SUDOERS_DEPLOY_TMP" "$SUDOERS_DEPLOY"
+  echo "    -> $SUDOERS_DEPLOY"
+  rm -f "$SUDOERS_DEPLOY_TMP"
+else
+  # `exit 1` plutôt qu'un avertissement suivi de la suite du script (cf.
+  # revue) : sans ce fichier, deploy.sh reproduit exactement la panne
+  # silencieuse que cette section corrige (sudo sans mot de passe possible
+  # dans une session ssh sans terminal) — mieux vaut arrêter net et visible
+  # ici que de laisser un futur déploiement échouer en silence. `visudo -cf`
+  # ne valide QUE la syntaxe, pas que DEPLOY_USER=$DEPLOY_USER existe
+  # réellement comme compte système — un compte inexistant produit une
+  # règle syntaxiquement valide (sudo ne la fera simplement jamais matcher).
+  echo "ERREUR : syntaxe sudoers invalide pour le déploiement, fichier non appliqué :" >&2
+  echo "$VISUDO_OUTPUT" >&2
+  rm -f "$SUDOERS_DEPLOY_TMP"
+  exit 1
+fi
 
 if [ ! -f "$BASE_DIR/shared/notrerue.env" ]; then
   cat > "$BASE_DIR/shared/notrerue.env" <<EOF
