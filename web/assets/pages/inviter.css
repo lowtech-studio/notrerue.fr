@@ -184,6 +184,46 @@
   word-break: break-all;
 }
 
+/* Affiche pour la ville (générique ou thématisée par article de blog) : à
+   l'inverse du kit papier/autocollant, le choix de l'accroche (radios) doit
+   rester visible à l'écran — seule l'affiche elle-même (.poster-sheet)
+   reste cachée jusqu'à l'impression (cf. commentaire dans inviter.tsx sur
+   le choix de ne pas mettre ce bloc dans `.no-print`). */
+.poster-picker {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0 40px;
+}
+
+.poster-picker__hint {
+  margin: 0;
+  color: var(--color-ink-soft);
+}
+
+.poster-picker__options {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+}
+
+.poster-picker__option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+/* Jamais affichée à l'écran (cf. .kit-sheet/.sticker-sheet) : révélée
+   uniquement à l'impression, quand son option est cochée (règle plus bas). */
+.poster-sheet {
+  display: none;
+}
+
 @media print {
   /* Seule la feuille demandée (kit papier ou autocollant) a vocation à
      sortir de l'imprimante : en-tête, boutons et texte d'intro n'y ont pas
@@ -198,6 +238,129 @@
 
   body[data-print-target="sticker"] .kit-sheet {
     display: none !important;
+  }
+
+  body[data-print-target="poster"] .kit-sheet,
+  body[data-print-target="poster"] .sticker-sheet {
+    display: none !important;
+  }
+
+  /* `.poster-picker` n'est volontairement pas dans `.no-print` (cf.
+     inviter.tsx) : elle doit donc être masquée explicitement ici sauf quand
+     c'est la feuille demandée, sans quoi un `Ctrl+P` direct ou un clic sur
+     « kit »/« autocollant » laisserait un bloc vide (ni titre ni affiche,
+     tout son contenu étant soit `.no-print` soit une `.poster-sheet`
+     cachée par défaut) prendre de la place sur la page. */
+  body:not([data-print-target="poster"]) .poster-picker {
+    display: none !important;
+  }
+
+  /* Réinitialise les styles pensés pour l'écran (bordure, fond, défilement
+     de la liste des options) : à l'impression, seule l'affiche choisie doit
+     rester, sans le cadre qui l'entourait dans le sélecteur. */
+  body[data-print-target="poster"] .poster-picker {
+    margin: 0;
+    gap: 0;
+  }
+
+  body[data-print-target="poster"] .poster-picker__options {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    border: none;
+    background: none;
+  }
+
+  /* Seule l'affiche dont l'option est cochée sort de l'imprimante : le
+     `<label>` et son `.poster-sheet` sont sibling adjacents dans le DOM
+     (cf. inviter.tsx), ce qui permet ce sélecteur sans JavaScript. */
+  body[data-print-target="poster"] .poster-picker__option:has(input:checked) + .poster-sheet {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    text-align: center;
+  }
+
+  /* Même bandeau que l'en-tête des e-mails transactionnels (cf.
+     email/layout.ts#renderEmailLayout) : fond couleur marque, pleine
+     largeur — d'où l'absence de padding horizontal sur `.poster-sheet`
+     lui-même, reporté sur `.poster-sheet__header`/`__body`. */
+  .poster-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8mm;
+    padding: 10mm 15mm;
+    background: var(--color-brand);
+  }
+
+  .poster-sheet__mark {
+    flex: none;
+    width: 16mm;
+    height: 16mm;
+    border-radius: 50%;
+    background: var(--color-paper-warm);
+    color: var(--color-brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .poster-sheet__mark svg {
+    width: 9mm;
+    height: 9mm;
+  }
+
+  .poster-sheet__brand-name {
+    font-family: var(--font-display);
+    font-size: 22pt;
+    font-weight: 600;
+    color: var(--color-paper-warm);
+  }
+
+  .poster-sheet__body {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 10mm;
+    padding: 20mm 15mm;
+  }
+
+  .poster-sheet__qr {
+    width: 55mm;
+    height: 55mm;
+    /* `justify-self` en plus de `justify-items: center` sur le parent
+       (ceinture et bretelles) : le SVG garde ses attributs `width`/`height`
+       d'origine (en px, cf. QrCode.tsx), `margin: 0 auto` s'assure qu'il
+       reste centré même si un moteur d'impression le traite comme un
+       élément en ligne plutôt que comme un item de grille à part entière. */
+    justify-self: center;
+    margin: 0 auto;
+  }
+
+  .poster-sheet__title {
+    margin: 0;
+    font-size: 32pt;
+    line-height: 1.2;
+  }
+
+  .poster-sheet__text {
+    margin: 0;
+    max-width: 140mm;
+    font-size: 17pt;
+    line-height: 1.4;
+  }
+
+  .poster-sheet__cta {
+    margin: 0;
+    font-size: 15pt;
+    font-weight: 700;
+  }
+
+  .poster-sheet__url {
+    margin: 0;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 13pt;
+    word-break: break-all;
   }
 
   @page {

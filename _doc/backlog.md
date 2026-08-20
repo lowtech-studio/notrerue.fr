@@ -1,4 +1,4 @@
-# Backlog
+# Backlog WEB
 
 ## MVP
 
@@ -162,3 +162,70 @@
 - [ ] En tant que collectivité, je veux un tableau de bord anonymisé (rues
       vivantes, demandes satisfaites sous 24 h, événements).
 - [ ] En tant que commune, je veux des kits papier co-brandés.
+
+# Backlog Mobile
+
+## MVP
+
+- [*] Mettre en place la fondation technique de l'app mobile : API JSON
+      versionnée (`routes/api/v1`), authentification par jeton porteur
+      réutilisant `utils/session.ts` (Bearer), correctif du coût du
+      middleware global pour les appels API, et rate limiting sur les
+      actions sensibles (publication, message) — cf.
+      `_doc/architecture-mobile.md` pour le détail des décisions.
+- [ ] En tant qu'habitant, je veux pouvoir déconnecter toutes mes sessions
+      actives depuis mon profil (web ou mobile), afin de me protéger si mon
+      téléphone est perdu ou volé.
+- [ ] En tant qu'habitant utilisant l'application mobile, je m'inscris avec
+      mon prénom, mon mail et ma rue. Je reçois un mail avec un code à 6
+      chiffres pour me connecter, en réutilisant l'API et la base du web ;
+      le jeton de session est stocké de façon sécurisée sur l'appareil
+      (Keychain/Keystore), jamais en clair.
+- [ ] En tant qu'habitant non inscrit utilisant l'application mobile, quand
+      je renseigne une rue endormie, je veux savoir combien de foyers il
+      manque pour qu'elle s'allume et qu'on me propose de m'inscrire
+      (ambassadeur si je suis le premier, habitant sinon), en réutilisant ce
+      qui a été fait côté Web, afin d'avoir un objectif atteignable.
+- [ ] En tant qu'habitant connecté d'une rue non allumée sur l'application
+      mobile, je veux n'avoir qu'une seule action possible : inviter des
+      voisins via e-mail, WhatsApp ou SMS directement depuis mon téléphone,
+      afin de ne pas être découragé par des espaces vides.
+- [ ] En tant que premier habitant inscrit, je veux être prévenu par
+      notification push quand le seuil est atteint, afin de publier ma
+      première demande au bon moment (en complément de l'e-mail déjà
+      envoyé côté web).
+- [ ] En tant qu'habitant connecté, je veux publier une demande (Je cherche
+      / Je propose / J'informe) en moins de 30 secondes depuis mon mobile,
+      avec la même modération qu'au web (messages agressifs ou
+      discriminatoires bloqués avant publication).
+- [ ] En tant qu'habitant connecté, je veux un fil unique et chronologique
+      pour ma rue, filtrable par les trois types de publication, afin de ne
+      rien manquer et de ne rien subir — même comportement que sur le web.
+- [ ] En tant que voisin disponible, je veux répondre en un tap (« J'ai » /
+      « Intéressé » / 👍 selon le type de demande) avant même d'écrire,
+      afin que rendre service soit plus facile que scroller.
+- [ ] En tant qu'habitant connecté d'une rue allumée, je veux envoyer des
+      messages privés au voisin auteur d'une demande et retrouver
+      l'ensemble de mes messages, avec une notification push à la réception
+      d'un nouveau message (remplace la pastille web par une vraie
+      notification mobile).
+- [ ] En tant qu'habitant connecté, je veux éditer ou supprimer (soft
+      delete) les demandes que j'ai créées depuis le mobile, afin de
+      corriger une erreur de saisie.
+- [ ] En tant qu'habitant connecté, je veux supprimer mon foyer et toutes
+      mes publications depuis l'application mobile, afin de rester maître
+      de mes données.
+- [ ] À l'inscription mobile, préciser qu'il faut avoir plus de 15 ans
+      (seuil du consentement numérique en France ; à afficher, à contrôler
+      à l'inscription) — même règle que le web.
+- [ ] En tant qu'habitant connecté, je veux ajouter une photo à mes
+      demandes depuis mon mobile (galerie ou appareil photo), envoyée en
+      `multipart/form-data` et redimensionnée/compressée côté serveur
+      comme sur le web — 5 Mo maximum.
+- [ ] Mettre en place la chaîne de build et de publication (EAS Build pour
+      iOS/Android sans Mac local, TestFlight et Play Console en interne,
+      mises à jour OTA via `expo-updates`), afin de livrer et corriger
+      l'app sans dépendre d'une revue store à chaque changement.
+- [ ] Refactoriser au fil de l'eau pour la maintenance, la performance,
+      l'éco-conception et la cybersécurité côté mobile (mêmes exigences que
+      le web, cf. `AGENTS.md`).

@@ -1,11 +1,18 @@
 import { Head } from "fresh/runtime";
+import { Fragment } from "preact";
 import "../assets/pages/inviter.css" with { type: "css" };
 import { define } from "../utils.ts";
 import type { SessionUser } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
-import { ChatBubbleIcon, MailIcon, PrinterIcon } from "../components/icons.tsx";
+import {
+  ChatBubbleIcon,
+  MailIcon,
+  PrinterIcon,
+  StreetPlaqueIcon,
+} from "../components/icons.tsx";
 import { QrCode } from "../components/QrCode.tsx";
 import { StreetProgress } from "../components/StreetProgress.tsx";
+import { BLOG_POSTS } from "../content/blog_posts.ts";
 import {
   getStreetHousesStatus,
   STREET_AWAKENING_THRESHOLD,
@@ -37,6 +44,13 @@ interface InviterCore {
   status: StreetHousesStatus;
   /** Lien absolu (nécessaire hors du site : e-mail, WhatsApp, QR code). */
   joinUrl: string;
+  /**
+   * Même page /rejoindre, mais sans `street` : lien scopé à la ville plutôt
+   * qu'à la rue, pour l'affiche à destination d'un lieu public (hall,
+   * boulangerie, pharmacie — cf. backlog) où n'importe quel habitant de la
+   * ville doit pouvoir scanner, pas seulement ceux de cette rue précise.
+   */
+  cityJoinUrl: string;
   message: string;
 }
 
@@ -67,6 +81,9 @@ async function loadInviterCore(
     street: user.street.name,
   });
   const joinUrl = `${origin}/rejoindre?${joinParams}`;
+  const cityJoinUrl = `${origin}/rejoindre?${new URLSearchParams({
+    cityId: String(user.street.city.id),
+  })}`;
 
   const message = `Salut ! Je m'inscris sur NotreRue.fr pour qu'on ` +
     `s'entraide entre voisins de la ${user.street.name} ` +
@@ -78,6 +95,7 @@ async function loadInviterCore(
     cityName: user.street.city.name,
     status,
     joinUrl,
+    cityJoinUrl,
     message,
   };
 }
@@ -206,12 +224,57 @@ function buildSubtitle(streetName: string, status: StreetHousesStatus) {
     "dort, la seule chose à faire ici : inviter.";
 }
 
+interface PosterSheetProps {
+  cityName: string;
+  cityJoinUrl: string;
+  title: string;
+  text: string;
+}
+
+/**
+ * Contenu d'une affiche (générique ou thématisée par article de blog) —
+ * factorisé pour éviter de dupliquer l'en-tête de marque entre les deux cas
+ * dans `Inviter` ci-dessous. Même en-tête que les e-mails transactionnels
+ * (cf. email/layout.ts#renderEmailLayout) : bandeau couleur marque, badge
+ * rond + nom en police à empattements. La différence est volontaire —
+ * email/layout.ts reste au glyphe texte « ◍ » (la plupart des clients mail
+ * bloquent images/SVG par défaut), alors qu'ici, une vraie page HTML
+ * imprimée par le navigateur, `StreetPlaqueIcon` (même logo que
+ * Header.tsx) s'affiche sans ce risque.
+ */
+function PosterSheet({ cityName, cityJoinUrl, title, text }: PosterSheetProps) {
+  return (
+    <div class="poster-sheet">
+      <div class="poster-sheet__header">
+        <span class="poster-sheet__mark" aria-hidden="true">
+          <StreetPlaqueIcon />
+        </span>
+        <span class="poster-sheet__brand-name">NotreRue.fr</span>
+      </div>
+      <div class="poster-sheet__body">
+        <h2 class="poster-sheet__title">{title}</h2>
+        <p class="poster-sheet__text">{text}</p>
+        <QrCode
+          value={cityJoinUrl}
+          cellSize={6}
+          class="poster-sheet__qr"
+        />
+        <p class="poster-sheet__cta">
+          Scannez pour rejoindre vos voisins de {cityName} :
+        </p>
+        <p class="poster-sheet__url">{cityJoinUrl}</p>
+      </div>
+    </div>
+  );
+}
+
 export default define.page<typeof handler>(function Inviter({ data, state }) {
   const {
     streetName,
     cityName,
     status,
     joinUrl,
+    cityJoinUrl,
     message,
     inviteError,
     invitedEmail,
@@ -328,6 +391,73 @@ export default define.page<typeof handler>(function Inviter({ data, state }) {
                 <PrinterIcon /> Imprimer l'autocollant boîte aux lettres
               </PrintButton>
             </div>
+          </div>
+
+          {
+            /* Contrairement au kit papier et à l'autocollant (ci-dessous),
+              ce bloc n'est pas dans `.no-print` : chaque `.poster-sheet`
+              doit rester dans le DOM au moment de l'impression, juste après
+              le `<label>` de son option (mêmes parent, siblings adjacents)
+              pour que `.poster-picker__option:has(input:checked) +
+              .poster-sheet` (cf. assets/pages/inviter.css) révèle la bonne
+              affiche sans JavaScript — un ancêtre `.no-print` masquerait
+              tout le sous-arbre, y compris l'affiche sélectionnée. Les
+              éléments propres à l'écran (titre, consigne, libellés,
+              bouton) portent donc individuellement `.no-print`. */
+          }
+          <div class="poster-picker">
+            <h2 class="poster-picker__title no-print">
+              Affiche pour votre ville
+            </h2>
+            <p class="poster-picker__hint no-print">
+              Un QR code vers l'inscription à{" "}
+              {cityName}, avec l'accroche de votre choix — à coller en
+              boulangerie, en pharmacie ou dans un hall d'immeuble.
+            </p>
+
+            <div class="poster-picker__options">
+              <label class="poster-picker__option no-print">
+                <input
+                  type="radio"
+                  name="posterTheme"
+                  value="generic"
+                  checked
+                />
+                Message générique
+              </label>
+              <PosterSheet
+                cityName={cityName}
+                cityJoinUrl={cityJoinUrl}
+                title="Partagez, échangez, entraidez-vous entre voisins"
+                text="100 % local, 100 % réel : un dentiste à conseiller, un outil à prêter, un événement de quartier à partager..."
+              />
+
+              {BLOG_POSTS.map((post) => (
+                <Fragment key={post.slug}>
+                  <label class="poster-picker__option no-print">
+                    <input
+                      type="radio"
+                      name="posterTheme"
+                      value={post.slug}
+                    />
+                    {post.title}
+                  </label>
+                  <PosterSheet
+                    cityName={cityName}
+                    cityJoinUrl={cityJoinUrl}
+                    title={post.title}
+                    text={post.description}
+                  />
+                </Fragment>
+              ))}
+            </div>
+
+            <PrintButton
+              class="button button--secondary no-print"
+              target="poster"
+            >
+              <PrinterIcon /> Imprimer l'affiche
+            </PrintButton>
           </div>
 
           {

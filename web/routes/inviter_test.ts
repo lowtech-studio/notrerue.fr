@@ -61,6 +61,7 @@ Deno.test("GET /inviter : connecté sur une rue non allumée → statut et lien 
         cityName: string;
         status: { housesCount: number; isAwake: boolean };
         joinUrl: string;
+        cityJoinUrl: string;
         message: string;
         inviteError: string | null;
         invitedEmail: string | null;
@@ -80,6 +81,16 @@ Deno.test("GET /inviter : connecté sur une rue non allumée → statut et lien 
     assertEquals(
       result.data.joinUrl,
       `http://localhost/rejoindre?${expectedParams}`,
+    );
+    // Lien de l'affiche ville (cf. inviter.tsx) : même page /rejoindre,
+    // mais sans `street` — n'importe quel habitant de la ville doit
+    // pouvoir scanner, pas seulement ceux de cette rue précise.
+    const expectedCityParams = new URLSearchParams({
+      cityId: String(testStreet.testCity.id),
+    });
+    assertEquals(
+      result.data.cityJoinUrl,
+      `http://localhost/rejoindre?${expectedCityParams}`,
     );
     assertStringIncludes(result.data.message, result.data.joinUrl);
     assertStringIncludes(result.data.message, testStreet.testStreet.name);

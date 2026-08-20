@@ -1,10 +1,11 @@
 import { assertEquals } from "@std/assert";
 import { App } from "fresh";
+import type { Context } from "fresh";
 import { eq } from "drizzle-orm";
 import type { State } from "../utils.ts";
 import { db } from "../db/client.ts";
 import { house, message, user } from "../db/schema.ts";
-import { registerInhabitant } from "../db/users.ts";
+import { registerInhabitant, revokeAllSessions } from "../db/users.ts";
 import { STREET_AWAKENING_THRESHOLD } from "../db/streets.ts";
 import { sendMessage } from "../db/messages.ts";
 import { cleanupTestStreet, createTestStreet } from "../db/test_helpers.ts";
@@ -12,24 +13,29 @@ import { createSessionValue, SESSION_COOKIE } from "../utils/session.ts";
 import { handler as middlewareHandler } from "./_middleware.ts";
 
 /**
- * `App` minimale avec le middleware réel branché devant une route sonde —
- * même pattern que `routes/connexion_test.ts` — pour vérifier `ctx.state`
- * tel que peuplé en conditions réelles plutôt qu'en appelant la fonction à
- * la main avec un contexte factice.
+ * `App` minimale avec le middleware réel branché devant deux routes sonde
+ * (une "web", une sous `/api/`) — même pattern que `routes/connexion_test.ts`
+ * — pour vérifier `ctx.state` tel que peuplé en conditions réelles plutôt
+ * qu'en appelant la fonction à la main avec un contexte factice. La sonde
+ * `/api/__probe` sert à vérifier que le middleware n'y peuple pas
+ * `isStreetAwake`/`hasUnreadMessages` (cf. revue de
+ * _doc/architecture-mobile.md, coût inutile pour les appels JSON mobile).
  */
 function buildTestHandler() {
   const app = new App<State>();
   app.use(middlewareHandler);
-  app.get("/__probe", (ctx) => {
-    return new Response(
+  const probe = (ctx: Context<State>) =>
+    new Response(
       JSON.stringify({
+        hasUser: ctx.state.user !== null,
         isStreetAwake: ctx.state.isStreetAwake,
         theme: ctx.state.theme,
         hasUnreadMessages: ctx.state.hasUnreadMessages,
       }),
       { headers: { "content-type": "application/json" } },
     );
-  });
+  app.get("/__probe", probe);
+  app.get("/api/__probe", probe);
   return app.handler();
 }
 
@@ -176,5 +182,124 @@ Deno.test("_middleware : isStreetAwake reflète l'état réel de la rue de l'uti
     );
     await cleanupTestStreet(asleepStreet);
     await cleanupTestStreet(awakeStreet);
+  }
+});
+
+Deno.test("_middleware : une requête /api/* n'interroge pas isStreetAwake/hasUnreadMessages (cf. revue architecture mobile)", async () => {
+  const testStreet = await createTestStreet("middleware-api-cost");
+  const { user: recipient } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `middleware-api-cost-to-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+  const { user: sender } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `middleware-api-cost-from-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  const handle = buildTestHandler();
+
+  try {
+    // Rue déjà allumée par les deux inscriptions ci-dessus (seuil bas en
+    // test, cf. STREET_AWAKENING_THRESHOLD) + un message non lu réel : de
+    // quoi vérifier que `/api/` reste bien à `null`/`false` malgré un état
+    // qui, sur `/__probe`, ressortirait `true`.
+    await sendMessage({
+      fromUserId: sender.id,
+      toUserId: recipient.id,
+      content: "Bonjour !",
+    });
+    const cookie = await createSessionValue(recipient.id);
+
+    const webRes = await handle(
+      new Request("http://localhost/__probe", {
+        headers: { cookie: `${SESSION_COOKIE}=${cookie}` },
+      }),
+    );
+    const webBody = await webRes.json();
+    assertEquals(webBody.hasUser, true);
+    assertEquals(webBody.hasUnreadMessages, true);
+
+    const apiRes = await handle(
+      new Request("http://localhost/api/__probe", {
+        headers: { cookie: `${SESSION_COOKIE}=${cookie}` },
+      }),
+    );
+    const apiBody = await apiRes.json();
+    // Toujours authentifié (findSessionUserById reste appelé), mais les
+    // deux champs dérivés du Header web restent à leur valeur par défaut.
+    assertEquals(apiBody.hasUser, true);
+    assertEquals(apiBody.isStreetAwake, null);
+    assertEquals(apiBody.hasUnreadMessages, false);
+  } finally {
+    await db.delete(message).where(eq(message.userFromId, sender.id));
+    await db.delete(user).where(eq(user.id, recipient.id));
+    await db.delete(user).where(eq(user.id, sender.id));
+    await db.delete(house).where(eq(house.streetId, testStreet.testStreet.id));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("_middleware : authentification par en-tête Authorization: Bearer (mobile)", async () => {
+  const testStreet = await createTestStreet("middleware-bearer");
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `middleware-bearer-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  const handle = buildTestHandler();
+
+  try {
+    const token = await createSessionValue(created.id);
+    const res = await handle(
+      new Request("http://localhost/__probe", {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+    assertEquals((await res.json()).hasUser, true);
+
+    const withoutBearerPrefix = await handle(
+      new Request("http://localhost/__probe", {
+        headers: { authorization: token },
+      }),
+    );
+    assertEquals((await withoutBearerPrefix.json()).hasUser, false);
+  } finally {
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
+  }
+});
+
+Deno.test("_middleware : jeton émis avant revokeAllSessions() rejeté", async () => {
+  const testStreet = await createTestStreet("middleware-revoked");
+  const { user: created } = await registerInhabitant({
+    login: `login-${crypto.randomUUID()}`,
+    email: `middleware-revoked-${crypto.randomUUID()}@example.invalid`,
+    houseNumber: null,
+    streetId: testStreet.testStreet.id,
+  });
+
+  const handle = buildTestHandler();
+
+  try {
+    const token = await createSessionValue(created.id);
+    await revokeAllSessions(created.id);
+
+    const res = await handle(
+      new Request("http://localhost/__probe", {
+        headers: { cookie: `${SESSION_COOKIE}=${token}` },
+      }),
+    );
+    assertEquals((await res.json()).hasUser, false);
+  } finally {
+    await db.delete(user).where(eq(user.id, created.id));
+    await db.delete(house).where(eq(house.id, created.houseId));
+    await cleanupTestStreet(testStreet);
   }
 });

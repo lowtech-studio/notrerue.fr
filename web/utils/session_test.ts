@@ -1,9 +1,16 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import { createSessionValue, verifySessionValue } from "./session.ts";
 
 Deno.test("createSessionValue / verifySessionValue : aller-retour valide", async () => {
   const value = await createSessionValue(42);
-  assertEquals(await verifySessionValue(value), 42);
+  const verified = await verifySessionValue(value);
+  assertExists(verified);
+  assertEquals(verified.userId, 42);
+  // `issuedAt` se déduit de l'expiration moins la durée de vie fixe (cf.
+  // commentaire dans session.ts) : doit retomber sur "maintenant" (le jeton
+  // vient d'être créé), à quelques secondes près.
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  assertEquals(Math.abs(verified.issuedAt - nowSeconds) < 5, true);
 });
 
 Deno.test("verifySessionValue : signature altérée rejetée", async () => {

@@ -113,6 +113,12 @@ export const user = pgTable("user", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull()
     .defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  // Révocation globale des sessions (ex. téléphone perdu/volé, jeton mobile
+  // compromis) : tout jeton émis avant cette date est rejeté par
+  // `findSessionUserById`, même si sa signature/expiration restent valides
+  // — cf. _doc/architecture-mobile.md « Durée de vie et révocation du
+  // jeton ». `null` tant que l'habitant n'a jamais demandé cette révocation.
+  sessionsRevokedAt: timestamp("sessions_revoked_at", { withTimezone: true }),
   houseId: integer("house_id").notNull().references(() => house.id),
   notificationType: jsonb("notification_type"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

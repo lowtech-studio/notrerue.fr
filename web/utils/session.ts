@@ -42,9 +42,21 @@ export async function createSessionValue(userId: number): Promise<string> {
   return `${payload}.${signature}`;
 }
 
+export interface VerifiedSession {
+  userId: number;
+  /**
+   * Epoch (secondes) d'émission du jeton, déduit de `expiresAt` — le
+   * payload ne porte pas cette date explicitement (`SESSION_TTL_SECONDS`
+   * étant fixe, elle s'en déduit sans changer le format du jeton). Sert à
+   * `db/users.ts#findSessionUserById` pour comparer à
+   * `user.sessionsRevokedAt` (cf. _doc/architecture-mobile.md).
+   */
+  issuedAt: number;
+}
+
 export async function verifySessionValue(
   value: string,
-): Promise<number | null> {
+): Promise<VerifiedSession | null> {
   const parts = value.split(".");
   if (parts.length !== 3) return null;
   const [userIdStr, expiresAtStr, signature] = parts;
@@ -62,5 +74,5 @@ export async function verifySessionValue(
   const userId = Number(userIdStr);
   if (!Number.isInteger(userId)) return null;
 
-  return userId;
+  return { userId, issuedAt: expiresAt - SESSION_TTL_SECONDS };
 }

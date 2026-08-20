@@ -21,6 +21,29 @@ function applySecurityHeaders(headers: Headers): void {
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 }
 
+const BEARER_PREFIX = "Bearer ";
+
+/**
+ * Valeur de session côté web (cookie) ou mobile (en-tête `Authorization:
+ * Bearer <jeton>`, cf. _doc/architecture-mobile.md) — même jeton, même
+ * vérification des deux côtés. Le cookie est prioritaire si les deux sont
+ * présents, cas qui ne devrait jamais se produire en pratique (un client
+ * envoie l'un ou l'autre, jamais les deux).
+ */
+function extractSessionValue(
+  req: Request,
+  cookies: Record<string, string>,
+): string | undefined {
+  const cookieValue = cookies[SESSION_COOKIE];
+  if (cookieValue) return cookieValue;
+
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith(BEARER_PREFIX)) {
+    return authHeader.slice(BEARER_PREFIX.length).trim();
+  }
+  return undefined;
+}
+
 export const handler = define.middleware(async (ctx) => {
   ctx.state.user = null;
   ctx.state.isStreetAwake = null;
@@ -28,13 +51,23 @@ export const handler = define.middleware(async (ctx) => {
 
   const cookies = parseCookies(ctx.req.headers.get("cookie"));
   ctx.state.theme = parseTheme(cookies[THEME_COOKIE]);
-  const sessionValue = cookies[SESSION_COOKIE];
+  const sessionValue = extractSessionValue(ctx.req, cookies);
 
   if (sessionValue) {
-    const userId = await verifySessionValue(sessionValue);
-    if (userId) {
-      ctx.state.user = await findSessionUserById(userId);
-      if (ctx.state.user) {
+    const verified = await verifySessionValue(sessionValue);
+    if (verified) {
+      ctx.state.user = await findSessionUserById(
+        verified.userId,
+        verified.issuedAt,
+      );
+      // `isStreetAwake`/`hasUnreadMessages` n'alimentent que le `<Header>`
+      // web (une page = un rendu, coût accepté) : les appels JSON sous
+      // `/api/` n'en ont jamais besoin (aucune route API ne rend de
+      // `<Header>`) — les épargner évite 2 requêtes DB gratuites sur
+      // chaque appel mobile (cf. revue de _doc/architecture-mobile.md, un
+      // écran peut déclencher 3-5 appels). Un client mobile qui a besoin de
+      // ces informations les demande explicitement via un endpoint dédié.
+      if (ctx.state.user && !ctx.url.pathname.startsWith("/api/")) {
         // Deux requêtes indépendantes sur le même habitant, lancées en
         // parallèle plutôt qu'en série (cf. revue sur le coût déjà accepté
         // d'une requête par page pour `isStreetAwake`).

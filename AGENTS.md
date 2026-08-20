@@ -31,6 +31,16 @@ autres » ou « Recréer du lien entre voisins »
 Pour te donner une vision d'ensemble, la maquette de l'application se trouve
 dans _doc/prototype_web.html
 
+**Portée de ce document :** tout ce qui suit (règles Fresh, éco-conception,
+cybersécurité, dépendances Deno...) régit l'app web dans `web/`. Le dossier
+`mobile/` (app iOS/Android Expo/React Native, cf.
+`_doc/architecture-mobile.md`) est un projet distinct, avec son propre
+toolchain npm/Metro — les règles Deno ci-dessous (pas de `package.json`,
+JSR de préférence à npm, etc.) ne s'y appliquent pas. `mobile/` aura son
+propre `AGENTS.md` une fois scaffoldé ; en attendant, se référer à
+`_doc/architecture-mobile.md` pour les décisions déjà prises (framework,
+API partagée, authentification).
+
 ## Commandes
 
 | Commande                         | Usage                                                                    |
@@ -46,6 +56,9 @@ dans _doc/prototype_web.html
 
 ## Dépendances
 
+Règles ci-dessous propres à `web/` (Deno) — `mobile/` utilise npm/Expo
+normalement, cf. « Portée de ce document » plus haut.
+
 - Ajouter : `deno add jsr:@scope/pkg` ou `deno add npm:pkg`
 - **Jamais** `npm install`, jamais de `package.json`, jamais d'édition manuelle
   de `deno.json` / `deno.lock`
@@ -55,7 +68,7 @@ dans _doc/prototype_web.html
 
 ## Structure du projet
 
-l'application de trouve dans le dossier app
+L'application web se trouve dans le dossier `web/` :
 
 ├── routes/ # Routing basé sur le système de fichiers │ ├── _app.tsx # Enveloppe
 commune │ ├── _middleware.ts# Middleware global (auth, logs…) │ ├── api/ #

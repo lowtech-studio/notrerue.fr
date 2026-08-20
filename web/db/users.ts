@@ -236,15 +236,35 @@ export async function verifyLoginCode(
   return updated ?? null;
 }
 
-/** Charge les données de session (utilisées par routes/_middleware.ts). */
+/**
+ * Charge les données de session (utilisées par routes/_middleware.ts).
+ * `tokenIssuedAt` (epoch secondes, cf. `utils/session.ts#verifySessionValue`)
+ * est optionnel : fourni, un jeton émis avant `user.sessionsRevokedAt` est
+ * rejeté (`null`) — même requête, aucun aller-retour DB supplémentaire.
+ * Omis (ex. appel direct hors middleware), la révocation n'est pas
+ * vérifiée.
+ */
 export async function findSessionUserById(
   id: number,
+  tokenIssuedAt?: number,
 ): Promise<SessionUser | null> {
   const found = await db.query.user.findFirst({
     where: and(eq(user.id, id), isNull(user.deletedAt)),
     with: { house: { with: { street: { with: { city: true } } } } },
   });
   if (!found) return null;
+
+  if (
+    tokenIssuedAt !== undefined && found.sessionsRevokedAt &&
+    // `<=` (pas `<`) : un jeton émis la même seconde que la révocation doit
+    // rester rejeté — sans quoi un aller-retour très rapide en test (ou en
+    // pratique) où les deux évènements tombent sur la même seconde entière
+    // laisserait passer un jeton qui devrait être révoqué (cf. `Math.floor`
+    // ci-dessous, résolution à la seconde des deux côtés).
+    tokenIssuedAt <= Math.floor(found.sessionsRevokedAt.getTime() / 1000)
+  ) {
+    return null;
+  }
 
   return {
     id: found.id,
@@ -262,6 +282,19 @@ export async function findSessionUserById(
     },
     houseNumber: found.house.number,
   };
+}
+
+/**
+ * Révoque globalement toutes les sessions actives d'un habitant (ex.
+ * téléphone perdu/volé) : tout jeton déjà émis échoue désormais à
+ * `findSessionUserById`, sans changer le format du jeton lui-même — cf.
+ * `_doc/architecture-mobile.md`. Pas encore appelée par une route (préparée
+ * pour l'item backlog « déconnecter tous mes appareils »).
+ */
+export async function revokeAllSessions(userId: number): Promise<void> {
+  await db.update(user).set({ sessionsRevokedAt: new Date() }).where(
+    eq(user.id, userId),
+  );
 }
 
 /**

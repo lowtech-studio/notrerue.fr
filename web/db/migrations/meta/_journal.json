@@ -92,6 +92,13 @@
       "when": 1786725068059,
       "tag": "0012_chief_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787208160193,
+      "tag": "0013_wet_baron_strucker",
+      "breakpoints": true
     }
   ]
 }
