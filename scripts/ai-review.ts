@@ -210,7 +210,7 @@ async function main() {
   }
 
   const systemPrompt =
-    `Tu es un relecteur de code senior pour "notrerue.fr", une appli Deno/Fresh/Preact + PostgreSQL (Drizzle) qui gère des données personnelles sensibles (nom, email, adresse de rue, session).
+    `Tu es un relecteur de code senior pour "notrerue.fr", une appli Deno/Fresh/Preact + PostgreSQL (Drizzle) ainsi qu'une application mobile Expo qui gère des données personnelles sensibles (nom, email, adresse de rue, session).
 Fais une revue concise en français du diff staged fourni, en couvrant ces axes (uniquement ceux pertinents pour ce diff) :
 - Bugs, régressions, gestion d'erreurs.
 - Sécurité : injections, XSS, contrôle d'accès, fuite de données personnelles ou de secrets.

@@ -13,6 +13,10 @@ export const MAX_LOGIN_LENGTH = 40;
  * /profil (même champ). */
 export const MAX_HOUSE_NUMBER_LENGTH = 10;
 
+/** Longueur maximale du nom de rue saisi à l'inscription. Partagé entre
+ * /rejoindre et /api/v1/join (même champ, mêmes deux points d'entrée). */
+export const MAX_STREET_LENGTH = 80;
+
 /**
  * Échappe `%`, `_` et `\` pour qu'un texte saisi par l'utilisateur soit
  * traité comme littéral dans un motif SQL `LIKE`/`ILIKE` (via `ESCAPE '\'`,

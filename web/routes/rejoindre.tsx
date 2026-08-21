@@ -18,10 +18,9 @@ import {
   MAX_EMAIL_LENGTH,
   MAX_HOUSE_NUMBER_LENGTH,
   MAX_LOGIN_LENGTH,
+  MAX_STREET_LENGTH,
 } from "../utils/validation.ts";
 import RegistrationAddressFields from "../islands/RegistrationAddressFields.tsx";
-
-const MAX_STREET_LENGTH = 80;
 
 interface RejoindreData {
   error: string | null;

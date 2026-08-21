@@ -1,0 +1,19 @@
+# Dépendances
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native (générés par `expo prebuild`, pas utilisés ici — géré par EAS Build)
+ios/
+android/
+
+# Variables d'environnement (cf. .env.example)
+.env
+.env.local
+
+# macOS
+.DS_Store

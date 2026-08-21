@@ -36,10 +36,10 @@ cybersécurité, dépendances Deno...) régit l'app web dans `web/`. Le dossier
 `mobile/` (app iOS/Android Expo/React Native, cf.
 `_doc/architecture-mobile.md`) est un projet distinct, avec son propre
 toolchain npm/Metro — les règles Deno ci-dessous (pas de `package.json`,
-JSR de préférence à npm, etc.) ne s'y appliquent pas. `mobile/` aura son
-propre `AGENTS.md` une fois scaffoldé ; en attendant, se référer à
-`_doc/architecture-mobile.md` pour les décisions déjà prises (framework,
-API partagée, authentification).
+JSR de préférence à npm, etc.) ne s'y appliquent pas. Voir
+[`mobile/AGENTS.md`](mobile/AGENTS.md) pour ses propres règles, et
+`_doc/architecture-mobile.md` pour les décisions d'architecture déjà
+prises (framework, API partagée, authentification).
 
 ## Commandes
 

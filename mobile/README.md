@@ -1,0 +1,78 @@
+# NotreRue.fr — app mobile (Expo)
+
+Client mobile (iOS/Android) de [NotreRue.fr](../web), même backend et même
+base que le web — cf. [`_doc/architecture-mobile.md`](../_doc/architecture-mobile.md)
+pour les décisions d'architecture et [`_doc/backlog.md`](../_doc/backlog.md)
+(section « Backlog Mobile ») pour l'avancement.
+
+## Prérequis
+
+- Node.js **≥ 22.13** (le toolchain Metro d'Expo SDK 57 l'exige — plus
+  récent que la version utilisée par `web/`, qui reste sur Deno).
+- L'app `Expo Go` sur un téléphone, ou un simulateur iOS/émulateur Android,
+  pour tester sans build natif complet. La cible web (`w` dans le CLI Expo,
+  ou `npm run web`) reste utilisable pour prévisualiser un écran vite fait,
+  mais n'est **pas** une cible distribuée : `lib/auth.ts` y retombe sur
+  `localStorage` (`expo-secure-store` ne supporte pas le web) — aucune
+  garantie de sécurité réelle sur cette plateforme, contrairement à
+  iOS/Android (Keychain/Keystore).
+
+## Démarrer
+
+```sh
+cd mobile
+npm install
+cp .env.example .env   # puis renseigner EXPO_PUBLIC_API_URL (cf. .env.example)
+npm start
+```
+
+`EXPO_PUBLIC_API_URL` doit pointer vers un serveur `web/` accessible depuis
+l'appareil de test — jamais `localhost` pour un téléphone physique ou un
+émulateur (résout la boucle locale de l'appareil, pas celle de la machine
+qui fait tourner `deno task dev`) : utiliser l'IP locale de cette machine
+sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
+
+## Problèmes connus au démarrage (`npx expo start`)
+
+- **`An unknown error occurred while installing React Native DevTools`**
+  (erreur `chrome-sandbox`, ou plus loin un `execvp`/`zygote_host` qui
+  échoue) : outil de debug JS auxiliaire, pas requis pour faire tourner
+  l'app — déclenché en pressant `j` dans le CLI Expo. Ignorer l'erreur ;
+  Metro continue de servir l'app derrière. Pas de correctif fiable connu
+  côté projet (bug d'environnement Linux dans l'outillage `dotslash`
+  d'Expo, en dehors de ce dépôt).
+- **`Error: spawn .../platform-tools/adb ENOENT`** (en pressant `a` /
+  « Opening on Android ») : le SDK Android (`platform-tools`) n'est pas
+  installé ou `$ANDROID_HOME` n'est pas configuré sur cette machine. Pas
+  besoin d'émulateur Android pour tester : scanner le QR code avec **Expo
+  Go** sur un téléphone, ou presser `w` pour la preview web (cf. ci-dessus
+  pour ses limites).
+
+## Structure
+
+- `app/` — écrans (Expo Router, routing par fichiers, même logique que
+  `web/routes/`) : `(auth)/` (inscription, code à 6 chiffres),
+  `(app)/` (une fois connecté).
+- `lib/api.ts` — client HTTP vers `web/routes/api/v1/*` et
+  `web/routes/api/villes.ts`.
+- `lib/auth.ts` — jeton de session en Keychain (iOS) / Keystore (Android)
+  via `expo-secure-store`, jamais en clair.
+- `lib/theme.ts` — tokens visuels repris de `web/assets/common.css` (même
+  identité que le web, sans dépendance à un kit UI).
+
+## Ce qui n'est pas encore là
+
+Le fil, la messagerie et le profil dépendent d'endpoints backend qui ne
+sont pas encore écrits (`/api/v1/posts`, `/api/v1/messages`...) — items de
+backlog distincts. Cette première passe couvre uniquement l'inscription et
+la connexion (cf. `_doc/backlog.md`, Backlog Mobile).
+
+## Vérifier
+
+```sh
+npm run typecheck
+```
+
+Aucun simulateur/device n'a servi à tester visuellement ces écrans lors de
+leur écriture (environnement sans runtime iOS/Android) — à vérifier sur un
+appareil réel ou Expo Go avant de considérer cette story terminée.
