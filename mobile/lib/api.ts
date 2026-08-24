@@ -472,3 +472,39 @@ export function sendMessage(
 export function fetchUnreadCount(): Promise<ApiResult<{ hasUnread: boolean }>> {
   return authJson("/api/v1/messages/unread-count");
 }
+
+export interface Profile {
+  login: string;
+  email: string;
+  houseNumber: string;
+  streetName: string;
+  cityName: string;
+}
+
+/** Profil de l'habitant connecté (cf. routes/api/v1/profile.ts GET, même
+ * champs que web/routes/profil.tsx). */
+export function fetchProfile(): Promise<ApiResult<Profile>> {
+  return authJson("/api/v1/profile");
+}
+
+/** Corrige le login et/ou le numéro de foyer (cf.
+ * routes/api/v1/profile.ts PATCH) — seuls champs modifiables, ni l'e-mail
+ * ni la rue/ville (cf. db/users.ts#updateUserProfile). */
+export function updateProfile(
+  login: string,
+  houseNumber: string,
+): Promise<ApiResult<Profile>> {
+  return authJson("/api/v1/profile", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ login, houseNumber }),
+  });
+}
+
+/** Supprime définitivement le compte (cf. routes/api/v1/profile.ts DELETE,
+ * db/account.ts#deleteUserAccount) — foyer et publications inclus. Ne
+ * touche pas au jeton local : l'appelant doit encore appeler
+ * lib/auth.ts#clearToken après un succès, comme une déconnexion. */
+export function deleteAccount(): Promise<ApiResult<{ ok: true }>> {
+  return authJson("/api/v1/profile", { method: "DELETE" });
+}

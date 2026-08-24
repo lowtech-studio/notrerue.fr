@@ -55,17 +55,16 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
   `(app)/` (une fois connecté : accueil, **fil** — publier, filtrer,
   rechercher, tapper, répondre, corriger/supprimer ses demandes, cf.
   `routes/api/v1/posts/*` —, **inviter** — feuille de partage native
-  (SMS/WhatsApp/e-mail...), cf. `routes/api/v1/streets/status.ts` — et
+  (SMS/WhatsApp/e-mail...), cf. `routes/api/v1/streets/status.ts` —,
   **messages** (`messages/index.tsx` boîte de réception,
   `messages/[otherUserId].tsx` conversation) — cf.
-  `routes/api/v1/messages/*` ; profil encore en placeholder, cf.
-  ci-dessous).
+  `routes/api/v1/messages/*` — et **profil** — login/numéro de foyer,
+  suppression de compte, cf. `routes/api/v1/profile.ts`).
 - `components/AppHeader.tsx` — en-tête commune aux écrans connectés (menu
   burger, mêmes entrées que `web/components/Header.tsx`, pastille sur
   « Mes messages » cf. `routes/api/v1/messages/unread-count.ts`) ;
-  `components/PlaceholderScreen.tsx` — contenu de repli partagé par les
-  écrans pas encore implémentés ; `components/fil/` — composants du fil
-  (`PostComposer`, `PostCard`, `PostImage`).
+  `components/fil/` — composants du fil (`PostComposer`, `PostCard`,
+  `PostImage`).
 - `lib/api.ts` — client HTTP vers `web/routes/api/v1/*` et
   `web/routes/api/villes.ts`.
 - `lib/auth.ts` — jeton de session en Keychain (iOS) / Keystore (Android)
@@ -78,16 +77,20 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 
 ## Ce qui n'est pas encore là
 
-Le menu burger (cf. `components/AppHeader.tsx`) donne accès à la même
-navigation que le web. Le fil est maintenant complet (publier avec photo,
-filtrer, rechercher, tapper, répondre publiquement, corriger/supprimer).
-Inviter aussi (feuille de partage native). La messagerie aussi (boîte de
-réception, conversation, contexte de demande, pastille non lus) —
-volontairement sans notification push (pas de sondage en arrière-plan,
-`expo-notifications` non installé) : un habitant voit ses nouveaux messages
-en rouvrant l'app, pas en temps réel — item de backlog distinct s'il se
-confirme nécessaire. Seul le profil reste un écran placeholder (cf.
-`_doc/backlog.md`, Backlog Mobile).
+Les cinq écrans connectés sont maintenant tous implémentés : fil (publier
+avec photo, filtrer, rechercher, tapper, répondre publiquement,
+corriger/supprimer), inviter (feuille de partage native), messages (boîte
+de réception, conversation, contexte de demande, pastille non lus) et
+profil (login/numéro de foyer, suppression de compte). Volontairement
+absents pour l'instant, tous deux des items de backlog mobile distincts :
+- Notification push à la réception d'un message (pas de sondage en
+  arrière-plan, `expo-notifications` non installé) : un habitant voit ses
+  nouveaux messages en rouvrant l'app, pas en temps réel.
+- Déconnexion de toutes les sessions actives depuis le profil
+  (`revokeAllSessions` existe déjà côté serveur, cf. `db/users.ts`, mais
+  n'est branchée sur aucune route, web comme mobile).
+
+Cf. `_doc/backlog.md`, Backlog Mobile.
 
 ## Vérifier
 

@@ -41,7 +41,6 @@ app/            # écrans, Expo Router (routing par fichiers)
   (app)/        # une fois connecté
 components/
   AppHeader.tsx         # en-tête + menu burger, mêmes entrées que web/components/Header.tsx
-  PlaceholderScreen.tsx # contenu de repli partagé par les écrans pas encore implémentés
   fil/                  # PostComposer, PostCard, PostImage — cf. routes/api/v1/posts/*
 lib/
   api.ts          # client HTTP vers web/routes/api/v1/* et web/routes/api/villes.ts

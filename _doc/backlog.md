@@ -215,7 +215,19 @@
       notification push (sondage en arrière-plan / `expo-notifications`
       hors périmètre de cette story) ; reste à valider sur un
       appareil/simulateur réel, cf. mobile/README.md)
-- [ ] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /profil de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
+- [*] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /profil de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
+      (implémenté : `routes/api/v1/profile.ts` côté serveur — GET/PATCH/DELETE,
+      réutilise `updateUserProfile` et `deleteUserAccount` tels quels — et
+      `mobile/app/(app)/profil.tsx` (login/numéro de foyer modifiables,
+      e-mail/rue en lecture seule, suppression de compte à double
+      confirmation, bouton rouge/texte blanc comme sur le web). Tous les
+      écrans connectés de l'app mobile sont maintenant implémentés
+      (`components/PlaceholderScreen.tsx` supprimé, plus aucun écran ne
+      l'utilisait). Volontairement hors périmètre (item de backlog mobile
+      distinct) : déconnecter toutes les sessions actives —
+      `revokeAllSessions` existe côté serveur mais n'est branchée sur
+      aucune route ; reste à valider sur un appareil/simulateur réel, cf.
+      mobile/README.md)
 - [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir déconnecter toutes mes sessions
       actives depuis mon profil (web ou mobile), afin de me protéger si mon
       téléphone est perdu ou volé.
