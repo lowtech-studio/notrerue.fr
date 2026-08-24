@@ -54,11 +54,15 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
   `web/routes/`) : `(auth)/` (inscription, connexion, code à 6 chiffres),
   `(app)/` (une fois connecté : accueil, **fil** — publier, filtrer,
   rechercher, tapper, répondre, corriger/supprimer ses demandes, cf.
-  `routes/api/v1/posts/*` — et **inviter** — feuille de partage native
-  (SMS/WhatsApp/e-mail...), cf. `routes/api/v1/streets/status.ts` —,
-  messages/profil encore en placeholder, cf. ci-dessous).
+  `routes/api/v1/posts/*` —, **inviter** — feuille de partage native
+  (SMS/WhatsApp/e-mail...), cf. `routes/api/v1/streets/status.ts` — et
+  **messages** (`messages/index.tsx` boîte de réception,
+  `messages/[otherUserId].tsx` conversation) — cf.
+  `routes/api/v1/messages/*` ; profil encore en placeholder, cf.
+  ci-dessous).
 - `components/AppHeader.tsx` — en-tête commune aux écrans connectés (menu
-  burger, mêmes entrées que `web/components/Header.tsx`) ;
+  burger, mêmes entrées que `web/components/Header.tsx`, pastille sur
+  « Mes messages » cf. `routes/api/v1/messages/unread-count.ts`) ;
   `components/PlaceholderScreen.tsx` — contenu de repli partagé par les
   écrans pas encore implémentés ; `components/fil/` — composants du fil
   (`PostComposer`, `PostCard`, `PostImage`).
@@ -77,9 +81,12 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 Le menu burger (cf. `components/AppHeader.tsx`) donne accès à la même
 navigation que le web. Le fil est maintenant complet (publier avec photo,
 filtrer, rechercher, tapper, répondre publiquement, corriger/supprimer).
-Inviter aussi (feuille de partage native). La messagerie et le profil
-restent des écrans placeholder : ils dépendent d'endpoints backend pas
-encore écrits (`/api/v1/messages`...) — items de backlog distincts (cf.
+Inviter aussi (feuille de partage native). La messagerie aussi (boîte de
+réception, conversation, contexte de demande, pastille non lus) —
+volontairement sans notification push (pas de sondage en arrière-plan,
+`expo-notifications` non installé) : un habitant voit ses nouveaux messages
+en rouvrant l'app, pas en temps réel — item de backlog distinct s'il se
+confirme nécessaire. Seul le profil reste un écran placeholder (cf.
 `_doc/backlog.md`, Backlog Mobile).
 
 ## Vérifier

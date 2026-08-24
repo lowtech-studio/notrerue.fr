@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import {
   Modal,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { clearToken } from "../lib/auth";
+import { fetchUnreadCount } from "../lib/api";
 import { colors, fontDisplay, type ThemeColors } from "../lib/theme";
 import { StreetPlaqueIcon } from "./icons";
 
@@ -58,6 +59,17 @@ export function AppHeader() {
   const insets = useSafeAreaInsets();
   const styles = createStyles(palette, insets.top);
   const [open, setOpen] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
+
+  // Pastille sur « Mes messages » (cf. web/components/Header.tsx, même
+  // besoin) — un appel à l'affichage du menu suffit, pas de sondage en
+  // continu : elle se met de toute façon à jour au prochain montage
+  // (changement d'écran) ou à la prochaine ouverture du menu.
+  useEffect(() => {
+    fetchUnreadCount().then((result) => {
+      if (result.ok) setHasUnread(result.data.hasUnread);
+    });
+  }, [open]);
 
   function go(href: AppHref) {
     setOpen(false);
@@ -112,7 +124,15 @@ export function AppHeader() {
                 style={styles.item}
                 onPress={() => go(entry.href)}
               >
-                <Text style={styles.itemText}>{entry.label}</Text>
+                <View style={styles.itemRow}>
+                  <Text style={styles.itemText}>{entry.label}</Text>
+                  {entry.href === "/(app)/messages" && hasUnread && (
+                    <View
+                      style={styles.unreadBadge}
+                      accessibilityLabel="Nouveaux messages non lus"
+                    />
+                  )}
+                </View>
               </Pressable>
             ))}
 
@@ -205,8 +225,15 @@ function createStyles(palette: ThemeColors, insetTop: number) {
       marginBottom: 20,
     },
     item: { paddingVertical: 14 },
+    itemRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     itemText: { fontSize: 16, color: palette.ink, fontWeight: "600" },
     itemDanger: { color: palette.danger },
+    unreadBadge: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: palette.danger,
+    },
     separator: {
       height: 1,
       backgroundColor: palette.border,

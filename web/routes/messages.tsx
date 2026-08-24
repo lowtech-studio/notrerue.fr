@@ -3,7 +3,6 @@ import "../assets/pages/messages.css" with { type: "css" };
 import { define, isUserVerified } from "../utils.ts";
 import { Header } from "../components/Header.tsx";
 import { getStreetHousesStatus } from "../db/streets.ts";
-import { getPostSummary, type PostSummary } from "../db/posts.ts";
 import {
   type ConversationSummary,
   getConversation,
@@ -13,17 +12,12 @@ import {
   sendMessage,
   type ThreadMessage,
 } from "../db/messages.ts";
+import { type PostContext, resolvePostContext } from "../db/message_context.ts";
 import { findSessionUserById, findUserLoginForDisplay } from "../db/users.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
 import { sendMessageNotificationEmail } from "../email/brevo.ts";
 import CharacterCounter from "../islands/CharacterCounter.tsx";
-
-/** Contexte affiché en tête de conversation quand elle démarre depuis une demande (cf. backlog « bouton via une demande »). */
-interface PostContext {
-  id: number;
-  content: string;
-}
 
 type MessagesData =
   | { view: "inbox"; conversations: ConversationSummary[] }
@@ -41,29 +35,6 @@ type MessagesData =
 function parseId(raw: string | null): number | null {
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-/**
- * Contexte de demande à afficher, seulement s'il existe encore, appartient
- * à la même rue et a pour auteur l'un des deux participants — l'interlocuteur
- * (bouton « Message privé » sur sa demande) ou le viewer lui-même (lien
- * envoyé depuis un tapeur de sa propre demande, cf. backlog « message privé
- * à un tapeur pour s'organiser ») — sinon on l'ignore silencieusement
- * plutôt que de planter (postId manipulable dans l'URL).
- */
-async function resolvePostContext(
-  postId: number | null,
-  streetId: number,
-  viewerId: number,
-  otherUserId: number,
-): Promise<PostContext | null> {
-  if (!postId) return null;
-  const summary: PostSummary | null = await getPostSummary(postId);
-  if (!summary || summary.streetId !== streetId) return null;
-  if (summary.authorId !== otherUserId && summary.authorId !== viewerId) {
-    return null;
-  }
-  return { id: summary.id, content: summary.content };
 }
 
 export const handler = define.handlers({

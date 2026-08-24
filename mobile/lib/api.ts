@@ -395,3 +395,80 @@ export function joinUrl(cityId: number, streetName: string): string {
   });
   return `${BASE_URL}/rejoindre?${params}`;
 }
+
+export interface Conversation {
+  otherUserId: number;
+  otherUserLogin: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  lastMessageFromViewer: boolean;
+}
+
+export interface ConversationsInbox {
+  isStreetAwake: boolean;
+  conversations: Conversation[];
+}
+
+/** Boîte de réception (cf. routes/api/v1/messages/index.ts) — une ligne
+ * par interlocuteur, la plus récente d'abord, même comportement que
+ * web/routes/messages.tsx (vue « inbox »). */
+export function fetchConversations(): Promise<ApiResult<ConversationsInbox>> {
+  return authJson("/api/v1/messages");
+}
+
+export interface MessagePostContext {
+  id: number;
+  content: string;
+}
+
+export interface ThreadMessage {
+  id: number;
+  content: string;
+  createdAt: string;
+  /** Vrai si envoyé par l'habitant connecté (pour l'aligner à droite). */
+  fromViewer: boolean;
+}
+
+export interface Thread {
+  otherUserId: number;
+  otherUserLogin: string;
+  /** Interlocuteur ayant depuis supprimé son compte — toujours
+   * consultable sous son pseudonyme anonymisé, mais plus possible de lui
+   * écrire (cf. routes/api/v1/messages/[otherUserId].ts). */
+  otherUserDeleted: boolean;
+  postContext: MessagePostContext | null;
+  messages: ThreadMessage[];
+}
+
+/** Conversation avec un voisin (cf.
+ * routes/api/v1/messages/[otherUserId].ts GET) — marque les messages reçus
+ * comme lus au passage, même règle que web/routes/messages.tsx. `postId`
+ * quand la conversation démarre depuis une demande (bouton « Message
+ * privé », cf. components/fil/PostCard.tsx). */
+export function fetchThread(
+  otherUserId: number,
+  postId?: number,
+): Promise<ApiResult<Thread>> {
+  const qs = postId ? `?postId=${postId}` : "";
+  return authJson(`/api/v1/messages/${otherUserId}${qs}`);
+}
+
+/** Envoie un message privé (cf.
+ * routes/api/v1/messages/[otherUserId].ts POST). */
+export function sendMessage(
+  otherUserId: number,
+  content: string,
+  postId?: number,
+): Promise<ApiResult<{ message: ThreadMessage; postContext: MessagePostContext | null }>> {
+  return authJson(`/api/v1/messages/${otherUserId}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ content, postId }),
+  });
+}
+
+/** Pour la pastille sur l'entrée « Mes messages » du menu (cf.
+ * routes/api/v1/messages/unread-count.ts, components/AppHeader.tsx). */
+export function fetchUnreadCount(): Promise<ApiResult<{ hasUnread: boolean }>> {
+  return authJson("/api/v1/messages/unread-count");
+}

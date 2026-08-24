@@ -199,7 +199,10 @@ export function PostCard(
         {!isOwn && (
           <Pressable
             style={styles.messageButton}
-            onPress={() => router.push("/(app)/messages")}
+            onPress={() =>
+              router.push(
+                `/(app)/messages/${post.authorId}?postId=${post.id}`,
+              )}
           >
             <Text style={styles.messageButtonText}>Message</Text>
           </Pressable>

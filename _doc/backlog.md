@@ -203,7 +203,19 @@
       selon les applis installées) plutôt que de reconstruire un bouton par
       canal comme le web ; reste à valider sur un appareil/simulateur réel,
       cf. mobile/README.md)
-- [ ] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /messages de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
+- [*] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /messages de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
+      (implémenté : `routes/api/v1/messages/*` côté serveur — GET boîte de
+      réception, GET/POST conversation (marque comme lue, contexte de
+      demande), GET pastille non lus — tous réutilisant `db/messages.ts` et
+      `db/message_context.ts` (extrait de `routes/messages.tsx` pour être
+      partagé sans dupliquer, même principe que `db/post_feed.ts` pour
+      /fil) ; et côté app `mobile/app/(app)/messages/` (boîte de réception
+      + conversation), bouton « Message » du fil désormais branché dessus,
+      pastille sur l'entrée du menu burger. Volontairement sans
+      notification push (sondage en arrière-plan / `expo-notifications`
+      hors périmètre de cette story) ; reste à valider sur un
+      appareil/simulateur réel, cf. mobile/README.md)
+- [ ] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /profil de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
 - [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir déconnecter toutes mes sessions
       actives depuis mon profil (web ou mobile), afin de me protéger si mon
       téléphone est perdu ou volé.
