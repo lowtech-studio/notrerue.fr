@@ -260,6 +260,18 @@ export default function Inscription() {
             ? <ActivityIndicator color={palette.paperWarm} />
             : <Text style={styles.buttonText}>Recevoir mon code</Text>}
         </Pressable>
+
+        {
+          /* Cf. web/components/Header.tsx : lien "Connexion" toujours
+            visible pour un habitant non connecté — mobile n'a pas d'en-tête
+            persistante ici (cf. AppHeader, réservée aux écrans connectés),
+            donc ce lien en bas de formulaire en tient lieu. Utile
+            notamment si `join` échoue avec "cet e-mail est déjà inscrit"
+            (cf. routes/api/v1/join.ts). */
+        }
+        <Pressable onPress={() => router.push("/(auth)/connexion")}>
+          <Text style={styles.link}>Déjà inscrit·e ? Se connecter</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -346,5 +358,12 @@ function createStyles(palette: ThemeColors) {
     },
     buttonDisabled: { opacity: 0.6 },
     buttonText: { color: palette.paperWarm, fontSize: 16, fontWeight: "700" },
+    link: {
+      textAlign: "center",
+      color: palette.brand,
+      fontSize: 14,
+      fontWeight: "600",
+      marginTop: 16,
+    },
   });
 }

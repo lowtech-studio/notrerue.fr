@@ -1,48 +1,42 @@
-import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
-import { clearToken } from "../../lib/auth";
-import { colors, fontDisplay, radius, type ThemeColors } from "../../lib/theme";
+import { StyleSheet, Text, useColorScheme, View } from "react-native";
+import { AppHeader } from "../../components/AppHeader";
+import { colors, fontDisplay, type ThemeColors } from "../../lib/theme";
 
 /**
- * Écran minimal une fois connecté — placeholder volontaire : le fil, la
- * messagerie et le profil sont d'autres items du backlog mobile
- * (`/api/v1/posts`, `/api/v1/messages`, cf. _doc/backlog.md), pas cette
- * story (inscription/connexion). Le bouton de déconnexion existe pour
- * pouvoir tester le flux d'inscription plusieurs fois, pas comme
- * fonctionnalité finale.
+ * Écran d'accueil une fois connecté. La navigation (fil, inviter,
+ * messages, profil, déconnexion) vit désormais dans le menu burger de
+ * `AppHeader` (mêmes entrées que web/components/Header.tsx) — plus besoin
+ * ici du bouton de déconnexion isolé qui servait avant à retester le flux
+ * d'inscription, la déconnexion est toujours accessible via le menu.
  */
 export default function AppHome() {
   const scheme = useColorScheme();
   const palette = colors[scheme === "dark" ? "dark" : "light"];
   const styles = createStyles(palette);
 
-  async function handleLogout() {
-    await clearToken();
-    router.replace("/");
-  }
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Vous êtes connecté·e</Text>
-      <Text style={styles.subtitle}>
-        Le fil de votre rue et la messagerie arrivent bientôt.
-      </Text>
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Se déconnecter</Text>
-      </Pressable>
+    <View style={styles.flex}>
+      <AppHeader />
+      <View style={styles.center}>
+        <Text style={styles.title}>Vous êtes connecté·e</Text>
+        <Text style={styles.subtitle}>
+          Ouvrez le menu pour retrouver le fil de votre rue, inviter vos
+          voisins ou gérer votre profil.
+        </Text>
+      </View>
     </View>
   );
 }
 
 function createStyles(palette: ThemeColors) {
   return StyleSheet.create({
-    container: {
+    flex: { flex: 1, backgroundColor: palette.paper },
+    center: {
       flex: 1,
-      backgroundColor: palette.paper,
-      padding: 24,
-      justifyContent: "center",
       alignItems: "center",
-      gap: 12,
+      justifyContent: "center",
+      padding: 24,
+      gap: 8,
     },
     title: {
       fontFamily: fontDisplay,
@@ -54,15 +48,6 @@ function createStyles(palette: ThemeColors) {
       fontSize: 15,
       color: palette.inkSoft,
       textAlign: "center",
-      marginBottom: 24,
     },
-    button: {
-      borderWidth: 2,
-      borderColor: palette.borderStrong,
-      borderRadius: radius.md,
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-    },
-    buttonText: { color: palette.ink, fontSize: 15, fontWeight: "600" },
   });
 }

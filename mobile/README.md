@@ -51,8 +51,14 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 ## Structure
 
 - `app/` — écrans (Expo Router, routing par fichiers, même logique que
-  `web/routes/`) : `(auth)/` (inscription, code à 6 chiffres),
-  `(app)/` (une fois connecté).
+  `web/routes/`) : `(auth)/` (inscription, connexion, code à 6 chiffres),
+  `(app)/` (une fois connecté : accueil, fil, inviter, messages, profil —
+  ces quatre derniers en placeholder tant que leurs endpoints n'existent
+  pas, cf. ci-dessous).
+- `components/AppHeader.tsx` — en-tête commune aux écrans connectés (menu
+  burger, mêmes entrées que `web/components/Header.tsx`) ;
+  `components/PlaceholderScreen.tsx` — contenu de repli partagé par les
+  écrans pas encore implémentés.
 - `lib/api.ts` — client HTTP vers `web/routes/api/v1/*` et
   `web/routes/api/villes.ts`.
 - `lib/auth.ts` — jeton de session en Keychain (iOS) / Keystore (Android)
@@ -62,10 +68,12 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 
 ## Ce qui n'est pas encore là
 
-Le fil, la messagerie et le profil dépendent d'endpoints backend qui ne
-sont pas encore écrits (`/api/v1/posts`, `/api/v1/messages`...) — items de
-backlog distincts. Cette première passe couvre uniquement l'inscription et
-la connexion (cf. `_doc/backlog.md`, Backlog Mobile).
+Le menu burger (cf. `components/AppHeader.tsx`) donne accès à la même
+navigation que le web, mais le fil, l'invitation, la messagerie et le
+profil restent des écrans placeholder : ils dépendent d'endpoints backend
+pas encore écrits (`/api/v1/posts`, `/api/v1/messages`...) — items de
+backlog distincts (cf. `_doc/backlog.md`, Backlog Mobile). Cette première
+passe couvre l'inscription, la connexion et la navigation.
 
 ## Vérifier
 

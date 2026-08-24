@@ -37,8 +37,11 @@ décisions d'architecture et [`../_doc/backlog.md`](../_doc/backlog.md)
 
 ```
 app/            # écrans, Expo Router (routing par fichiers)
-  (auth)/       # inscription, code à 6 chiffres — non connecté
+  (auth)/       # inscription, connexion, code à 6 chiffres — non connecté
   (app)/        # une fois connecté
+components/
+  AppHeader.tsx         # en-tête + menu burger, mêmes entrées que web/components/Header.tsx
+  PlaceholderScreen.tsx # contenu de repli partagé par les écrans pas encore implémentés
 lib/
   api.ts        # client HTTP vers web/routes/api/v1/* et web/routes/api/villes.ts
   auth.ts       # jeton de session en Keychain/Keystore (expo-secure-store)
