@@ -195,7 +195,14 @@
       `utils/image.ts` — et `mobile/app/(app)/fil.tsx` +
       `mobile/components/fil/` côté app ; reste à valider sur un
       appareil/simulateur réel, cf. mobile/README.md)
-- [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir inviter mes voisins en utilisant les fonctions de partage mobiles (SMS, Whatsapp, Email ...) afin de ne pas être découragé par des espaces vides.
+- [*] En tant qu'habitant utilisant l'application mobile, je veux pouvoir inviter mes voisins en utilisant les fonctions de partage mobiles (SMS, Whatsapp, Email ...) afin de ne pas être découragé par des espaces vides.
+      (implémenté : `routes/api/v1/streets/status.ts` côté serveur —
+      réutilise `getStreetHousesStatus`, même logique que le sous-titre de
+      `routes/inviter.tsx` — et `mobile/app/(app)/inviter.tsx` qui délègue
+      à la feuille de partage native `Share.share` (SMS/WhatsApp/e-mail/...
+      selon les applis installées) plutôt que de reconstruire un bouton par
+      canal comme le web ; reste à valider sur un appareil/simulateur réel,
+      cf. mobile/README.md)
 - [ ] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /messages de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
 - [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir déconnecter toutes mes sessions
       actives depuis mon profil (web ou mobile), afin de me protéger si mon

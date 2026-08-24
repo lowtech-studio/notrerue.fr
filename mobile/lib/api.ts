@@ -364,3 +364,34 @@ export function addComment(
 export function photoUrl(imageId: number): string {
   return `${BASE_URL}/photos/${imageId}`;
 }
+
+export interface StreetStatus {
+  streetName: string;
+  cityId: number;
+  cityName: string;
+  /** Nombre de foyers inscrits nécessaires pour que la rue s'allume. */
+  threshold: number;
+  housesCount: number;
+  remaining: number;
+  isAmbassadorSlot: boolean;
+  isAwake: boolean;
+}
+
+/** Statut d'éveil de la rue de l'habitant connecté (cf.
+ * routes/api/v1/streets/status.ts) — combien de foyers manquent, ou si
+ * elle est déjà allumée. Utilisé par l'écran d'invitation (cf. backlog
+ * mobile « inviter mes voisins »). */
+export function fetchStreetStatus(): Promise<ApiResult<StreetStatus>> {
+  return authJson("/api/v1/streets/status");
+}
+
+/** Lien d'inscription à partager (cf. web/routes/rejoindre.tsx, même route
+ * que le web — un seul backend, cf. _doc/architecture-mobile.md) : scopé à
+ * la rue de l'inviteur, elle sera pré-remplie sur /rejoindre. */
+export function joinUrl(cityId: number, streetName: string): string {
+  const params = new URLSearchParams({
+    cityId: String(cityId),
+    street: streetName,
+  });
+  return `${BASE_URL}/rejoindre?${params}`;
+}
