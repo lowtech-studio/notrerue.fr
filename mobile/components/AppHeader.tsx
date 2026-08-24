@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { clearToken } from "../lib/auth";
 import { colors, fontDisplay, type ThemeColors } from "../lib/theme";
+import { StreetPlaqueIcon } from "./icons";
 
 type AppHref =
   | "/(app)/fil"
@@ -82,7 +83,18 @@ export function AppHeader() {
         <View style={styles.burgerBar} />
       </Pressable>
 
-      <Text style={styles.logo}>NotreRue.fr</Text>
+      {
+        /* Même badge que web/assets/common.css#.brand__mark (pastille
+          couleur marque + plaque de rue), texte réduit à côté (cf. retour
+          utilisateur « notrerue.fr en plus petit ») plutôt que le seul
+          texte qui portait toute la marque jusqu'ici. */
+      }
+      <View style={styles.brand}>
+        <View style={styles.brandMark}>
+          <StreetPlaqueIcon size={16} color={palette.paperWarm} />
+        </View>
+        <Text style={styles.logo}>NotreRue.fr</Text>
+      </View>
 
       <Modal
         visible={open}
@@ -161,9 +173,18 @@ function createStyles(palette: ThemeColors, insetTop: number) {
       borderRadius: 1,
       backgroundColor: palette.ink,
     },
+    brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+    brandMark: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: palette.brand,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     logo: {
       fontFamily: fontDisplay,
-      fontSize: 18,
+      fontSize: 14,
       fontWeight: "700",
       color: palette.brand,
     },

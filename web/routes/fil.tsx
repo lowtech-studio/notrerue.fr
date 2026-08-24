@@ -16,21 +16,11 @@ import {
   MIN_POST_DURATION_MONTHS,
   type PostDuration,
   type PostType,
-  type StreetPost,
   TAP_LABELS,
 } from "../db/posts.ts";
-import {
-  listCommentsByPost,
-  MAX_COMMENT_CONTENT_LENGTH,
-  type PostComment,
-} from "../db/comments.ts";
+import { attachPostExtras, type PostWithExtras } from "../db/post_feed.ts";
+import { MAX_COMMENT_CONTENT_LENGTH } from "../db/comments.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
-import {
-  countTapsByPost,
-  findTappedPostIds,
-  listTappers,
-  type Tapper,
-} from "../db/taps.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
 import {
   MAX_IMAGE_UPLOAD_BYTES,
@@ -85,50 +75,10 @@ const POST_DURATION_MONTHS_OPTIONS = Array.from(
  * de la carte (cf. retour utilisateur : "50 voisins qui répondent"). */
 const TAPPERS_VISIBLE_LIMIT = 6;
 
-interface FilPost extends StreetPost {
-  tapCount: number;
-  viewerHasTapped: boolean;
-  /** Qui a tapé — rempli seulement pour ses propres demandes (cf. backlog
-   * « qui a tapé sur mes messages, au survol » et « message privé à un
-   * tapeur pour s'organiser »), vide sinon : pas besoin d'exposer qui a
-   * répondu chez les autres. */
-  tappers: Tapper[];
-  /** Réponses publiques déjà données (cf. db/comments.ts) — toujours
-   * visibles, quel que soit l'auteur : contrairement aux tapeurs, l'intérêt
-   * d'une réponse publique est justement de rester visible au prochain
-   * habitant qui pose la même question (cf. backlog « retrouver les
-   * réponses déjà données »). */
-  comments: PostComment[];
-}
-
-/** Complète chaque demande avec son nombre de taps, si `viewerId` a déjà tapé, qui a tapé sur ses propres demandes, et ses réponses publiques déjà données. */
-async function attachPostExtras(
-  posts: StreetPost[],
-  viewerId: number,
-): Promise<FilPost[]> {
-  const postIds = posts.map((p) => p.id);
-  const ownPostIds = posts.filter((p) => p.authorId === viewerId).map((p) =>
-    p.id
-  );
-  const [counts, tapped, tappersByPost, commentsByPost] = await Promise.all([
-    countTapsByPost(postIds),
-    findTappedPostIds(viewerId, postIds),
-    listTappers(ownPostIds),
-    listCommentsByPost(postIds),
-  ]);
-  return posts.map((p) => ({
-    ...p,
-    tapCount: counts.get(p.id) ?? 0,
-    viewerHasTapped: tapped.has(p.id),
-    tappers: tappersByPost.get(p.id) ?? [],
-    comments: commentsByPost.get(p.id) ?? [],
-  }));
-}
-
 interface FilData {
   streetName: string;
   housesCount: number;
-  posts: FilPost[];
+  posts: PostWithExtras[];
   /** Onglet actif (`null` = "Tout"). */
   activeType: PostType | null;
   /** Recherche active (URL `?q=`), `null` si aucune. */
@@ -425,7 +375,7 @@ export default define.page<typeof handler>(function Fil({ data, state }) {
               ellipse sur un écran étroit (cf. fil.css). */
           }
           <h1 class="hero__title fil-hero__title" title={streetName}>
-            Le fil de la rue "{streetName}"
+            Le fil de "{streetName}"
           </h1>
           <p class="hero__subtitle fil-hero__subtitle">
             <strong>{housesCount} foyers</strong>{" "}

@@ -42,10 +42,12 @@ app/            # écrans, Expo Router (routing par fichiers)
 components/
   AppHeader.tsx         # en-tête + menu burger, mêmes entrées que web/components/Header.tsx
   PlaceholderScreen.tsx # contenu de repli partagé par les écrans pas encore implémentés
+  fil/                  # PostComposer, PostCard, PostImage — cf. routes/api/v1/posts/*
 lib/
-  api.ts        # client HTTP vers web/routes/api/v1/* et web/routes/api/villes.ts
-  auth.ts       # jeton de session en Keychain/Keystore (expo-secure-store)
-  theme.ts      # tokens visuels repris de web/assets/common.css
+  api.ts          # client HTTP vers web/routes/api/v1/* et web/routes/api/villes.ts
+  auth.ts         # jeton de session en Keychain/Keystore (expo-secure-store)
+  theme.ts        # tokens visuels repris de web/assets/common.css
+  relativeDate.ts # date relative en français, dupliquée de web/utils/relative_date.ts
 ```
 
 ## Règles non négociables

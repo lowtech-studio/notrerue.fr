@@ -111,6 +111,11 @@ export interface CreatePostInput {
   image?: CreatePostImageInput;
 }
 
+/** `createPost` complété de l'aperçu de la photo jointe (sans ses octets, cf. StreetPost.image) — `null` si la demande n'en a pas. */
+export type CreatedPost = Post & {
+  image: { id: number; width: number; height: number } | null;
+};
+
 /**
  * Enregistre une demande, et sa photo le cas échéant, dans la même
  * transaction (cf. schema.ts#postImage : relation 1-1, l'une n'a pas de
@@ -118,7 +123,7 @@ export interface CreatePostInput {
  * foyer de l'auteur la détermine déjà) ni de modération : ces contrôles
  * sont faits par l'appelant (route) avant insertion.
  */
-export async function createPost(input: CreatePostInput): Promise<Post> {
+export async function createPost(input: CreatePostInput): Promise<CreatedPost> {
   return await db.transaction(async (tx) => {
     const [created] = await tx.insert(post).values({
       userId: input.userId,
@@ -127,17 +132,23 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       expiresAt: input.expiresAt ?? computeExpiresAt("week", 1),
     }).returning();
 
+    let image: CreatedPost["image"] = null;
     if (input.image) {
-      await tx.insert(postImage).values({
+      const [insertedImage] = await tx.insert(postImage).values({
         postId: created.id,
         streetId: input.image.streetId,
         data: input.image.data,
         width: input.image.width,
         height: input.image.height,
-      });
+      }).returning({ id: postImage.id });
+      image = {
+        id: insertedImage.id,
+        width: input.image.width,
+        height: input.image.height,
+      };
     }
 
-    return created;
+    return { ...created, image };
   });
 }
 

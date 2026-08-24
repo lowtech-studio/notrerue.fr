@@ -52,28 +52,33 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 
 - `app/` — écrans (Expo Router, routing par fichiers, même logique que
   `web/routes/`) : `(auth)/` (inscription, connexion, code à 6 chiffres),
-  `(app)/` (une fois connecté : accueil, fil, inviter, messages, profil —
-  ces quatre derniers en placeholder tant que leurs endpoints n'existent
-  pas, cf. ci-dessous).
+  `(app)/` (une fois connecté : accueil, **fil** — publier, filtrer,
+  rechercher, tapper, répondre, corriger/supprimer ses demandes, cf.
+  `routes/api/v1/posts/*` —, inviter/messages/profil encore en placeholder,
+  cf. ci-dessous).
 - `components/AppHeader.tsx` — en-tête commune aux écrans connectés (menu
   burger, mêmes entrées que `web/components/Header.tsx`) ;
   `components/PlaceholderScreen.tsx` — contenu de repli partagé par les
-  écrans pas encore implémentés.
+  écrans pas encore implémentés ; `components/fil/` — composants du fil
+  (`PostComposer`, `PostCard`, `PostImage`).
 - `lib/api.ts` — client HTTP vers `web/routes/api/v1/*` et
   `web/routes/api/villes.ts`.
 - `lib/auth.ts` — jeton de session en Keychain (iOS) / Keystore (Android)
   via `expo-secure-store`, jamais en clair.
 - `lib/theme.ts` — tokens visuels repris de `web/assets/common.css` (même
   identité que le web, sans dépendance à un kit UI).
+- `lib/relativeDate.ts` — date relative en français, dupliquée de
+  `web/utils/relative_date.ts` (import runtime impossible à travers la
+  frontière Deno/Metro, cf. `_doc/architecture-mobile.md`).
 
 ## Ce qui n'est pas encore là
 
 Le menu burger (cf. `components/AppHeader.tsx`) donne accès à la même
-navigation que le web, mais le fil, l'invitation, la messagerie et le
-profil restent des écrans placeholder : ils dépendent d'endpoints backend
-pas encore écrits (`/api/v1/posts`, `/api/v1/messages`...) — items de
-backlog distincts (cf. `_doc/backlog.md`, Backlog Mobile). Cette première
-passe couvre l'inscription, la connexion et la navigation.
+navigation que le web. Le fil est maintenant complet (publier avec photo,
+filtrer, rechercher, tapper, répondre publiquement, corriger/supprimer).
+Inviter, la messagerie et le profil restent des écrans placeholder : ils
+dépendent d'endpoints backend pas encore écrits (`/api/v1/messages`...) —
+items de backlog distincts (cf. `_doc/backlog.md`, Backlog Mobile).
 
 ## Vérifier
 

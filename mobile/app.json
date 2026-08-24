@@ -20,7 +20,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "NotreRue.fr a besoin d'accéder à vos photos pour joindre une image à une demande.",
+          "cameraPermission": "NotreRue.fr a besoin d'accéder à l'appareil photo pour joindre une photo à une demande."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -185,14 +185,21 @@
       réutilise `/api/v1/auth/code` et `/api/v1/auth/verify`, déjà en place
       pour l'inscription). (implémenté ; reste à valider sur un
       appareil/simulateur réel, cf. mobile/README.md)
+- [*] En tant qu'habitant utilisant l'application mobile, je veux que tu implementes un burger menu avec les mêmes entrées que dans le menu du haut du web avec à droite le logo
+- [*] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /fil de l'application web en mettant en place les apis nécessaires pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
+      (implémenté : `routes/api/v1/posts/*` côté serveur — GET liste filtrable/recherchable,
+      POST publier avec photo, PATCH/DELETE ses propres demandes,
+      POST tap et POST réponse publique, tous réutilisant `db/posts.ts`,
+      `db/post_feed.ts` (extrait de `routes/fil.tsx` pour être partagé sans
+      dupliquer), `db/taps.ts`, `db/comments.ts`, `moderation/blocklist.ts`,
+      `utils/image.ts` — et `mobile/app/(app)/fil.tsx` +
+      `mobile/components/fil/` côté app ; reste à valider sur un
+      appareil/simulateur réel, cf. mobile/README.md)
+- [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir inviter mes voisins en utilisant les fonctions de partage mobiles (SMS, Whatsapp, Email ...) afin de ne pas être découragé par des espaces vides.
+- [ ] En tant qu'habitant utilisant l'application mobile, je veux avoir toutes les fonctionnalités de la page /messages de l'application web en mettant en place les apis nécessaire pour réutiliser le code et la base de données de la partie web, adapte l'UI et les composants utilisés pour avoir une bonne UX mobile
 - [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir déconnecter toutes mes sessions
       actives depuis mon profil (web ou mobile), afin de me protéger si mon
       téléphone est perdu ou volé.
-- [*] En tant qu'habitant utilisant l'application mobile, je veux que tu implementes un burger menu avec les mêmes entrées que dans le menu du haut du web avec à droite le logo
-- [ ] En tant qu'habitant connecté utilisant l'application mobile, je veux ajouter une photo à mes
-      demandes depuis mon mobile (galerie ou appareil photo), envoyée en
-      `multipart/form-data` et redimensionnée/compressée côté serveur
-      comme sur le web — 5 Mo maximum.
 - [ ] Mettre en place la chaîne de build et de publication (EAS Build pour
       iOS/Android sans Mac local, TestFlight et Play Console en interne,
       mises à jour OTA via `expo-updates`), afin de livrer et corriger
