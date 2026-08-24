@@ -2,8 +2,11 @@
 
 Client mobile (iOS/Android) de [NotreRue.fr](../web), même backend et même
 base que le web — cf. [`_doc/architecture-mobile.md`](../_doc/architecture-mobile.md)
-pour les décisions d'architecture et [`_doc/backlog.md`](../_doc/backlog.md)
-(section « Backlog Mobile ») pour l'avancement.
+pour les décisions d'architecture, [`_doc/backlog.md`](../_doc/backlog.md)
+(section « Backlog Mobile ») pour l'avancement, et
+[`_doc/publishing-mobile.md`](../_doc/publishing-mobile.md) pour la chaîne
+de build/publication (EAS Build, TestFlight, Play Console, mises à jour
+OTA).
 
 ## Prérequis
 

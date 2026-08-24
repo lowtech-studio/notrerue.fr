@@ -32,6 +32,9 @@ décisions d'architecture et [`../_doc/backlog.md`](../_doc/backlog.md)
 | `npm run typecheck` | `tsc --noEmit` — à lancer avant de terminer |
 | `npx expo-doctor` | Vérifie la cohérence config/dépendances SDK |
 | `npx expo install <pkg>` | Ajouter une dépendance (résout la version compatible SDK) — **jamais** `npm install <pkg>` à la main pour un module natif |
+| `npx eas-cli build --profile <profil> --platform all` | Compile iOS/Android via EAS (pas de Mac local requis) — cf. `_doc/publishing-mobile.md` |
+| `npx eas-cli submit --platform <ios\|android> --profile production` | Envoie vers TestFlight / la piste interne Play |
+| `npx eas-cli update --branch <canal> --message "..."` | Pousse un correctif JS en OTA, sans revue store |
 
 ## Structure
 

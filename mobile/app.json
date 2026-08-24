@@ -21,6 +21,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-status-bar",
+      "expo-updates",
       [
         "expo-image-picker",
         {
@@ -31,6 +32,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
     }
   }
 }

@@ -235,3 +235,13 @@
       iOS/Android sans Mac local, TestFlight et Play Console en interne,
       mises à jour OTA via `expo-updates`), afin de livrer et corriger
       l'app sans dépendre d'une revue store à chaque changement.
+      (préparé côté dépôt : `expo-updates` installé, `runtimeVersion`
+      fingerprint + plugin dans `app.json`, canaux OTA par profil dans
+      `eas.json`, runbook complet dans `_doc/publishing-mobile.md` — pas
+      encore coché : la suite exige un compte Expo/EAS, un compte Apple
+      Developer Program (99 $/an) et un compte Google Play Console (25 $),
+      tous à créer par l'humain, aucun n'existe encore à ce jour. `eas
+      init`/`eas update:configure` (génèrent `extra.eas.projectId` et
+      `updates.url`), la création des fiches App Store Connect/Play
+      Console et le premier build restent à faire une fois ces comptes
+      ouverts, cf. checklist dans le runbook.)
