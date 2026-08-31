@@ -1,17 +1,23 @@
 {
   "expo": {
     "name": "NotreRue.fr",
-    "slug": "notrerue",
+    "slug": "notreruefr",
     "scheme": "notrerue",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "fr.notrerue.app"
+      "bundleIdentifier": "fr.notrerue.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "fr.notrerue.app"
+      "package": "fr.notrerue.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -22,6 +28,7 @@
       "expo-secure-store",
       "expo-status-bar",
       "expo-updates",
+      "expo-notifications",
       [
         "expo-image-picker",
         {
@@ -35,6 +42,16 @@
     },
     "runtimeVersion": {
       "policy": "fingerprint"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "43086d55-8a4a-4bf9-a8ac-86f05defe37a"
+      }
+    },
+    "owner": "lowtech-studio",
+    "updates": {
+      "url": "https://u.expo.dev/43086d55-8a4a-4bf9-a8ac-86f05defe37a"
     }
   }
 }

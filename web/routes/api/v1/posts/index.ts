@@ -20,6 +20,7 @@ import {
   UnsupportedImageError,
 } from "../../../../utils/image.ts";
 import { createCooldown } from "../../../../utils/rate_limit.ts";
+import { notifyNewPost } from "../../../../push/expo.ts";
 import { toPostDto } from "./dto.ts";
 
 function parsePage(raw: string | null): number {
@@ -226,6 +227,24 @@ export const handler = define.handlers({
       expiresAt,
       image,
     });
+
+    // Notifie les voisins de la rue (cf. backlog mobile « notifié... lors
+    // de l'ajout d'une demande dans ma rue ») — tolérant à l'échec, la
+    // demande est déjà publiée.
+    try {
+      await notifyNewPost({
+        streetId: user.street.id,
+        authorId: user.id,
+        authorLogin: user.login,
+        postType: rawType,
+        postContent: content,
+      });
+    } catch (error) {
+      console.error(
+        "Échec de la notification push de nouvelle demande (API mobile) :",
+        error,
+      );
+    }
 
     return Response.json({
       post: toPostDto({

@@ -281,6 +281,7 @@ export async function findSessionUserById(
       },
     },
     houseNumber: found.house.number,
+    pushNotificationsPaused: found.pushNotificationsPaused,
   };
 }
 
@@ -349,4 +350,19 @@ export async function updateUserProfile(
       eq(house.id, existing.houseId),
     );
   });
+}
+
+/**
+ * Met en pause (ou réactive) les notifications push d'un habitant (cf.
+ * backlog mobile « gestion de profil mobile ») — à part de
+ * `updateUserProfile` : un simple interrupteur, modifiable indépendamment
+ * du login/numéro de foyer (cf. routes/api/v1/profile.ts, PATCH partiel).
+ */
+export async function setPushNotificationsPaused(
+  userId: number,
+  paused: boolean,
+): Promise<void> {
+  await db.update(user).set({ pushNotificationsPaused: paused }).where(
+    eq(user.id, userId),
+  );
 }

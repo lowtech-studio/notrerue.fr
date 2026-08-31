@@ -55,14 +55,16 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 
 - `app/` — écrans (Expo Router, routing par fichiers, même logique que
   `web/routes/`) : `(auth)/` (inscription, connexion, code à 6 chiffres),
-  `(app)/` (une fois connecté : accueil, **fil** — publier, filtrer,
-  rechercher, tapper, répondre, corriger/supprimer ses demandes, cf.
-  `routes/api/v1/posts/*` —, **inviter** — feuille de partage native
-  (SMS/WhatsApp/e-mail...), cf. `routes/api/v1/streets/status.ts` —,
-  **messages** (`messages/index.tsx` boîte de réception,
-  `messages/[otherUserId].tsx` conversation) — cf.
-  `routes/api/v1/messages/*` — et **profil** — login/numéro de foyer,
-  suppression de compte, cf. `routes/api/v1/profile.ts`).
+  `(app)/` (une fois connecté : accueil — enregistre le jeton de push au
+  montage, cf. `_layout.tsx` et `lib/notifications.ts` —, **fil** —
+  publier, filtrer, rechercher, tapper, répondre, corriger/supprimer ses
+  demandes, cf. `routes/api/v1/posts/*` —, **inviter** — feuille de
+  partage native (SMS/WhatsApp/e-mail...), cf.
+  `routes/api/v1/streets/status.ts` —, **messages**
+  (`messages/index.tsx` boîte de réception, `messages/[otherUserId].tsx`
+  conversation) — cf. `routes/api/v1/messages/*` — et **profil** —
+  login/numéro de foyer, mise en pause des notifications, suppression de
+  compte, cf. `routes/api/v1/profile.ts`).
 - `components/AppHeader.tsx` — en-tête commune aux écrans connectés (menu
   burger, mêmes entrées que `web/components/Header.tsx`, pastille sur
   « Mes messages » cf. `routes/api/v1/messages/unread-count.ts`) ;
@@ -72,6 +74,9 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
   `web/routes/api/villes.ts`.
 - `lib/auth.ts` — jeton de session en Keychain (iOS) / Keystore (Android)
   via `expo-secure-store`, jamais en clair.
+- `lib/notifications.ts` — permission + jeton de push Expo
+  (`expo-notifications`), enregistré côté serveur via
+  `routes/api/v1/push/register.ts` (cf. `push/expo.ts`, backend).
 - `lib/theme.ts` — tokens visuels repris de `web/assets/common.css` (même
   identité que le web, sans dépendance à un kit UI).
 - `lib/relativeDate.ts` — date relative en français, dupliquée de
@@ -80,18 +85,25 @@ sur le réseau Wi-Fi, ou `https://notrerue.fr` pour tester contre la prod.
 
 ## Ce qui n'est pas encore là
 
-Les cinq écrans connectés sont maintenant tous implémentés : fil (publier
-avec photo, filtrer, rechercher, tapper, répondre publiquement,
-corriger/supprimer), inviter (feuille de partage native), messages (boîte
-de réception, conversation, contexte de demande, pastille non lus) et
-profil (login/numéro de foyer, suppression de compte). Volontairement
-absents pour l'instant, tous deux des items de backlog mobile distincts :
-- Notification push à la réception d'un message (pas de sondage en
-  arrière-plan, `expo-notifications` non installé) : un habitant voit ses
-  nouveaux messages en rouvrant l'app, pas en temps réel.
-- Déconnexion de toutes les sessions actives depuis le profil
-  (`revokeAllSessions` existe déjà côté serveur, cf. `db/users.ts`, mais
-  n'est branchée sur aucune route, web comme mobile).
+Les cinq écrans connectés sont tous implémentés : fil (publier avec photo,
+filtrer, rechercher, tapper, répondre publiquement, corriger/supprimer),
+inviter (feuille de partage native), messages (boîte de réception,
+conversation, contexte de demande, pastille non lus) et profil
+(login/numéro de foyer, mise en pause des notifications, suppression de
+compte). Les notifications push sont câblées de bout en bout (nouvelle
+demande dans la rue, réponse — tap ou publique — à une de ses demandes,
+nouveau message privé) mais **n'ont jamais pu être testées sur un
+appareil réel** dans cet environnement : `Notifications.getExpoPushTokenAsync`
+exige un projet EAS lié (`extra.eas.projectId`, cf.
+`_doc/publishing-mobile.md`), qui n'existe pas encore à ce jour — tant que
+`eas init` n'a pas été exécuté, `lib/notifications.ts` s'arrête
+silencieusement avant d'obtenir un jeton (comportement voulu, pas une
+erreur), donc aucune notification ne part réellement.
+
+Volontairement absent, item de backlog mobile distinct : déconnexion de
+toutes les sessions actives depuis le profil (`revokeAllSessions` existe
+déjà côté serveur, cf. `db/users.ts`, mais n'est branchée sur aucune
+route, web comme mobile).
 
 Cf. `_doc/backlog.md`, Backlog Mobile.
 

@@ -28,6 +28,13 @@ export interface SessionUser {
    * à la main dans les tests qui ne le renseignent pas.
    */
   houseNumber?: string | null;
+  /**
+   * Notifications push mises en pause par l'habitant (cf. backlog mobile
+   * « gestion de profil mobile »), affiché/modifiable sur le profil
+   * mobile. Optionnel et traité comme non pausé si absent (même raison que
+   * `isVerified` ci-dessus) — `findSessionUserById` le renseigne toujours.
+   */
+  pushNotificationsPaused?: boolean;
 }
 
 // This specifies the type of "ctx.state" which is used to share

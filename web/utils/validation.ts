@@ -17,6 +17,13 @@ export const MAX_HOUSE_NUMBER_LENGTH = 10;
  * /rejoindre et /api/v1/join (même champ, mêmes deux points d'entrée). */
 export const MAX_STREET_LENGTH = 80;
 
+/** Longueur maximale d'un jeton de push Expo (cf. push/expo.ts,
+ * routes/api/v1/push/register.ts) — un `ExponentPushToken[...]` tient
+ * largement dans cette marge ; sert surtout à rejeter une valeur aberrante
+ * envoyée par un client buggé, la validation réelle du format reste faite
+ * par le service de push Expo lui-même à l'envoi. */
+export const MAX_PUSH_TOKEN_LENGTH = 200;
+
 /**
  * Échappe `%`, `_` et `\` pour qu'un texte saisi par l'utilisateur soit
  * traité comme littéral dans un motif SQL `LIKE`/`ILIKE` (via `ESCAPE '\'`,

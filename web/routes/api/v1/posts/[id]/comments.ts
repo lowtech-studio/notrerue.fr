@@ -8,6 +8,7 @@ import { containsBlockedContent } from "../../../../../moderation/blocklist.ts";
 import { getStreetHousesStatus } from "../../../../../db/streets.ts";
 import { findSessionUserById } from "../../../../../db/users.ts";
 import { sendReplyNotificationEmail } from "../../../../../email/brevo.ts";
+import { notifyReply } from "../../../../../push/expo.ts";
 import { createCooldown } from "../../../../../utils/rate_limit.ts";
 import type { CommentDto } from "../dto.ts";
 
@@ -127,6 +128,18 @@ export const handler = define.handlers({
         } catch (error) {
           console.error(
             "Échec de la notification de réponse (API mobile) :",
+            error,
+          );
+        }
+        try {
+          await notifyReply({
+            authorId: summary.authorId,
+            replierLogin: user.login,
+            replyContent: content,
+          });
+        } catch (error) {
+          console.error(
+            "Échec de la notification push de réponse (API mobile) :",
             error,
           );
         }

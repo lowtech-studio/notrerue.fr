@@ -228,10 +228,22 @@
       `revokeAllSessions` existe côté serveur mais n'est branchée sur
       aucune route ; reste à valider sur un appareil/simulateur réel, cf.
       mobile/README.md)
-- [ ] En tant qu'habitant utilisant l'application mobile, je veux pouvoir déconnecter toutes mes sessions
-      actives depuis mon profil (web ou mobile), afin de me protéger si mon
-      téléphone est perdu ou volé.
-- [ ] Mettre en place la chaîne de build et de publication (EAS Build pour
+- [ ] En tant qu'habitant utilisant l'application mobile, je veux etre notifier via la notification mobile lors de l'ajout d'une demande dans ma rue, lors d'une réponse à une demande que j'ai créé, lors d'un message privé et pouvoir configurer la la mise en pause des notification dans ma gestion de profil mobile
+      (implémenté côté code : `db/push.ts` (jeton + préférence de pause,
+      migration `0014`), `push/expo.ts` (envoi via le service de push
+      Expo, tolérant à l'échec, même principe que email/brevo.ts),
+      `routes/api/v1/push/register.ts`, `pushNotificationsPaused` sur
+      `routes/api/v1/profile.ts` (PATCH partiel) — branché sur les 4
+      déclencheurs (nouvelle demande, tap, réponse publique, message privé),
+      web et mobile ; côté app, `lib/notifications.ts` (permission + jeton,
+      cf. `app/(app)/_layout.tsx`) et l'interrupteur dans
+      `app/(app)/profil.tsx`. **Pas coché** : jamais testé de bout en bout,
+      `Notifications.getExpoPushTokenAsync` exige un projet EAS lié
+      (`eas init`, cf. `_doc/publishing-mobile.md`) qui n'existe pas
+      encore — `registerForPushNotifications` s'arrête alors avant
+      d'obtenir un jeton, aucune notification ne part réellement tant que
+      ce n'est pas fait.)
+- [*] Mettre en place la chaîne de build et de publication (EAS Build pour
       iOS/Android sans Mac local, TestFlight et Play Console en interne,
       mises à jour OTA via `expo-updates`), afin de livrer et corriger
       l'app sans dépendre d'une revue store à chaque changement.

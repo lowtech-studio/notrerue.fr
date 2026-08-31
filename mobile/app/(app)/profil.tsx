@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   useColorScheme,
@@ -48,6 +49,8 @@ export default function Profil() {
   const [updated, setUpdated] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pushPaused, setPushPaused] = useState(false);
+  const [togglingPush, setTogglingPush] = useState(false);
 
   useEffect(() => {
     fetchProfile().then((result) => {
@@ -55,6 +58,7 @@ export default function Profil() {
         setProfile(result.data);
         setLogin(result.data.login);
         setHouseNumber(result.data.houseNumber);
+        setPushPaused(result.data.pushNotificationsPaused);
       } else {
         setError(result.error);
       }
@@ -70,7 +74,10 @@ export default function Profil() {
       return;
     }
     setSaving(true);
-    const result = await updateProfile(login.trim(), houseNumber.trim());
+    const result = await updateProfile({
+      login: login.trim(),
+      houseNumber: houseNumber.trim(),
+    });
     setSaving(false);
     if (!result.ok) {
       setError(result.error);
@@ -80,6 +87,20 @@ export default function Profil() {
     setLogin(result.data.login);
     setHouseNumber(result.data.houseNumber);
     setUpdated(true);
+  }
+
+  async function handleTogglePush(next: boolean) {
+    setError(null);
+    setPushPaused(next);
+    setTogglingPush(true);
+    const result = await updateProfile({ pushNotificationsPaused: next });
+    setTogglingPush(false);
+    if (!result.ok) {
+      setPushPaused(!next);
+      setError(result.error);
+      return;
+    }
+    setProfile(result.data);
   }
 
   async function handleDelete() {
@@ -166,6 +187,31 @@ export default function Profil() {
                 : <Text style={styles.buttonText}>Enregistrer</Text>}
             </Pressable>
 
+            <View style={styles.notificationsSection}>
+              <Text style={styles.sectionTitle}>Notifications</Text>
+              <View style={styles.notificationsRow}>
+                <View style={styles.notificationsText}>
+                  <Text style={styles.notificationsLabel}>
+                    Mettre en pause les notifications
+                  </Text>
+                  <Text style={styles.hint}>
+                    Nouvelle demande dans votre rue, réponse à l'une des
+                    vôtres, message privé — plus aucune notification tant
+                    que c'est activé.
+                  </Text>
+                </View>
+                {togglingPush
+                  ? <ActivityIndicator color={palette.brand} />
+                  : (
+                    <Switch
+                      value={pushPaused}
+                      onValueChange={handleTogglePush}
+                      trackColor={{ true: palette.brand }}
+                    />
+                  )}
+              </View>
+            </View>
+
             <View style={styles.dangerZone}>
               <Text style={styles.dangerTitle}>Zone de danger</Text>
               {confirmingDelete && (
@@ -243,6 +289,27 @@ function createStyles(palette: ThemeColors) {
     },
     buttonDisabled: { opacity: 0.6 },
     buttonText: { color: palette.paperWarm, fontSize: 16, fontWeight: "700" },
+    notificationsSection: {
+      marginTop: 32,
+      paddingTop: 20,
+      borderTopWidth: 1,
+      borderTopColor: palette.border,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: palette.inkMuted,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginBottom: 12,
+    },
+    notificationsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    notificationsText: { flex: 1, gap: 4 },
+    notificationsLabel: { fontSize: 15, fontWeight: "600", color: palette.ink },
     dangerZone: {
       marginTop: 40,
       paddingTop: 20,

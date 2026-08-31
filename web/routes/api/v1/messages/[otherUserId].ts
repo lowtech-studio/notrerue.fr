@@ -13,6 +13,7 @@ import {
 } from "../../../../db/users.ts";
 import { containsBlockedContent } from "../../../../moderation/blocklist.ts";
 import { sendMessageNotificationEmail } from "../../../../email/brevo.ts";
+import { notifyMessage } from "../../../../push/expo.ts";
 import { createCooldown } from "../../../../utils/rate_limit.ts";
 import { toThreadMessageDto } from "./dto.ts";
 
@@ -212,6 +213,17 @@ export const handler = define.handlers({
     } catch (error) {
       console.error(
         "Échec de la notification de message (API mobile) :",
+        error,
+      );
+    }
+    try {
+      await notifyMessage({
+        recipientId: otherUserId,
+        senderLogin: user.login,
+      });
+    } catch (error) {
+      console.error(
+        "Échec de la notification push de message (API mobile) :",
         error,
       );
     }

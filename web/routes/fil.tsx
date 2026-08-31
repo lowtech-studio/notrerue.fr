@@ -22,6 +22,7 @@ import { attachPostExtras, type PostWithExtras } from "../db/post_feed.ts";
 import { MAX_COMMENT_CONTENT_LENGTH } from "../db/comments.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
+import { notifyNewPost } from "../push/expo.ts";
 import {
   MAX_IMAGE_UPLOAD_BYTES,
   resizeAndEncodeImage,
@@ -254,6 +255,23 @@ export const handler = define.handlers({
         expiresAt,
         image,
       });
+      // Notifie les voisins de la rue (cf. backlog mobile « notifié...
+      // lors de l'ajout d'une demande dans ma rue ») — tolérant à l'échec,
+      // la demande est déjà publiée.
+      try {
+        await notifyNewPost({
+          streetId: user.street.id,
+          authorId: user.id,
+          authorLogin: user.login,
+          postType,
+          postContent: content,
+        });
+      } catch (error) {
+        console.error(
+          "Échec de la notification push de nouvelle demande :",
+          error,
+        );
+      }
       return ctx.redirect("/fil?published=1");
     }
 

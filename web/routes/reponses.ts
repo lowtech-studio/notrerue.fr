@@ -6,6 +6,7 @@ import { getStreetHousesStatus } from "../db/streets.ts";
 import { withQueryParam } from "../utils/validation.ts";
 import { findSessionUserById } from "../db/users.ts";
 import { sendReplyNotificationEmail } from "../email/brevo.ts";
+import { notifyReply } from "../push/expo.ts";
 
 /**
  * Publie une réponse publique à une demande, quel que soit son type (cf.
@@ -93,6 +94,15 @@ export const handler = define.handlers({
           });
         } catch (error) {
           console.error("Échec de la notification de réponse :", error);
+        }
+        try {
+          await notifyReply({
+            authorId: summary.authorId,
+            replierLogin: user.login,
+            replyContent: content,
+          });
+        } catch (error) {
+          console.error("Échec de la notification push de réponse :", error);
         }
       }
     }

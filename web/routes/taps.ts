@@ -3,6 +3,7 @@ import { getPostSummary, isPostType, MAX_SEARCH_LENGTH } from "../db/posts.ts";
 import { toggleTap } from "../db/taps.ts";
 import { findSessionUserById } from "../db/users.ts";
 import { sendTapNotificationEmail } from "../email/brevo.ts";
+import { notifyTap } from "../push/expo.ts";
 import { withQueryParam } from "../utils/validation.ts";
 
 /**
@@ -76,6 +77,15 @@ export const handler = define.handlers({
           });
         } catch (error) {
           console.error("Échec de la notification de tap :", error);
+        }
+        try {
+          await notifyTap({
+            authorId: summary.authorId,
+            tapperLogin: user.login,
+            postContent: summary.content,
+          });
+        } catch (error) {
+          console.error("Échec de la notification push de tap :", error);
         }
       }
     }

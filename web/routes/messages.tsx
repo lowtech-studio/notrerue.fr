@@ -17,6 +17,7 @@ import { findSessionUserById, findUserLoginForDisplay } from "../db/users.ts";
 import { containsBlockedContent } from "../moderation/blocklist.ts";
 import { formatRelativeDate } from "../utils/relative_date.ts";
 import { sendMessageNotificationEmail } from "../email/brevo.ts";
+import { notifyMessage } from "../push/expo.ts";
 import CharacterCounter from "../islands/CharacterCounter.tsx";
 
 type MessagesData =
@@ -139,6 +140,14 @@ export const handler = define.handlers({
         });
       } catch (error) {
         console.error("Échec de la notification de message :", error);
+      }
+      try {
+        await notifyMessage({
+          recipientId: otherUserId,
+          senderLogin: user.login,
+        });
+      } catch (error) {
+        console.error("Échec de la notification push de message :", error);
       }
       const redirectParams = new URLSearchParams({
         with: String(otherUserId),

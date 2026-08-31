@@ -1,6 +1,10 @@
 import { define, type SessionUser } from "../../../utils.ts";
 import { isUniqueViolation } from "../../../db/errors.ts";
-import { updateUserProfile } from "../../../db/users.ts";
+import {
+  findSessionUserById,
+  setPushNotificationsPaused,
+  updateUserProfile,
+} from "../../../db/users.ts";
 import { deleteUserAccount } from "../../../db/account.ts";
 import {
   MAX_HOUSE_NUMBER_LENGTH,
@@ -13,6 +17,7 @@ interface ProfileDto {
   houseNumber: string;
   streetName: string;
   cityName: string;
+  pushNotificationsPaused: boolean;
 }
 
 function toProfileDto(user: SessionUser): ProfileDto {
@@ -22,15 +27,19 @@ function toProfileDto(user: SessionUser): ProfileDto {
     houseNumber: user.houseNumber ?? "",
     streetName: user.street.name,
     cityName: user.street.city.name,
+    pushNotificationsPaused: user.pushNotificationsPaused ?? false,
   };
 }
 
 /**
  * GET/PATCH/DELETE /api/v1/profile — gestion du profil pour l'app mobile
- * (cf. routes/profil.tsx, mêmes règles). Login et numéro de foyer sont les
- * seuls champs modifiables (ni l'e-mail — identifiant de connexion — ni la
- * rue/ville, cf. db/users.ts#updateUserProfile) ; la suppression de compte
- * réutilise `deleteUserAccount` telle quelle.
+ * (cf. routes/profil.tsx, mêmes règles pour login/numéro de foyer/e-mail).
+ * `pushNotificationsPaused` (cf. backlog mobile « pouvoir configurer la
+ * mise en pause des notifications dans ma gestion de profil mobile ») est
+ * propre au mobile, sans équivalent web — PATCH accepte donc une mise à
+ * jour partielle : `login` (+`houseNumber`) et/ou `pushNotificationsPaused`
+ * peuvent être envoyés indépendamment, pour qu'un simple interrupteur
+ * n'ait pas besoin de renvoyer tout le formulaire d'identité.
  *
  * Pas de déconnexion de toutes les sessions ici (`revokeAllSessions`
  * existe déjà côté db mais n'est branchée sur aucune route, web comme
@@ -67,45 +76,62 @@ export const handler = define.handlers({
         { status: 400 },
       );
     }
-    const parsed = body as Record<string, unknown> | null;
-    const login = String(parsed?.login ?? "").trim().slice(
-      0,
-      MAX_LOGIN_LENGTH,
-    );
-    const houseNumber = String(parsed?.houseNumber ?? "").trim().slice(
-      0,
-      MAX_HOUSE_NUMBER_LENGTH,
-    );
+    const parsed = typeof body === "object" && body !== null
+      ? body as Record<string, unknown>
+      : {};
 
-    if (!login) {
+    const hasLogin = "login" in parsed;
+    const hasPaused = typeof parsed.pushNotificationsPaused === "boolean";
+
+    if (!hasLogin && !hasPaused) {
       return Response.json(
-        { error: "Merci de renseigner un login." },
+        { error: "Rien à mettre à jour." },
         { status: 400 },
       );
     }
 
-    try {
-      await updateUserProfile(user.id, {
-        login,
-        houseNumber: houseNumber || null,
-      });
-    } catch (error) {
-      if (isUniqueViolation(error, "user_login_unique")) {
+    if (hasLogin) {
+      const login = String(parsed.login ?? "").trim().slice(
+        0,
+        MAX_LOGIN_LENGTH,
+      );
+      const houseNumber = String(parsed.houseNumber ?? "").trim().slice(
+        0,
+        MAX_HOUSE_NUMBER_LENGTH,
+      );
+      if (!login) {
         return Response.json(
-          { error: "Ce login est déjà utilisé." },
-          { status: 409 },
+          { error: "Merci de renseigner un login." },
+          { status: 400 },
         );
       }
-      throw error;
+      try {
+        await updateUserProfile(user.id, {
+          login,
+          houseNumber: houseNumber || null,
+        });
+      } catch (error) {
+        if (isUniqueViolation(error, "user_login_unique")) {
+          return Response.json(
+            { error: "Ce login est déjà utilisé." },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
     }
 
-    return Response.json({
-      login,
-      email: user.email,
-      houseNumber,
-      streetName: user.street.name,
-      cityName: user.street.city.name,
-    });
+    if (hasPaused) {
+      await setPushNotificationsPaused(
+        user.id,
+        parsed.pushNotificationsPaused as boolean,
+      );
+    }
+
+    const updated = await findSessionUserById(user.id);
+    // `updated` ne peut être `null` ici : le compte vient d'être lu via
+    // `ctx.state.user` (donc actif) et rien ci-dessus ne le supprime.
+    return Response.json(toProfileDto(updated!));
   },
 
   async DELETE(ctx) {

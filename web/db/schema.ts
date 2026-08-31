@@ -131,6 +131,18 @@ export const user = pgTable("user", {
   // db/users.ts#registerInhabitant), il amorce la chaîne de confiance de sa
   // rue.
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  // Jeton de push Expo (cf. push/expo.ts, _doc/architecture-mobile.md) —
+  // un seul par compte, le plus récent remplace le précédent (pas de
+  // gestion multi-appareils pour ce MVP). `null` tant que l'app mobile n'a
+  // jamais enregistré l'appareil (jamais ouverte, permission refusée, ou
+  // web/habitant non mobile).
+  pushToken: text("push_token"),
+  // Mise en pause des notifications push (cf. backlog mobile « pouvoir
+  // configurer la mise en pause des notifications dans ma gestion de
+  // profil mobile ») — un seul interrupteur global, pas de réglage par
+  // catégorie (nouvelle demande / réponse / message) pour ce MVP.
+  pushNotificationsPaused: boolean("push_notifications_paused").notNull()
+    .default(false),
 }, (table) => [
   // Foyer → habitants, joint sur quasi toutes les pages (fil, messages,
   // suppression de compte...) — même raison que `house_street_id_idx`.

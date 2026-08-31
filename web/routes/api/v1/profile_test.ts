@@ -72,6 +72,7 @@ Deno.test("GET /api/v1/profile : connecté → profil renvoyé", async () => {
     assertEquals(body.houseNumber, "12");
     assertEquals(body.streetName, setup.testStreet.testStreet.name);
     assertEquals(body.cityName, setup.testStreet.testCity.name);
+    assertEquals(body.pushNotificationsPaused, false);
   } finally {
     await teardown(setup);
   }
@@ -80,6 +81,62 @@ Deno.test("GET /api/v1/profile : connecté → profil renvoyé", async () => {
 Deno.test("PATCH /api/v1/profile : non connecté → 401", async () => {
   const res = await handler.PATCH!(makeContext()) as Response;
   assertEquals(res.status, 401);
+});
+
+Deno.test("PATCH /api/v1/profile : corps vide → 400, rien à mettre à jour", async () => {
+  const setup = await setupInhabitant("api-profile-partial-1");
+  try {
+    const res = await handler.PATCH!(
+      makeContext({ user: setup.session, body: {} }),
+    ) as Response;
+    assertEquals(res.status, 400);
+  } finally {
+    await teardown(setup);
+  }
+});
+
+Deno.test("PATCH /api/v1/profile : pushNotificationsPaused seul → mis à jour, login/foyer inchangés", async () => {
+  const setup = await setupInhabitant("api-profile-partial-2");
+  try {
+    const res = await handler.PATCH!(
+      makeContext({
+        user: setup.session,
+        body: { pushNotificationsPaused: true },
+      }),
+    ) as Response;
+    assertEquals(res.status, 200);
+    const body = await res.json();
+    assertEquals(body.pushNotificationsPaused, true);
+    assertEquals(body.login, setup.user.login);
+    assertEquals(body.houseNumber, "12");
+
+    const [row] = await db.select().from(user).where(
+      eq(user.id, setup.user.id),
+    );
+    assertEquals(row.pushNotificationsPaused, true);
+    assertEquals(row.login, setup.user.login);
+  } finally {
+    await teardown(setup);
+  }
+});
+
+Deno.test("PATCH /api/v1/profile : login et pushNotificationsPaused ensemble → les deux mis à jour", async () => {
+  const setup = await setupInhabitant("api-profile-partial-3");
+  const newLogin = `nouveau-${crypto.randomUUID().slice(0, 8)}`;
+  try {
+    const res = await handler.PATCH!(
+      makeContext({
+        user: setup.session,
+        body: { login: newLogin, pushNotificationsPaused: true },
+      }),
+    ) as Response;
+    assertEquals(res.status, 200);
+    const body = await res.json();
+    assertEquals(body.login, newLogin);
+    assertEquals(body.pushNotificationsPaused, true);
+  } finally {
+    await teardown(setup);
+  }
 });
 
 Deno.test("PATCH /api/v1/profile : login vide → 400, rien modifié", async () => {

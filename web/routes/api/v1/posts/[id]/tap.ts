@@ -3,6 +3,7 @@ import { getPostSummary } from "../../../../../db/posts.ts";
 import { countTapsByPost, toggleTap } from "../../../../../db/taps.ts";
 import { findSessionUserById } from "../../../../../db/users.ts";
 import { sendTapNotificationEmail } from "../../../../../email/brevo.ts";
+import { notifyTap } from "../../../../../push/expo.ts";
 
 function parsePostId(raw: string | undefined): number | null {
   const parsed = Number(raw);
@@ -77,6 +78,18 @@ export const handler = define.handlers({
         } catch (error) {
           console.error(
             "Échec de la notification de tap (API mobile) :",
+            error,
+          );
+        }
+        try {
+          await notifyTap({
+            authorId: summary.authorId,
+            tapperLogin: user.login,
+            postContent: summary.content,
+          });
+        } catch (error) {
+          console.error(
+            "Échec de la notification push de tap (API mobile) :",
             error,
           );
         }

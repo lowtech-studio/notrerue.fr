@@ -479,25 +479,36 @@ export interface Profile {
   houseNumber: string;
   streetName: string;
   cityName: string;
+  /** Cf. backlog mobile « pouvoir configurer la mise en pause des
+   * notifications dans ma gestion de profil mobile » — sans équivalent
+   * web. */
+  pushNotificationsPaused: boolean;
 }
 
 /** Profil de l'habitant connecté (cf. routes/api/v1/profile.ts GET, même
- * champs que web/routes/profil.tsx). */
+ * champs que web/routes/profil.tsx, plus `pushNotificationsPaused`). */
 export function fetchProfile(): Promise<ApiResult<Profile>> {
   return authJson("/api/v1/profile");
 }
 
-/** Corrige le login et/ou le numéro de foyer (cf.
- * routes/api/v1/profile.ts PATCH) — seuls champs modifiables, ni l'e-mail
- * ni la rue/ville (cf. db/users.ts#updateUserProfile). */
+/**
+ * Corrige le profil (cf. routes/api/v1/profile.ts PATCH) — mise à jour
+ * partielle : `login`(+`houseNumber`) et `pushNotificationsPaused` sont
+ * indépendants, seuls les champs présents dans `input` sont modifiés. Ni
+ * l'e-mail ni la rue/ville (cf. db/users.ts#updateUserProfile) ne sont
+ * jamais modifiables d'ici.
+ */
 export function updateProfile(
-  login: string,
-  houseNumber: string,
+  input: {
+    login?: string;
+    houseNumber?: string;
+    pushNotificationsPaused?: boolean;
+  },
 ): Promise<ApiResult<Profile>> {
   return authJson("/api/v1/profile", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ login, houseNumber }),
+    body: JSON.stringify(input),
   });
 }
 
@@ -507,4 +518,18 @@ export function updateProfile(
  * lib/auth.ts#clearToken après un succès, comme une déconnexion. */
 export function deleteAccount(): Promise<ApiResult<{ ok: true }>> {
   return authJson("/api/v1/profile", { method: "DELETE" });
+}
+
+/** Enregistre le jeton de push Expo de l'appareil (cf.
+ * routes/api/v1/push/register.ts, lib/notifications.ts) — appelé après
+ * obtention de la permission et du jeton, au lancement de l'app et après
+ * connexion. */
+export function registerPushToken(
+  token: string,
+): Promise<ApiResult<{ ok: true }>> {
+  return authJson("/api/v1/push/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
 }

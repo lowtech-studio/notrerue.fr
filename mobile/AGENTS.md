@@ -46,10 +46,11 @@ components/
   AppHeader.tsx         # en-tête + menu burger, mêmes entrées que web/components/Header.tsx
   fil/                  # PostComposer, PostCard, PostImage — cf. routes/api/v1/posts/*
 lib/
-  api.ts          # client HTTP vers web/routes/api/v1/* et web/routes/api/villes.ts
-  auth.ts         # jeton de session en Keychain/Keystore (expo-secure-store)
-  theme.ts        # tokens visuels repris de web/assets/common.css
-  relativeDate.ts # date relative en français, dupliquée de web/utils/relative_date.ts
+  api.ts            # client HTTP vers web/routes/api/v1/* et web/routes/api/villes.ts
+  auth.ts           # jeton de session en Keychain/Keystore (expo-secure-store)
+  notifications.ts  # permission + jeton de push Expo (expo-notifications)
+  theme.ts          # tokens visuels repris de web/assets/common.css
+  relativeDate.ts   # date relative en français, dupliquée de web/utils/relative_date.ts
 ```
 
 ## Règles non négociables

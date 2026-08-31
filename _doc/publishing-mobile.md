@@ -144,11 +144,11 @@ plus, il faut un nouveau `eas build` + soumission.
 
 ## Checklist
 
-- [ ] Compte Expo créé, `npx eas-cli login` fait
+- [*] Compte Expo créé, `npx eas-cli login` fait
 - [ ] Compte Apple Developer Program actif (99 $/an)
-- [ ] Compte Google Play Console actif (25 $, une fois)
-- [ ] `npx eas-cli init` exécuté (`extra.eas.projectId` apparaît dans `app.json`)
-- [ ] `npx eas-cli update:configure` exécuté (`updates.url` apparaît dans `app.json`)
+- [*] Compte Google Play Console actif (25 $, une fois)
+- [*] `npx eas-cli init` exécuté (`extra.eas.projectId` apparaît dans `app.json`)
+- [*] `npx eas-cli update:configure` exécuté (`updates.url` apparaît dans `app.json`)
 - [ ] Fiche App Store Connect créée (`fr.notrerue.app`)
 - [ ] Fiche Google Play Console créée, premier `.aab` envoyé à la main
 - [ ] Service account Google créé, clé JSON récupérée (hors dépôt)
